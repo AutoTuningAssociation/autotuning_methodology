@@ -1,0 +1,124 @@
+{
+  "name": "Compare training iterations",
+  "kernels": [
+    "pnpoly",
+    "convolution",
+    "GEMM"
+  ],
+  "GPUs": [
+    "RTX_2070_SUPER"
+  ],
+  "strategy_defaults": {
+    "repeats": 250,
+    "nums_of_evaluations": [
+      20,
+      40,
+      60,
+      80,
+      100,
+      120,
+      140,
+      160,
+      180,
+      200,
+      220,
+      240,
+      260,
+      280,
+      300,
+      320,
+      340,
+      360,
+      380,
+      400,
+      420,
+      440,
+      460,
+      480,
+      500
+    ],
+    "record_data": [
+      "time",
+      "GFLOP/s"
+    ]
+  },
+  "strategies": [
+    {
+      "name": "random_sample",
+      "strategy": "random_sample",
+      "display_name": "Random sampling",
+      "repeats": 1000,
+      "options": {
+        "max_fevals": 500
+      },
+      "bar_group": "reference"
+    },
+    {
+      "name": "mls_old",
+      "strategy": "mls",
+      "display_name": "MLS old",
+      "options": {
+        "max_fevals": 500
+      },
+      "bar_group": "old"
+    },
+    {
+      "name": "greedy_mls_old",
+      "strategy": "greedy_mls",
+      "display_name": "Greedy MLS old",
+      "options": {
+        "max_fevals": 500
+      },
+      "bar_group": "old"
+    },
+    {
+      "name": "greedy_ils_old",
+      "strategy": "greedy_ils",
+      "display_name": "Greedy ILS old",
+      "options": {
+        "max_fevals": 500
+      },
+      "bar_group": "old"
+    },
+    {
+      "name": "mls_new",
+      "strategy": "mls",
+      "display_name": "MLS new",
+      "ignore_cache": true,
+      "options": {
+        "max_fevals": 500
+      },
+      "bar_group": "new"
+    },
+    {
+      "name": "greedy_mls_new",
+      "strategy": "greedy_mls",
+      "display_name": "Greedy MLS new",
+      "ignore_cache": true,
+      "options": {
+        "max_fevals": 500
+      },
+      "bar_group": "new"
+    },
+    {
+      "name": "ordered_greedy_mls_new",
+      "strategy": "ordered_greedy_mls",
+      "display_name": "Ordered Greedy MLS new",
+      "ignore_cache": true,
+      "options": {
+        "max_fevals": 500
+      },
+      "bar_group": "new"
+    },
+    {
+      "name": "greedy_ils_new",
+      "strategy": "greedy_ils",
+      "display_name": "Greedy ILS new",
+      "ignore_cache": true,
+      "options": {
+        "max_fevals": 500
+      },
+      "bar_group": "new"
+    }
+  ]
+}

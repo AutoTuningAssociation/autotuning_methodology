@@ -1,0 +1,37 @@
+{
+  "name": "Compare search method",
+  "kernels": [
+    "GEMM"
+  ],
+  "GPUs": [
+    "GTX_TITAN_X"
+  ],
+  "strategy_defaults": {
+    "repeats": 35,
+    "nums_of_evaluations": [
+      20,
+      40,
+      60,
+      80,
+      100,
+      120,
+      140,
+      160,
+      180,
+      200,
+      220
+    ],
+    "record_data": [
+      "time",
+      "GFLOP/s"
+    ]
+  },
+  "strategies": [
+    {
+      "name": "",
+      "strategy": "",
+      "display_name": "",
+      "options": {}
+    }
+  ]
+}
