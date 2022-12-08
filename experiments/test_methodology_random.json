@@ -1,15 +1,17 @@
 {
   "name": "Test new methodology",
   "kernels": [
-    "convolution"
+    "pnpoly",
+    "convolution",
+    "GEMM"
   ],
   "GPUs": [
-    "A100"
+    "RTX_2070_SUPER"
   ],
   "resolution": 1e4,
   "curve_segment_factor": 0.05,
   "cutoff_quantile": 0.99,
-  "relative_to_baseline": true,
+  "relative_to_baseline": false,
   "strategy_defaults": {
     "repeats": 1000,
     "nums_of_evaluations": [
@@ -32,12 +34,7 @@
       340,
       360,
       380,
-      400,
-      420,
-      440,
-      460,
-      480,
-      500
+      400
     ],
     "record_data": [
       "time",
@@ -50,16 +47,9 @@
       "strategy": "random_sample",
       "display_name": "Random sampling",
       "is_baseline": true,
+      "repeats": 100,
       "options": {
-        "max_fevals": 500
-      }
-    },
-    {
-      "name": "mls",
-      "strategy": "mls",
-      "display_name": "MLS",
-      "options": {
-        "max_fevals": 500
+        "max_fevals": 800
       }
     }
   ]

@@ -72,6 +72,7 @@ def create_expected_results() -> dict:
         'cutoff_quantile': None,
         'curve_segment_factor': None,
         'num_function_evaluations': None,
+        'num_function_evaluations_repeated_results': None,
         'best_found_objective_values': None,
         'interpolated_time': None,
         'interpolated_objective': None,
@@ -107,7 +108,8 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
         for index, kernel in enumerate(kernels):
             kernel_name = kernel_names[index]
             stats_info = searchspaces_info_stats[gpu_name]['kernels'][kernel_name]
-            objective_value_at_cutoff_point = np.quantile(np.array(stats_info['sorted_times']), 1-cutoff_quantile)   # sorted in ascending order, so inverse quantile
+            objective_value_at_cutoff_point = np.quantile(np.array(stats_info['sorted_times']),
+                                                          1 - cutoff_quantile)    # sorted in ascending order, so inverse quantile
             y_min = None
             y_median = None
             if 'absolute_optimum' in stats_info and 'median' in stats_info:
@@ -124,14 +126,18 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 expected_results = create_expected_results()
                 if 'ignore_cache' not in strategy and baseline_executed is False:
                     cached_data = cache.get_strategy_results(strategy['name'], strategy['options'], strategy['repeats'], expected_results)
-                    if cached_data is not None and 'cutoff_quantile' in cached_data['results'] and cached_data['results']['cutoff_quantile'] == cutoff_quantile and 'curve_segment_factor' in cached_data['results'] and cached_data['results']['curve_segment_factor'] == curve_segment_factor:
+                    if cached_data is not None and 'cutoff_quantile' in cached_data['results'] and cached_data['results'][
+                            'cutoff_quantile'] == cutoff_quantile and 'curve_segment_factor' in cached_data['results'] and cached_data['results'][
+                                'curve_segment_factor'] == curve_segment_factor:
                         print("| retrieved from cache")
                         if baseline_time_interpolated is None and 'is_baseline' in strategy and strategy['is_baseline'] is True:
                             baseline_time_interpolated = np.array(cached_data['results']['interpolated_time'])
                         continue
 
                 # execute each strategy that is not in the cache
-                strategy_results = collect_results(kernel, kernel_name, gpu_name, strategy, expected_results, profiling, objective_value_at_cutoff_point, time_resolution=time_resolution, time_interpolated_axis=baseline_time_interpolated, y_min=y_min, y_median=y_median, segment_factor=curve_segment_factor)
+                strategy_results = collect_results(kernel, kernel_name, gpu_name, strategy, expected_results, profiling, objective_value_at_cutoff_point,
+                                                   time_resolution=time_resolution, time_interpolated_axis=baseline_time_interpolated, y_min=y_min,
+                                                   y_median=y_median, segment_factor=curve_segment_factor)
                 if 'cutoff_quantile' in expected_results:
                     strategy_results['cutoff_quantile'] = cutoff_quantile
                 if 'curve_segment_factor' in expected_results:

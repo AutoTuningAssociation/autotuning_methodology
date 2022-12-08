@@ -1,6 +1,7 @@
 """ Interface to run an experiment on Kernel Tuner """
 from cProfile import label
 from copy import deepcopy
+from math import sqrt, floor, ceil
 import numpy as np
 import progressbar
 from typing import Any, Tuple, Dict
@@ -24,7 +25,9 @@ def remove_duplicates(res: list, remove_duplicate_results: bool):
             unique_res.append(result)
     return unique_res
 
-def get_isotonic_curve(x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package='isotonic', increasing=False, npoints=1000, power=2, ymin=None, ymax=None) -> np.ndarray:
+
+def get_isotonic_curve(x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package='isotonic', increasing=False, npoints=1000, power=2, ymin=None,
+                       ymax=None) -> np.ndarray:
     """ Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic' """
     # check if the assumptions that the input arrays are numpy arrays holds
     assert isinstance(x, np.ndarray)
@@ -45,7 +48,6 @@ def get_isotonic_curve(x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package=
             y_isotonic_regression = np.clip(y_isotonic_regression, ymin, ymax)
         return y_isotonic_regression
     raise ValueError(f"Package name {package} is not a valid package name")
-
 
 
 def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool) -> Tuple[list, int]:
@@ -75,12 +77,28 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
     return res, total_time_ms
 
 
+def get_times_confidence_interval(times: list, confidence_level=0.95) -> Tuple[float, float]:
+    """ calculate the non-parametric confidence interval for repeated configurations, assumed to be IID """
+    alpha = 1 - confidence_level
+    area_per_tail = alpha / 2
+    n = len(times)
+    times.sort()
+    np_times = np.array(times)
+    lower_rank = floor((n - 1.96 * sqrt(n)) / 2)
+    upper_rank = ceil(1 + ((n + 1.96 * sqrt(n)) / 2))
+    print(f"  {lower_rank}, {upper_rank}")
+    # TODO how much does using the binomial distribution here change the outcome, and is it possible?
+    return np_times[max(lower_rank, 0)], np_times[min(upper_rank, n - 1)]
+
+
 def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, expected_results: dict, profiling: bool, objective_value_at_cutoff_point: float,
-                    optimization_objective='time', remove_duplicate_results=True, time_resolution = 1e4, time_interpolated_axis = None, y_min = None, y_median = None, segment_factor = 0.05) -> dict:
+                    optimization_objective='time', remove_duplicate_results=True, time_resolution=1e4, time_interpolated_axis=None, y_min=None, y_median=None,
+                    segment_factor=0.05) -> dict:
     """ Executes strategies to obtain (or retrieve from cache) the statistical data """
     print(f"Running {strategy['display_name']}")
     nums_of_evaluations = strategy['nums_of_evaluations']
-    max_num_evals = min(strategy['nums_of_evaluations'])
+    min_num_evals = min(strategy['nums_of_evaluations'])
+    max_num_evals = max(strategy['nums_of_evaluations'])
     # TODO put the tune options in the .json in strategy_defaults?
     tune_options = {
         'verbose': False,
@@ -92,7 +110,7 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
         """ If multiple attempts are necessary, report the reason """
         if len_res < 1:
             print(f"({rep+1}/{strategy_repeats}) No results found, trying once more...")
-        elif len_unique_res < max_num_evals:
+        elif len_unique_res < min_num_evals:
             print(f"Too few unique results found ({len_unique_res} in {len_res} evaluations), trying once more...")
         else:
             print(f"({rep+1}/{strategy_repeats}) Only invalid results found, trying once more...")
@@ -103,10 +121,24 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
     for rep in progressbar.progressbar(range(strategy['repeats']), redirect_stdout=True):
         attempt = 0
         only_invalid = True
-        while only_invalid or (remove_duplicate_results and len_unique_res < max_num_evals):
+        while only_invalid or (remove_duplicate_results and len_unique_res < min_num_evals):
             if attempt > 0:
                 report_multiple_attempts(rep, len_res, len_unique_res, strategy['repeats'])
             res, total_time_ms = tune(kernel, kernel_name, device_name, strategy, tune_options, profiling)
+            # TODO continue here with confidence interval
+            # for l in range(6, 32, 2):
+            #     print(f"length: {l}")
+            #     get_times_confidence_interval(list(range(l)))
+
+            # exit(0)
+            # for r in res:
+            #     if 'times' in r:
+            #         t = r['times']
+            #         ci = get_times_confidence_interval(t)
+            #         print(ci)
+            #         print(f"      {np.mean(t)}")
+            #         print(f"      {np.median(t)}")
+            #         exit(0)
             len_res: int = len(res)
             # check if there are only invalid configs in the first 10 fevals, if so, try again
             only_invalid = len_res < 1 or min(res[:10], key=lambda x: x['time'])['time'] == 1e20
@@ -128,7 +160,8 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
         yappi.clear_stats()
 
     # create the interpolated results from the repeated results
-    results = create_interpolated_results(repeated_results, expected_results, optimization_objective, objective_value_at_cutoff_point, time_resolution, time_interpolated_axis, y_min, y_median, segment_factor)
+    results = create_interpolated_results(max_num_evals, repeated_results, expected_results, optimization_objective, objective_value_at_cutoff_point,
+                                          time_resolution, time_interpolated_axis, y_min, y_median, segment_factor)
 
     # check that all expected results are present
     for key in results.keys():
@@ -138,7 +171,10 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
             raise ValueError(f"Expected result {key} was not filled in the results")
     return results
 
-def create_interpolated_results(repeated_results: list, expected_results: dict, optimization_objective: str, objective_value_at_cutoff_point: float, time_resolution: int, time_interpolated_axis: np.ndarray, y_min = None, y_median = None, segment_factor=0.05) -> Dict[Any, Any]:
+
+def create_interpolated_results(max_num_evals: int, repeated_results: list, expected_results: dict, optimization_objective: str,
+                                objective_value_at_cutoff_point: float, time_resolution: int, time_interpolated_axis: np.ndarray, y_min=None, y_median=None,
+                                segment_factor=0.05) -> Dict[Any, Any]:
     """ Creates a monotonically non-increasing curve from the combined objective datapoints across repeats for a strategy, interpolated for [time_resolution] points, using [time_resolution * segment_factor] piecewise linear segments """
     results = deepcopy(expected_results)
 
@@ -147,9 +183,12 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
     total_times = list()
     best_found_objective_values = list()
     num_function_evaluations = list()
+    num_function_evaluations_repeated_results = list(list() for _ in range(max_num_evals))
     for res_index, res in enumerate(repeated_results):
         # extract the objective and time spent per configuration
-        repeated_results[res_index] = np.array(list(tuple([sum(r['times']) / 1000, r[optimization_objective], np.std(r[optimization_objective + 's'])]) for r in res if r['time'] != 1e20), dtype=dtype)
+        repeated_results[res_index] = np.array(
+            list(tuple([sum(r['times']) /
+                        1000, r[optimization_objective], np.std(r[optimization_objective + 's'])]) for r in res if r['time'] != 1e20), dtype=dtype)
         # take the minimum of the objective and the sum of the time
         obj_minimum = 1e20
         total_time = 0
@@ -158,6 +197,12 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
             obj_minimum = min(r[1], obj_minimum)
             obj_std = r[2]
             repeated_results[res_index][r_index] = np.array(tuple([total_time, obj_minimum, obj_std]), dtype=dtype)
+            # also add results at the same number of function evaluations together
+            try:
+                num_function_evaluations_repeated_results[r_index].append(obj_minimum)
+            except IndexError:
+                # in case of an index error, repeated_results has more evals than max_num_evals, so just stop
+                break
         total_times.append(total_time)
         best_found_objective_values.append(obj_minimum)
         num_function_evaluations.append(len(repeated_results[res_index]))
@@ -169,15 +214,17 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
         results['best_found_objective_values'] = best_found_objective_values
     if 'num_function_evaluations' in expected_results:
         results['num_function_evaluations'] = num_function_evaluations
+    if 'num_function_evaluations_repeated_results' in expected_results:
+        results['num_function_evaluations_repeated_results'] = num_function_evaluations_repeated_results
 
     # combine the results across repeats to be in time-order
     combined_results = np.concatenate(repeated_results)
-    combined_results = np.sort(combined_results, order='total_time') # sort objective is the total times increasing
+    combined_results = np.sort(combined_results, order='total_time')    # sort objective is the total times increasing
     x: np.ndarray = combined_results['total_time']
     y: np.ndarray = combined_results['objective_value']
     y_std: np.ndarray = combined_results['objective_value_std']
     # assert that the total time is monotonically non-decreasing
-    assert all(a<=b for a, b in zip(x, x[1:]))
+    assert all(a <= b for a, b in zip(x, x[1:]))
 
     # create the new x-axis array to interpolate
     if time_interpolated_axis is None:
@@ -199,7 +246,7 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
     else:
         assert len(time_interpolated_axis) == time_resolution
     x_new = time_interpolated_axis
-    npoints = int(len(x_new)*segment_factor)
+    npoints = int(len(x_new) * segment_factor)
 
     # # calculate polynomial fit
     # z = np.polyfit(x, y, 10)
@@ -219,12 +266,12 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
     x_snapped_temp = list()
     for x_val in x:
         try:
-            while abs(x_val - x_new[curr_index+1]) < abs(x_val - x_new[curr_index]):
+            while abs(x_val - x_new[curr_index + 1]) < abs(x_val - x_new[curr_index]):
                 curr_index += 1
             x_snapped_temp.append(curr_index)
         except IndexError:
             x_snapped_temp.append(x_new.size - 1)
-    snapped_indices = np.array(x_snapped_temp)  # an array of shape x with indices pointing to x_new
+    snapped_indices = np.array(x_snapped_temp)    # an array of shape x with indices pointing to x_new
     error_snapped = y - y_isotonic_regression[snapped_indices]
 
     # seperate the lower and upper error
@@ -274,7 +321,7 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
 
     # write to the results
     if 'interpolated_time' in expected_results:
-        results['interpolated_time'] = time_interpolated_axis   # TODO maybe not write this for every strategy, but once
+        results['interpolated_time'] = time_interpolated_axis    # TODO maybe not write this for every strategy, but once
     if 'interpolated_objective' in expected_results:
         results['interpolated_objective'] = y_isotonic_regression
     if 'interpolated_objective_std' in expected_results:

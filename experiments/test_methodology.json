@@ -53,7 +53,7 @@
       "strategy": "random_sample",
       "display_name": "Random sampling",
       "is_baseline": true,
-      "repeats": 1000,
+      "repeats": 100,
       "options": {
         "max_fevals": 500
       }
