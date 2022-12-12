@@ -3,6 +3,7 @@ import json
 import numpy as np
 from typing import Union, Optional, Dict, Any
 
+
 class NumpyEncoder(json.JSONEncoder):
     """ JSON encoder for NumPy types, from https://www.programmersought.com/article/18271066028/ """
 
@@ -19,7 +20,7 @@ class NumpyEncoder(json.JSONEncoder):
 class CachedObject():
     """ Class for managing cached results """
 
-    def __init__(self, kernel_name: str, device_name: str, strategies: dict):
+    def __init__(self, kernel_name: str, device_name: str, baseline_time: np.ndarray, baseline_result: np.ndarray, strategies: dict):
         try:
             cache = CacheInterface.read(kernel_name, device_name)
             # print("Cache with type: ", type(cache), ":\n ", cache)
@@ -38,6 +39,8 @@ class CachedObject():
             self.obj = {
                 "kernel_name": kernel_name,
                 "device_name": device_name,
+                "baseline_time": baseline_time,
+                "baseline_result": baseline_result,
                 "strategies": strategies_dict
             }
 
@@ -54,12 +57,11 @@ class CachedObject():
         """ Checks whether the cache contains the strategy with matching parameter 'name' """
         return strategy_name in self.obj["strategies"].keys()
 
-    def has_matching_strategy(self, strategy_name: str, options: dict, repeats: int) -> bool:
+    def has_matching_strategy(self, strategy_name: str, repeats: int) -> bool:
         """ Checks whether the cache contains the strategy with matching parameters 'name', 'options' and 'repeats' """
         if self.has_strategy(strategy_name):
             strategy = self.obj['strategies'][strategy_name]
-            if (strategy['name'] == strategy_name and strategy['options'] == options and strategy['repeats'] == repeats):
-                return True
+            return (strategy['name'] == strategy_name and strategy['repeats'] == repeats)
         return False
 
     def recursively_compare_dict_keys(self, dict_elem, compare_elem) -> bool:
@@ -76,15 +78,18 @@ class CachedObject():
             return dict_elem.keys() == compare_elem.keys() and all(self.recursively_compare_dict_keys(dict_elem[key], compare_elem[key]) for key in dict_elem)
         return True
 
-    def get_strategy(self, strategy_name: str, options: dict, repeats: int) -> Optional[dict]:
+    def get_baseline(self):
+        return np.array(self.obj["baseline_time"]), np.array(self.obj["baseline_result"])
+
+    def get_strategy(self, strategy_name: str, repeats: int) -> Optional[dict]:
         """ Returns a strategy by matching the parameters, if it exists """
-        if self.has_matching_strategy(strategy_name, options, repeats):
+        if self.has_matching_strategy(strategy_name, repeats):
             return self.obj['strategies'][strategy_name]
         return None
 
-    def get_strategy_results(self, strategy_name: str, options: dict, repeats: int, expected_results: dict = None) -> Optional[dict]:
+    def get_strategy_results(self, strategy_name: str, repeats: int, expected_results: dict = None) -> Optional[dict]:
         """ Checks whether the cache contains the expected results for the strategy and returns it if true """
-        cached_data = self.get_strategy(strategy_name, options, repeats)
+        cached_data = self.get_strategy(strategy_name, repeats)
         if cached_data is not None and 'results' in cached_data and (expected_results is None
                                                                      or self.recursively_compare_dict_keys(cached_data['results'], expected_results)):
             return cached_data
@@ -99,6 +104,7 @@ class CachedObject():
         # set new strategy
         self.obj["strategies"][strategy_name] = strategy
         # set new values
+        self.obj["strategies"][strategy_name]["options"] = strategy["options"]
         self.obj["strategies"][strategy_name]["results"] = results
         self.write()
 

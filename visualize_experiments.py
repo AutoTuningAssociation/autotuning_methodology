@@ -115,7 +115,6 @@ class Visualize:
                     expected_results = create_expected_results()
                     cached_data = cache.get_strategy_results(
                         strategy["name"],
-                        strategy["options"],
                         strategy["repeats"],
                         expected_results,
                     )
@@ -127,7 +126,7 @@ class Visualize:
                 info = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]
                 # self.plot_strategies_fevals(axs[0], strategies_data, info)
                 subtract_baseline = self.experiment["relative_to_baseline"]
-                strategies_curves = self.get_strategies_curves(strategies_data, info, subtract_baseline=subtract_baseline)
+                strategies_curves = self.get_strategies_curves(cache, strategies_data, info, subtract_baseline=subtract_baseline)
                 self.plot_strategies_curves(
                     axs[0],
                     strategies_data,
@@ -143,7 +142,7 @@ class Visualize:
 
         # plot the aggregated data
         fig, axs = plt.subplots(ncols=1, figsize=(15, 8))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-        if not isinstance(axs, list):
+        if not hasattr(axs, "__len__"):
             axs = [axs]
         title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
         fig.canvas.manager.set_window_title(title)
@@ -164,10 +163,10 @@ class Visualize:
             y_axis = np.array(y_axis_temp)
             strategies_aggregated.append(np.mean(y_axis, axis=0))
 
-        # # finalize the figure and display it
-        # self.plot_aggregated_curves(axs[0], strategies_aggregated)
-        # fig.tight_layout()
-        # plt.show()
+        # finalize the figure and display it
+        self.plot_aggregated_curves(axs[0], strategies_aggregated)
+        fig.tight_layout()
+        plt.show()
 
     def get_random_curve(self, x_axis_length: int, absolute_optimum: float, sorted_times: list) -> np.ndarray:
         """ Returns the values of the random curve at each function value """
@@ -191,6 +190,7 @@ class Visualize:
 
     def get_strategies_curves(
         self,
+        cache,
         strategies_data: list,
         info: dict,
         subtract_baseline=True,
@@ -200,15 +200,17 @@ class Visualize:
     ) -> dict:
         """Extract the strategies results"""
         # get the baseline
-        baseline_result = strategies_data[0]["results"]
-        x_axis = np.array(baseline_result["interpolated_time"])
-        y_axis_baseline = np.array(baseline_result["interpolated_objective"])
-        y_min = info["absolute_optimum"] if minimization else info["median"]
-        y_max = info["median"] if minimization else info["absolute_optimum"]
+        x_axis, y_axis_baseline = cache.get_baseline()
+        absolute_optimum = info["absolute_optimum"]
+        y_max = absolute_optimum
+        # y_min = absolute_optimum if minimization else info["median"]
+        # y_max = info["median"] if minimization else absolute_optimum
 
         # normalize
         if subtract_baseline:
-            y_axis_baseline = (y_axis_baseline - y_min) / (y_max - y_min)
+            # y_axis_baseline = (y_axis_baseline - y_min) / (y_max - y_min)
+            y_min = y_axis_baseline
+            # y_axis_baseline = (y_axis_baseline - y_axis_baseline) / (y_max - y_min)
 
         if smoothing:
             y_axis_baseline = smoothing_filter(y_axis_baseline, y_axis_baseline.size / smoothing_factor)
@@ -250,11 +252,12 @@ class Visualize:
 
             # find out where the global optimum is found and substract the baseline
             # found_opt = np.argwhere(y_axis == absolute_optimum)
-            if subtract_baseline:
-                # y_axis =  y_axis - y_axis_baseline
-                y_axis = y_axis_baseline / y_axis
-                y_axis_std_lower = y_axis_baseline / y_axis_std_lower
-                y_axis_std_upper = y_axis_baseline / y_axis_std_upper
+            # if subtract_baseline:
+            # # y_axis =  y_axis - y_axis_baseline
+            # y_axis = y_axis_baseline / y_axis
+            # y_axis_std_lower = y_axis_baseline / y_axis_std_lower
+            # y_axis_std_upper = y_axis_baseline / y_axis_std_upper
+            # y_axis = (y_axis - y_min) / (y_max - y_min)
 
             # quantify the performance of this strategy
             if subtract_baseline:
@@ -327,7 +330,7 @@ class Visualize:
             ax.plot(results_obj_mean, label=f"{strategy['display_name']}", color=color)
 
         def calc_cutoff_point(cutoff_percentile):
-            objective_value_at_cutoff_point = (median_optimum_distance * (1 - cutoff_percentile)) + absolute_optimum
+            objective_value_at_cutoff_point = absolute_optimum + (median_optimum_distance * (1 - cutoff_percentile))
             # fevals_to_cutoff_point = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
 
             # i = next(x[0] for x in enumerate(inverted_sorted_times_arr) if x[1] > cutoff_percentile * arr[-1])
@@ -390,7 +393,7 @@ class Visualize:
         strategies_curves: dict,
         info: dict,
         shaded=True,
-        plot_errors=True,
+        plot_errors=False,
         subtract_baseline=True,
     ):
         """Plots all optimization strategy curves"""

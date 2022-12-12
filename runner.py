@@ -91,9 +91,9 @@ def get_times_confidence_interval(times: list, confidence_level=0.95) -> Tuple[f
     return np_times[max(lower_rank, 0)], np_times[min(upper_rank, n - 1)]
 
 
-def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, expected_results: dict, profiling: bool, objective_value_at_cutoff_point: float,
-                    optimization_objective='time', remove_duplicate_results=True, time_resolution=1e4, time_interpolated_axis=None, y_min=None, y_median=None,
-                    segment_factor=0.05) -> dict:
+def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, expected_results: dict, profiling: bool, cutoff_point_fevals: int,
+                    objective_value_at_cutoff_point: float, optimization_objective='time', remove_duplicate_results=True, time_resolution=1e4,
+                    time_interpolated_axis=None, y_min=None, y_median=None, segment_factor=0.05) -> dict:
     """ Executes strategies to obtain (or retrieve from cache) the statistical data """
     print(f"Running {strategy['display_name']}")
     nums_of_evaluations = strategy['nums_of_evaluations']
@@ -160,8 +160,8 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
         yappi.clear_stats()
 
     # create the interpolated results from the repeated results
-    results = create_interpolated_results(max_num_evals, repeated_results, expected_results, optimization_objective, objective_value_at_cutoff_point,
-                                          time_resolution, time_interpolated_axis, y_min, y_median, segment_factor)
+    results = create_interpolated_results(max_num_evals, repeated_results, expected_results, optimization_objective, cutoff_point_fevals,
+                                          objective_value_at_cutoff_point, time_resolution, time_interpolated_axis, y_min, y_median, segment_factor)
 
     # check that all expected results are present
     for key in results.keys():
@@ -172,7 +172,7 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
     return results
 
 
-def create_interpolated_results(max_num_evals: int, repeated_results: list, expected_results: dict, optimization_objective: str,
+def create_interpolated_results(max_num_evals: int, repeated_results: list, expected_results: dict, optimization_objective: str, cutoff_point_fevals: int,
                                 objective_value_at_cutoff_point: float, time_resolution: int, time_interpolated_axis: np.ndarray, y_min=None, y_median=None,
                                 segment_factor=0.05) -> Dict[Any, Any]:
     """ Creates a monotonically non-increasing curve from the combined objective datapoints across repeats for a strategy, interpolated for [time_resolution] points, using [time_resolution * segment_factor] piecewise linear segments """
@@ -227,24 +227,24 @@ def create_interpolated_results(max_num_evals: int, repeated_results: list, expe
     assert all(a <= b for a, b in zip(x, x[1:]))
 
     # create the new x-axis array to interpolate
-    if time_interpolated_axis is None:
-        # first create a temporary interpolation using the absolute results, using sklearn because this has arbitrary number of segments
-        _y_isotonic_regression = get_isotonic_curve(x, y, x, ymin=y_min, ymax=y_median, package='sklearn')
+    # if time_interpolated_axis is None:
+    #     # first create a temporary interpolation using the absolute results, using sklearn because this has arbitrary number of segments
+    #     _y_isotonic_regression = get_isotonic_curve(x, y, x, ymin=y_min, ymax=y_median, package='sklearn')
 
-        # find the cutoff point using the temporary interpolation
-        try:
-            cutoff_index = np.argwhere(_y_isotonic_regression <= objective_value_at_cutoff_point)[0]
-            assert cutoff_index == int(cutoff_index)    # ensure that it is an integer
-            cutoff_index = int(cutoff_index)
-            # print(f"Percentage of baseline search space used to get to cutoff quantile: {(cutoff_index / _y_isotonic_regression.size)*100}%")
-        except IndexError:
-            raise ValueError(f"The baseline has not reliably found the cutoff quantile, either decrease the cutoff or increase the allowed time.")
+    #     # find the cutoff point using the temporary interpolation
+    #     try:
+    #         cutoff_index = np.argwhere(_y_isotonic_regression <= objective_value_at_cutoff_point)[0]
+    #         assert cutoff_index == int(cutoff_index)    # ensure that it is an integer
+    #         cutoff_index = int(cutoff_index)
+    #         # print(f"Percentage of baseline search space used to get to cutoff quantile: {(cutoff_index / _y_isotonic_regression.size)*100}%")
+    #     except IndexError:
+    #         raise ValueError(f"The baseline has not reliably found the cutoff quantile, either decrease the cutoff or increase the allowed time.")
 
-        # create the baseline time axis
-        cutoff_time = x[cutoff_index]
-        time_interpolated_axis = np.linspace(x[0], cutoff_time, time_resolution)
-    else:
-        assert len(time_interpolated_axis) == time_resolution
+    #     # create the baseline time axis
+    #     cutoff_time = x[cutoff_index]
+    #     time_interpolated_axis = np.linspace(x[0], cutoff_time, time_resolution)
+    # else:
+    #     assert len(time_interpolated_axis) == time_resolution
     x_new = time_interpolated_axis
     npoints = int(len(x_new) * segment_factor)
 
