@@ -96,9 +96,7 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
                     time_interpolated_axis=None, y_min=None, y_median=None, segment_factor=0.05) -> dict:
     """ Executes strategies to obtain (or retrieve from cache) the statistical data """
     print(f"Running {strategy['display_name']}")
-    nums_of_evaluations = strategy['nums_of_evaluations']
-    min_num_evals = min(strategy['nums_of_evaluations'])
-    max_num_evals = max(strategy['nums_of_evaluations'])
+    min_num_evals = strategy['minimum_number_of_evaluations']
     # TODO put the tune options in the .json in strategy_defaults?
     tune_options = {
         'verbose': False,
@@ -148,8 +146,6 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
         # register the results
         repeated_results.append(unique_res)
         total_time_results = np.append(total_time_results, total_time_ms)
-        if len(strategy['nums_of_evaluations']) <= 0:
-            nums_of_evaluations = np.append(nums_of_evaluations, len_unique_res)
 
     # gather profiling data and clear the profiler before the next round
     if profiling:
@@ -160,8 +156,8 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
         yappi.clear_stats()
 
     # create the interpolated results from the repeated results
-    results = create_interpolated_results(max_num_evals, repeated_results, expected_results, optimization_objective, cutoff_point_fevals,
-                                          objective_value_at_cutoff_point, time_resolution, time_interpolated_axis, y_min, y_median, segment_factor)
+    results = create_interpolated_results(repeated_results, expected_results, optimization_objective, cutoff_point_fevals, objective_value_at_cutoff_point,
+                                          time_resolution, time_interpolated_axis, y_min, y_median, segment_factor)
 
     # check that all expected results are present
     for key in results.keys():
@@ -172,11 +168,14 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
     return results
 
 
-def create_interpolated_results(max_num_evals: int, repeated_results: list, expected_results: dict, optimization_objective: str, cutoff_point_fevals: int,
+def create_interpolated_results(repeated_results: list, expected_results: dict, optimization_objective: str, cutoff_point_fevals: int,
                                 objective_value_at_cutoff_point: float, time_resolution: int, time_interpolated_axis: np.ndarray, y_min=None, y_median=None,
                                 segment_factor=0.05) -> Dict[Any, Any]:
     """ Creates a monotonically non-increasing curve from the combined objective datapoints across repeats for a strategy, interpolated for [time_resolution] points, using [time_resolution * segment_factor] piecewise linear segments """
     results = deepcopy(expected_results)
+
+    # find the maximum number of function evaluations
+    max_num_evals = max(len(res) for res in repeated_results)
 
     # find the minimum objective value and time spent for each evaluation per repeat
     dtype = [('total_time', 'float64'), ('objective_value', 'float64'), ('objective_value_std', 'float64')]
@@ -200,8 +199,9 @@ def create_interpolated_results(max_num_evals: int, repeated_results: list, expe
             # also add results at the same number of function evaluations together
             try:
                 num_function_evaluations_repeated_results[r_index].append(obj_minimum)
-            except IndexError:
-                # in case of an index error, repeated_results has more evals than max_num_evals, so just stop
+            except IndexError as e:
+                raise e
+                # in case of an index error, repeated_results has more evals than max_num_evals
                 break
         total_times.append(total_time)
         best_found_objective_values.append(obj_minimum)

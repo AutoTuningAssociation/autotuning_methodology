@@ -86,14 +86,6 @@ class Visualize:
             )
         print("\n\n")
 
-        # find the minimum and maximum number of evaluations over all strategies
-        self.min_num_evals = np.Inf
-        self.max_num_evals = 0
-        for strategy in self.strategies:
-            num_evals = strategy["nums_of_evaluations"]
-            self.min_num_evals = min(min(num_evals), self.min_num_evals)
-            self.max_num_evals = max(max(num_evals), self.max_num_evals)
-
         # visualize
         all_strategies_curves = list()
         for gpu_name in self.experiment["GPUs"]:
@@ -411,18 +403,16 @@ class Visualize:
         # plot the absolute optimum
         absolute_optimum = info["absolute_optimum"]
         if subtract_baseline is False and absolute_optimum is not None:
-            ax.plot(
-                [x_axis[0], x_axis[-1]],
-                [absolute_optimum, absolute_optimum],
-                linestyle="-",
-                label="True optimum {}".format(round(absolute_optimum, 3)),
-                color="black",
-            )
+            ax.axhline(absolute_optimum, label="Absolute optimum {}".format(round(absolute_optimum, 3)), c='black', ls='-')
+        else:
+            ax.axhline(0, label="Random search", c='black', ls=':')
+            ax.axhline(1, label="Absolute optimum {}".format(round(absolute_optimum, 3)), c='black', ls='-.')
 
         color_index = 0
         marker = ","
         y_min = np.PINF
         y_max = np.NINF
+        overall_ymin = min(min(strategy_curves["y_axis"]) for strategy_curves in strategies_curves["strategies"])
         for strategy_curves in strategies_curves["strategies"]:
             # get the data
             strategy = strategies_data[strategy_curves["strategy_index"]]
@@ -487,11 +477,15 @@ class Visualize:
         ax.axis([np.min(x_axis), np.max(x_axis), y_min * 0.9, y_max * 1.1])
         ax.set_xlabel(self.x_metric_displayname["kerneltime"])
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max" if subtract_baseline else "objective"])
+        ax.set_ylim(bottom=overall_ymin, top=1)
         ax.legend()
         if plot_errors is False:
             ax.grid(axis="y", zorder=0, alpha=0.7)
 
     def plot_aggregated_curves(self, ax: plt.Axes, strategies_aggregated: list):
+        ax.axhline(0, label="Random search", c='black', ls=':')
+        ax.axhline(1, label="Absolute optimum", c='black', ls='-.')
+        overall_ymin = min(min(y_axis) for y_axis in strategies_aggregated)
         for strategy_index, y_axis in enumerate(strategies_aggregated):
             ax.plot(y_axis, label=self.strategies[strategy_index]["display_name"])
 
@@ -502,6 +496,8 @@ class Visualize:
             np.linspace(0, y_axis.size, num_ticks),
             np.round(np.linspace(0, 1, num_ticks), 2),
         )
+        ax.set_ylim(bottom=overall_ymin, top=1.0)
+        ax.set_xlim((0, y_axis.size))
         ax.legend()
 
 
