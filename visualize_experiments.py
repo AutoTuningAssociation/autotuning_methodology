@@ -171,8 +171,13 @@ class Visualize:
         x_axis, y_axis_baseline = cache.get_baseline()
         absolute_optimum = info["absolute_optimum"]
         y_max = absolute_optimum
+
         # y_min = absolute_optimum if minimization else info["median"]
         # y_max = info["median"] if minimization else absolute_optimum
+
+        # monte carlo simulation over cache
+        def draw_random(xs, k):
+            return np.random.choice(xs, size=k, replace=False)
 
         # normalize
         if subtract_baseline:
@@ -192,6 +197,10 @@ class Visualize:
             "strategies": list(),
         })
 
+        # clipstart = 10
+        # random_curve = y_axis_baseline[clipstart:]
+        # sorted_times = info["sorted_times"]
+
         performances = list()
         for strategy_index, strategy in enumerate(self.strategies):
             if "hide" in strategy.keys() and strategy["hide"]:
@@ -210,9 +219,9 @@ class Visualize:
 
             # normalize
             if subtract_baseline:
-                y_axis = (y_axis - y_min) / (y_max - y_min)
-                y_axis_std_lower = (y_axis_std_lower - y_min) / (y_max - y_min)
-                y_axis_std_upper = (y_axis_std_upper - y_min) / (y_max - y_min)
+                y_axis = (y_axis - y_axis_baseline) / (y_max - y_axis_baseline)
+                # y_axis_std_lower = (y_axis_std_lower - y_min) / (y_max - y_min)
+                # y_axis_std_upper = (y_axis_std_upper - y_min) / (y_max - y_min)
 
             # apply smoothing
             if smoothing:
@@ -251,24 +260,30 @@ class Visualize:
         print(f"Mean performance across strategies: {np.mean(performances)}")    # the higher the mean, the easier a search space is for the baseline
         return strategies_curves
 
-    def get_indices(dist, draws):
+    def get_indices(self, dist, draws):
         dist = np.array(dist)
         draws = np.array(draws)
         if draws.ndim == 1:
             indices_found = []
             for x in draws:
-                indices = np.where(x == dist)[0]
-                indices = round(np.mean(indices))
-                indices_found.append(indices)
+                if not np.isnan(x):
+                    indices = np.where(x == dist)[0]
+                    indices = round(np.mean(indices))
+                    indices_found.append(indices)
+                else:
+                    indices_per_trial.append(np.NaN)
             #indices = np.concatenate([np.where(x == dist) for x in draws]).flatten()
         elif draws.ndim == 2:
             indices_found = []
             for y in draws:
                 indices_per_trial = []
                 for x in y:
-                    indices = np.where(x == dist)[0]
-                    indices = round(np.mean(indices))
-                    indices_per_trial.append(indices)
+                    if not np.isnan(x):
+                        indices = np.where(x == dist)[0]
+                        indices = round(np.mean(indices))
+                        indices_per_trial.append(indices)
+                    else:
+                        indices_per_trial.append(np.NaN)
                 indices_found.append(indices_per_trial)
             #indices = [np.concatenate([np.where(x == dist) for x in y]).flatten() for y in draws]
         else:
@@ -296,6 +311,9 @@ class Visualize:
         # ax.plot(random_curve, label="random trajectory", color='black', ls='--')
         ax.axhline(0, label="random trajectory", color="black", ls="--")
 
+        clipstart = 10
+        random_curve = random_curve[clipstart:]
+
         # plot each strategy
         x_axis_max = 0
         y_min = np.PINF
@@ -312,8 +330,23 @@ class Visualize:
             # results = 1 - ((results - absolute_optimum) / median_optimum_distance)    # to fraction of median-optimum difference
             # results = (results - random_curve) / (absolute_optimum - random_curve)
             num_repeats = len(results[0])
+            # results_obj_mean = np.median(results, axis=1)
 
-            results_obj_mean = np.median(results, axis=1)
+            results_indices = self.get_indices(sorted_times, results[clipstart:])
+            mean_over_trials = list()
+            for trial_indices in results_indices:
+                #if len(trial_indices) > 0:
+                mean_index = np.mean(trial_indices)
+                if not np.isnan(mean_index):
+                    mean_index = round(mean_index)
+                mean_over_trials.append(mean_index)
+            # mean_over_trials = [round(x) for x in results_indices.mean(axis=1)]
+            invalid_configs = np.isnan(mean_over_trials)
+            mean_over_trials = np.array(mean_over_trials)[~invalid_configs]
+            mean_over_trials = mean_over_trials.astype(int)
+            results_of_mean_index = sorted_times[mean_over_trials]
+            random_curve_strategy = random_curve.copy()[~invalid_configs]
+            results_obj_mean = results_of_mean_index
 
             results_obj_std = np.std(results, axis=1)
             x_axis_max = max(len(results_obj_mean), x_axis_max)
@@ -326,7 +359,7 @@ class Visualize:
             #     antialiased=True,
             #     color=color,
             # )
-            results_obj_mean = ((results_obj_mean - random_curve) / (absolute_optimum - random_curve))
+            results_obj_mean = ((results_obj_mean - random_curve_strategy) / (absolute_optimum - random_curve_strategy))
             y_min = min(min(results_obj_mean), y_min)
             ax.plot(results_obj_mean, label=f"{strategy['display_name']}", color=color)
 
@@ -339,7 +372,7 @@ class Visualize:
             # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
             ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
 
-        plot_cutoff_point(0.950)
+        plot_cutoff_point(0.980)
 
         # # plot the absolute optimum
         # if absolute_optimum is not None:
