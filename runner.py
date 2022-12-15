@@ -44,6 +44,7 @@ def get_isotonic_curve(x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package=
     elif package == 'isotonic':
         ir = LpIsotonicRegression(npoints, increasing=increasing, power=power).fit(x, y)
         y_isotonic_regression = ir.predict_proba(x_new)
+        # TODO check if you are not indadvertedly clipping too much here
         if ymin is not None or ymax is not None:
             y_isotonic_regression = np.clip(y_isotonic_regression, ymin, ymax)
         return y_isotonic_regression
@@ -182,7 +183,8 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
     total_times = list()
     best_found_objective_values = list()
     num_function_evaluations = list()
-    num_function_evaluations_repeated_results = list(list() for _ in range(max_num_evals))
+    num_function_evaluations_repeated_results = np.empty((max_num_evals, len(repeated_results)))
+    num_function_evaluations_repeated_results[:] = np.nan    # set all to nan so they are not counted as zeros inadvertedly
     for res_index, res in enumerate(repeated_results):
         # extract the objective and time spent per configuration
         repeated_results[res_index] = np.array(
@@ -194,11 +196,12 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
         for r_index, r in enumerate(repeated_results[res_index]):
             total_time += r[0]
             obj_minimum = min(r[1], obj_minimum)
+            assert obj_minimum >= y_min
             obj_std = r[2]
             repeated_results[res_index][r_index] = np.array(tuple([total_time, obj_minimum, obj_std]), dtype=dtype)
             # also add results at the same number of function evaluations together
             try:
-                num_function_evaluations_repeated_results[r_index].append(obj_minimum)
+                num_function_evaluations_repeated_results[r_index][res_index] = obj_minimum
             except IndexError as e:
                 raise e
                 # in case of an index error, repeated_results has more evals than max_num_evals
