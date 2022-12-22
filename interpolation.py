@@ -62,9 +62,8 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
             try:
                 num_function_evaluations_repeated_results[r_index][res_index] = obj_minimum
             except IndexError as e:
-                raise e
                 # in case of an index error, repeated_results has more evals than max_num_evals
-                break
+                raise e
         total_times.append(total_time)
         best_found_objective_values.append(obj_minimum)
         num_function_evaluations.append(len(repeated_results[res_index]))

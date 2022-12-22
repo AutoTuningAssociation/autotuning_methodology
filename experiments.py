@@ -66,22 +66,20 @@ def get_strategies(experiment: dict) -> dict:
     return strategies
 
 
-def create_expected_results() -> dict:
-    """ Creates a dict to put the expected results into """
-    expected_results = dict({
-        'total_times': None,
-        'cutoff_quantile': None,
-        'curve_segment_factor': None,
-        'num_function_evaluations': None,
-        'num_function_evaluations_repeated_results': None,
-        'best_found_objective_values': None,
-        'interpolated_time': None,
-        'interpolated_objective': None,
-        'interpolated_objective_std': None,
-        'interpolated_objective_error_lower': None,
-        'interpolated_objective_error_upper': None,
+def create_results_description(kernel_name: str, device_name: str, strategy_name: str) -> dict:
+    """ Creates a dict to store a description of the results """
+    results_description = dict({
+        'kernel_name': kernel_name,
+        'device_name': device_name,
+        'strategy_name': strategy_name,
+        'objective_value_key': None,
+        'objective_time_keys': None
     })
-    return expected_results
+    results_description['nparrays'] = [
+        'fevals_results', 'time_results', 'objective_time_results', 'objective_value_results', 'objective_value_best_results', 'objective_value_stds',
+        'objective_value_best_stds'
+    ],
+    return results_description
 
 
 def calc_cutoff_point(cutoff_percentile, stats_info):
@@ -172,7 +170,7 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 if not 'options' in strategy:
                     strategy['options'] = dict()
                 strategy['options']['max_fevals'] = cutoff_point_fevals
-                expected_results = create_expected_results()
+                expected_results = create_results_description(kernel_name, gpu_name, strategy['name'])
                 if 'ignore_cache' not in strategy:
                     cached_data = cache.get_strategy_results(strategy['name'], strategy['repeats'], expected_results)
                     if cached_data is not None and 'cutoff_quantile' in cached_data['results'] and cached_data['results'][

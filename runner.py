@@ -51,10 +51,9 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
     return res, total_time_ms
 
 
-def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, expected_results: dict, profiling: bool, cutoff_point_fevals: int,
-                    objective_value_at_cutoff_point: float, optimization_objective='time', remove_duplicate_results=True, time_resolution=1e4,
-                    time_interpolated_axis=None, y_min=None, y_median=None, segment_factor=0.05) -> dict:
-    """ Executes strategies to obtain (or retrieve from cache) the statistical data """
+def collect_results(kernel, strategy: dict, results_description: dict, profiling: bool, minimization: bool, error_value, cutoff_point_fevals_start: int,
+                    cutoff_point_fevals: int, objective_value_at_cutoff_point: float, optimization_objective='time', remove_duplicate_results=True) -> dict:
+    """ Executes optimization algorithms to capture optimization algorithm behaviour """
     print(f"Running {strategy['display_name']}")
     min_num_evals = strategy['minimum_number_of_evaluations']
     # TODO put the tune options in the .json in strategy_defaults?
@@ -82,11 +81,11 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
         while only_invalid or (remove_duplicate_results and len_unique_res < min_num_evals):
             if attempt > 0:
                 report_multiple_attempts(rep, len_res, len_unique_res, strategy['repeats'])
-            res, total_time_ms = tune(kernel, kernel_name, device_name, strategy, tune_options, profiling)
+            res, total_time_ms = tune(kernel, results_description['kernel_name'], results_description['device_name'], strategy, tune_options, profiling)
             # TODO continue here with confidence interval
             len_res: int = len(res)
-            # check if there are only invalid configs in the first 10 fevals, if so, try again
-            only_invalid = len_res < 1 or min(res[:10], key=lambda x: x['time'])['time'] == 1e20
+            # check if there are only invalid configs in the first cutoff_point_fevals_start fevals, if so, try again
+            only_invalid = len_res < 1 or min(res[:cutoff_point_fevals_start], key=lambda x: x['time'])['time'] == error_value
             unique_res = remove_duplicates(res, remove_duplicate_results)
             len_unique_res: int = len(unique_res)
             attempt += 1
@@ -102,14 +101,60 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
         stats.save(path, type="pstat")    # pylint: disable=no-member
         yappi.clear_stats()
 
-    # create the interpolated results from the repeated results
-    results = create_interpolated_results(repeated_results, expected_results, optimization_objective, cutoff_point_fevals, objective_value_at_cutoff_point,
-                                          time_resolution, time_interpolated_axis, y_min, y_median, segment_factor)
+    # combine the results to numpy arrays and write to a file
+    write_results(repeated_results, results_description, minimization, error_value=error_value)
 
-    # check that all expected results are present
-    for key in results.keys():
-        if key == 'cutoff_quantile' or key == 'curve_segment_factor':
-            continue
-        if results[key] is None:
-            raise ValueError(f"Expected result {key} was not filled in the results")
-    return results
+
+def write_results(repeated_results: list, results_description: dict, minimization: bool, error_value):
+    """ Combine the results and write them to a numpy file """
+
+    # get the objective value and time keys
+    objective_time_keys = results_description['objective_time_keys']
+    objective_value_key = results_description['objective_value_key']
+    objective_values_key = results_description['objective_values_key']
+
+    # find the maximum number of function evaluations
+    max_num_evals = max(len(repeat) for repeat in repeated_results)
+
+    def get_nan_array() -> np.ndarray:
+        """ get an array of NaN so they are not counted as zeros inadvertedly """
+        return np.full((max_num_evals, len(repeated_results)), np.nan)
+
+    # set the arrays to write to
+    fevals_results = get_nan_array()
+    time_results = get_nan_array()
+    objective_time_results = get_nan_array()
+    objective_value_results = get_nan_array()
+    objective_value_best_results = get_nan_array()
+    objective_value_stds = get_nan_array()
+
+    # combine the results
+    opt_func = np.nanmin if minimization is True else np.nanmax
+
+    for repeat_index, repeat in enumerate(repeated_results):
+        cumulative_total_time = 0
+        cumulative_objective_time = 0
+        objective_value_best = np.nan
+        for evaluation_index, evaluation in enumerate(repeat):
+            # extract the objective value and time spent
+            cumulative_total_time += sum(evaluation['times']) / 1000    # TODO the miliseconds to seconds conversion is specific to Kernel Tuner
+            cumulative_objective_time += sum(evaluation[time_key] for time_key in objective_time_keys) / 1000
+            objective_value = evaluation[objective_value_key]
+            objective_value_best = opt_func(objective_value, objective_value_best)
+            objective_value_std = np.std(e for e in evaluation[objective_values_key] if e is not error_value)
+
+            # write to the arrays
+            fevals_results[evaluation_index, repeat_index] = evaluation_index
+            time_results[evaluation_index, repeat_index] = cumulative_total_time
+            objective_time_results[evaluation_index, repeat_index] = cumulative_objective_time
+            if objective_value is not error_value:    # if it is an error value, it must stay NaN
+                objective_value_results[evaluation_index, repeat_index] = objective_value
+            if not np.isnan(objective_value_best):
+                objective_value_best_results[evaluation_index, repeat_index] = objective_value_best
+            objective_value_stds[evaluation_index, repeat_index] = objective_value_std
+
+    # write to file
+    filename = f"{results_description['kernel']}_{results_description['gpu']}{results_description['optimization_algorithm']}"
+    return np.savez(filename, results_description=results_description, fevals_results=fevals_results, time_results=time_results,
+                    objective_time_results=objective_time_results, objective_value_results=objective_value_results,
+                    objective_value_best_results=objective_value_best_results, objective_value_stds=objective_value_stds)

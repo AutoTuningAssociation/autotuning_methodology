@@ -26,7 +26,7 @@ class Curve(ABC):
             assert self.__x_time.ndim == 2
             assert self.__y.ndim == 2
         else:
-            raise ValueError(f"deterministic must be boolean, is {deterministic}")
+            raise ValueError(f"'deterministic' argument must be boolean, is {deterministic}")
         super().__init__()
 
     @abstractmethod
