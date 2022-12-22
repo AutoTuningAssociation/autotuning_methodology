@@ -1,6 +1,8 @@
+from math import sqrt, floor, ceil
 import numpy as np
 from sklearn.isotonic import IsotonicRegression
 from isotonic.isotonic import LpIsotonicRegression
+from scipy.interpolate import interp1d
 
 
 def get_isotonic_curve(x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package='isotonic', increasing=False, npoints=1000, power=2, ymin=None,

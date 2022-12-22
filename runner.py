@@ -1,27 +1,11 @@
 """ Interface to run an experiment on Kernel Tuner """
 from cProfile import label
-from copy import deepcopy
-from math import sqrt, floor, ceil
 import numpy as np
 import progressbar
 from typing import Any, Tuple, Dict
 import time as python_time
 import warnings
 import yappi
-from scipy.interpolate import interp1d
-
-record_data = ['mean_actual_num_evals']
-
-
-def remove_duplicates(res: list, remove_duplicate_results: bool):
-    """ Removes duplicate configurations from the results """
-    if not remove_duplicate_results:
-        return res
-    unique_res = list()
-    for result in res:
-        if result not in unique_res:
-            unique_res.append(result)
-    return unique_res
 
 
 def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool) -> Tuple[list, int]:
@@ -52,7 +36,7 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
 
 
 def collect_results(kernel, strategy: dict, results_description: dict, profiling: bool, minimization: bool, error_value, cutoff_point_fevals_start: int,
-                    cutoff_point_fevals: int, objective_value_at_cutoff_point: float, optimization_objective='time', remove_duplicate_results=True) -> dict:
+                    cutoff_point_fevals: int) -> dict:
     """ Executes optimization algorithms to capture optimization algorithm behaviour """
     print(f"Running {strategy['display_name']}")
     min_num_evals = strategy['minimum_number_of_evaluations']
@@ -63,12 +47,12 @@ def collect_results(kernel, strategy: dict, results_description: dict, profiling
         'simulation_mode': True
     }
 
-    def report_multiple_attempts(rep: int, len_res: int, len_unique_res: int, strategy_repeats: int):
+    def report_multiple_attempts(rep: int, len_res: int, strategy_repeats: int):
         """ If multiple attempts are necessary, report the reason """
         if len_res < 1:
             print(f"({rep+1}/{strategy_repeats}) No results found, trying once more...")
-        elif len_unique_res < min_num_evals:
-            print(f"Too few unique results found ({len_unique_res} in {len_res} evaluations), trying once more...")
+        elif len_res < min_num_evals:
+            print(f"Too few results found ({len_res} of {min_num_evals} required), trying once more...")
         else:
             print(f"({rep+1}/{strategy_repeats}) Only invalid results found, trying once more...")
 
@@ -78,19 +62,17 @@ def collect_results(kernel, strategy: dict, results_description: dict, profiling
     for rep in progressbar.progressbar(range(strategy['repeats']), redirect_stdout=True):
         attempt = 0
         only_invalid = True
-        while only_invalid or (remove_duplicate_results and len_unique_res < min_num_evals):
+        while only_invalid or len_res < min_num_evals:
             if attempt > 0:
-                report_multiple_attempts(rep, len_res, len_unique_res, strategy['repeats'])
+                report_multiple_attempts(rep, len_res, strategy['repeats'])
             res, total_time_ms = tune(kernel, results_description['kernel_name'], results_description['device_name'], strategy, tune_options, profiling)
             # TODO continue here with confidence interval
             len_res: int = len(res)
             # check if there are only invalid configs in the first cutoff_point_fevals_start fevals, if so, try again
             only_invalid = len_res < 1 or min(res[:cutoff_point_fevals_start], key=lambda x: x['time'])['time'] == error_value
-            unique_res = remove_duplicates(res, remove_duplicate_results)
-            len_unique_res: int = len(unique_res)
             attempt += 1
         # register the results
-        repeated_results.append(unique_res)
+        repeated_results.append(res)
         total_time_results = np.append(total_time_results, total_time_ms)
 
     # gather profiling data and clear the profiler before the next round
