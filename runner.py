@@ -6,6 +6,7 @@ from typing import Any, Tuple, Dict
 import time as python_time
 import warnings
 import yappi
+from caching import ResultsDescription
 
 
 def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool) -> Tuple[list, int]:
@@ -35,11 +36,10 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
     return res, total_time_ms
 
 
-def collect_results(kernel, strategy: dict, results_description: dict, profiling: bool, minimization: bool, error_value, cutoff_point_fevals_start: int,
-                    cutoff_point_fevals: int) -> dict:
+def collect_results(kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, minimization: bool, error_value) -> dict:
     """ Executes optimization algorithms to capture optimization algorithm behaviour """
     print(f"Running {strategy['display_name']}")
-    min_num_evals = strategy['minimum_number_of_evaluations']
+    min_num_evals: int = strategy['minimum_number_of_evaluations']
     # TODO put the tune options in the .json in strategy_defaults?
     tune_options = {
         'verbose': False,
@@ -65,11 +65,11 @@ def collect_results(kernel, strategy: dict, results_description: dict, profiling
         while only_invalid or len_res < min_num_evals:
             if attempt > 0:
                 report_multiple_attempts(rep, len_res, strategy['repeats'])
-            res, total_time_ms = tune(kernel, results_description['kernel_name'], results_description['device_name'], strategy, tune_options, profiling)
+            res, total_time_ms = tune(kernel, results_description.kernel_name, results_description.device_name, strategy, tune_options, profiling)
             # TODO continue here with confidence interval
             len_res: int = len(res)
-            # check if there are only invalid configs in the first cutoff_point_fevals_start fevals, if so, try again
-            only_invalid = len_res < 1 or min(res[:cutoff_point_fevals_start], key=lambda x: x['time'])['time'] == error_value
+            # check if there are only invalid configs in the first min_num_evals, if so, try again
+            only_invalid = len_res < 1 or min(res[:min_num_evals], key=lambda x: x['time'])['time'] == error_value
             attempt += 1
         # register the results
         repeated_results.append(res)
@@ -87,13 +87,13 @@ def collect_results(kernel, strategy: dict, results_description: dict, profiling
     write_results(repeated_results, results_description, minimization, error_value=error_value)
 
 
-def write_results(repeated_results: list, results_description: dict, minimization: bool, error_value):
+def write_results(repeated_results: list, results_description: ResultsDescription, minimization: bool, error_value):
     """ Combine the results and write them to a numpy file """
 
     # get the objective value and time keys
-    objective_time_keys = results_description['objective_time_keys']
-    objective_value_key = results_description['objective_value_key']
-    objective_values_key = results_description['objective_values_key']
+    objective_time_keys = results_description.objective_time_keys
+    objective_value_key = results_description.objective_value_key
+    objective_values_key = results_description.objective_values_key
 
     # find the maximum number of function evaluations
     max_num_evals = max(len(repeat) for repeat in repeated_results)
@@ -136,7 +136,12 @@ def write_results(repeated_results: list, results_description: dict, minimizatio
             objective_value_stds[evaluation_index, repeat_index] = objective_value_std
 
     # write to file
-    filename = f"{results_description['kernel']}_{results_description['gpu']}{results_description['optimization_algorithm']}"
-    return np.savez(filename, results_description=results_description, fevals_results=fevals_results, time_results=time_results,
-                    objective_time_results=objective_time_results, objective_value_results=objective_value_results,
-                    objective_value_best_results=objective_value_best_results, objective_value_stds=objective_value_stds)
+    numpy_arrays = {
+        'fevals_results': fevals_results,
+        'time_results': time_results,
+        'objective_time_results': objective_time_results,
+        'objective_value_results': objective_value_results,
+        'objective_value_best_results': objective_value_best_results,
+        'objective_value_stds': objective_value_stds
+    }
+    return results_description.write_to_file(numpy_arrays)

@@ -12,7 +12,7 @@ import numpy as np
 from math import ceil
 
 from runner import collect_results
-from caching import CachedObject
+from caching import CachedObject, ResultsDescription
 
 
 def get_searchspaces_info_stats() -> dict[str, Any]:
@@ -64,22 +64,6 @@ def get_strategies(experiment: dict) -> dict:
             if not default in strategy:
                 strategy[default] = strategy_defaults[default]
     return strategies
-
-
-def create_results_description(kernel_name: str, device_name: str, strategy_name: str) -> dict:
-    """ Creates a dict to store a description of the results """
-    results_description = dict({
-        'kernel_name': kernel_name,
-        'device_name': device_name,
-        'strategy_name': strategy_name,
-        'objective_value_key': None,
-        'objective_time_keys': None
-    })
-    results_description['nparrays'] = [
-        'fevals_results', 'time_results', 'objective_time_results', 'objective_value_results', 'objective_value_best_results', 'objective_value_stds',
-        'objective_value_best_stds'
-    ],
-    return results_description
 
 
 def calc_cutoff_point(cutoff_percentile, stats_info):
@@ -170,9 +154,9 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 if not 'options' in strategy:
                     strategy['options'] = dict()
                 strategy['options']['max_fevals'] = cutoff_point_fevals
-                expected_results = create_results_description(kernel_name, gpu_name, strategy['name'])
+                results_description = ResultsDescription(kernel_name, gpu_name, strategy['name'])
                 if 'ignore_cache' not in strategy:
-                    cached_data = cache.get_strategy_results(strategy['name'], strategy['repeats'], expected_results)
+                    cached_data = cache.get_strategy_results(strategy['name'], strategy['repeats'], results_description)
                     if cached_data is not None and 'cutoff_quantile' in cached_data['results'] and cached_data['results'][
                             'cutoff_quantile'] == cutoff_quantile and 'curve_segment_factor' in cached_data['results'] and cached_data['results'][
                                 'curve_segment_factor'] == curve_segment_factor:
@@ -182,12 +166,10 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                         continue
 
                 # execute each strategy that is not in the cache
-                strategy_results = collect_results(kernel, kernel_name, gpu_name, strategy, expected_results, profiling, cutoff_point_fevals,
-                                                   cutoff_point_value, time_resolution=time_resolution, time_interpolated_axis=baseline_time_interpolated,
-                                                   y_min=y_min, y_median=y_median, segment_factor=curve_segment_factor)
-                if 'cutoff_quantile' in expected_results:
+                strategy_results = collect_results(kernel, kernel_name, gpu_name, strategy, results_description, profiling)
+                if 'cutoff_quantile' in results_description:
                     strategy_results['cutoff_quantile'] = cutoff_quantile
-                if 'curve_segment_factor' in expected_results:
+                if 'curve_segment_factor' in results_description:
                     strategy_results['curve_segment_factor'] = curve_segment_factor
 
                 # # if this strategy is used as the baseline, keep its x-axis (time dimension) as the baseline along which the other values are interpolated
