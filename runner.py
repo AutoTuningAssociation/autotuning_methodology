@@ -6,7 +6,7 @@ from typing import Any, Tuple, Dict
 import time as python_time
 import warnings
 import yappi
-from caching import ResultsDescription, Results
+from caching import ResultsDescription
 
 
 def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool) -> Tuple[list, int]:
@@ -36,7 +36,7 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
     return res, total_time_ms
 
 
-def collect_results(kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, minimization: bool, error_value) -> Results:
+def collect_results(kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, minimization: bool, error_value) -> ResultsDescription:
     """ Executes optimization algorithms to capture optimization algorithm behaviour """
     print(f"Running {strategy['display_name']}")
     min_num_evals: int = strategy['minimum_number_of_evaluations']
@@ -85,7 +85,7 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
 
     # combine the results to numpy arrays and write to a file
     write_results(repeated_results, results_description, minimization, error_value=error_value)
-    return results_description.get_results()
+    return results_description
 
 
 def write_results(repeated_results: list, results_description: ResultsDescription, minimization: bool, error_value):

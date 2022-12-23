@@ -126,33 +126,21 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
     objective_value_keys = ['times']
 
     # execute each strategy in the experiment per GPU and kernel
-    caches: dict[str, dict[str, Any]] = dict()
+    results_descriptions: dict[str, dict[str, Any]] = dict()
     gpu_name: str
     for gpu_name in experiment['GPUs']:
-        caches[gpu_name] = dict()
+        results_descriptions[gpu_name] = dict()
         for index, kernel in enumerate(kernels):
             kernel_name = kernel_names[index]
             stats_info = searchspaces_info_stats[gpu_name]['kernels'][kernel_name]
-            sorted_times = stats_info['sorted_times']
-            mean_feval_time = (stats_info['mean'] * stats_info['repeats']) / 1000    # in seconds
 
             cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_quantile, stats_info)
-            cutoff_point_time = cutoff_point_fevals * mean_feval_time
-            baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
-            baseline_executed = True
-            # objective_value_at_cutoff_point = np.quantile(np.array(stats_info['sorted_times']), 1 - cutoff_quantile)    # sorted in ascending order, so inverse quantile
-            baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
+            # mean_feval_time = (stats_info['mean'] * stats_info['repeats']) / 1000    # in seconds
+            # cutoff_point_time = cutoff_point_fevals * mean_feval_time
+            # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
+            # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
 
-            y_min = None
-            y_median = None
-            if 'absolute_optimum' in stats_info and 'median' in stats_info:
-                y_min = stats_info['absolute_optimum']
-                y_median = stats_info['median']
             print(f"  running {kernel_name} on {gpu_name}")
-            # get or create a cache to write the results to
-            cache = CachedObject(kernel_name, gpu_name, baseline_time_interpolated, baseline, deepcopy(strategies))
-            # baseline_time_interpolated = None
-            # baseline_executed = False
             for strategy in strategies:
                 print(f"    | with strategy {strategy['display_name']}")
                 # if the strategy is in the cache, use cached data
@@ -166,14 +154,13 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                     continue
 
                 # execute each strategy that is not in the cache
-                strategy_results = collect_results(kernel, kernel_name, gpu_name, strategy, results_description, profiling, minimization=True, error_value=1e20)
+                results_description = collect_results(kernel, kernel_name, gpu_name, strategy, results_description, profiling, minimization=True,
+                                                      error_value=1e20)
 
-                # TODO remove the cache part, use the results directly
-                # write the results to the cache
-                cache.set_strategy(deepcopy(strategy), strategy_results)
-            caches[gpu_name][kernel_name] = cache
+            # set the results
+            results_descriptions[gpu_name][kernel_name] = results_description
 
-    return experiment, strategies, caches
+    return experiment, strategies, results_descriptions
 
 
 if __name__ == "__main__":
