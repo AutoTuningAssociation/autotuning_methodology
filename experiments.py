@@ -120,6 +120,11 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
     kernel_names = experiment['kernels']
     kernels = list(import_module(kernel_name) for kernel_name in kernel_names)
 
+    # variables for comparison
+    objective_time_keys = ['times']
+    objective_value_key = 'time'
+    objective_value_keys = ['times']
+
     # execute each strategy in the experiment per GPU and kernel
     caches: dict[str, dict[str, Any]] = dict()
     gpu_name: str
@@ -154,33 +159,16 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 if not 'options' in strategy:
                     strategy['options'] = dict()
                 strategy['options']['max_fevals'] = cutoff_point_fevals
-                results_description = ResultsDescription(kernel_name, gpu_name, strategy['name'])
-                if 'ignore_cache' not in strategy:
-                    cached_data = cache.get_strategy_results(strategy['name'], strategy['repeats'], results_description)
-                    if cached_data is not None and 'cutoff_quantile' in cached_data['results'] and cached_data['results'][
-                            'cutoff_quantile'] == cutoff_quantile and 'curve_segment_factor' in cached_data['results'] and cached_data['results'][
-                                'curve_segment_factor'] == curve_segment_factor:
-                        print("| retrieved from cache")
-                        # if baseline_time_interpolated is None and 'is_baseline' in strategy and strategy['is_baseline'] is True:
-                        #     baseline_time_interpolated = np.array(cached_data['results']['interpolated_time'])
-                        continue
+                results_description = ResultsDescription(kernel_name, gpu_name, strategy['name'], objective_time_keys, objective_value_key,
+                                                         objective_value_keys)
+                if 'ignore_cache' not in strategy and results_description.has_results():
+                    print("| retrieved from cache")
+                    continue
 
                 # execute each strategy that is not in the cache
-                strategy_results = collect_results(kernel, kernel_name, gpu_name, strategy, results_description, profiling)
-                if 'cutoff_quantile' in results_description:
-                    strategy_results['cutoff_quantile'] = cutoff_quantile
-                if 'curve_segment_factor' in results_description:
-                    strategy_results['curve_segment_factor'] = curve_segment_factor
+                strategy_results = collect_results(kernel, kernel_name, gpu_name, strategy, results_description, profiling, minimization=True, error_value=1e20)
 
-                # # if this strategy is used as the baseline, keep its x-axis (time dimension) as the baseline along which the other values are interpolated
-                # if baseline_time_interpolated is None and 'is_baseline' in strategy and strategy['is_baseline'] is True:
-                #     baseline_time_interpolated = strategy_results['interpolated_time']
-                #     baseline_executed = True    # if the baseline has been (re)executed, the other cached strategies must be re-executed as the interpolated time axis has changed
-                if baseline_time_interpolated is None:
-                    raise ValueError(f"baseline_time_interpolated should not be None here, check whether the first strategy has 'is_baseline' set to True")
-                # double check that the interpolated results are as expected
-                assert np.array_equal(baseline_time_interpolated, strategy_results['interpolated_time'])
-                assert len(baseline_time_interpolated) == len(strategy_results['interpolated_objective'])
+                # TODO remove the cache part, use the results directly
                 # write the results to the cache
                 cache.set_strategy(deepcopy(strategy), strategy_results)
             caches[gpu_name][kernel_name] = cache
