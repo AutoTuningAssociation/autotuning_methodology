@@ -7,12 +7,11 @@ import os
 import sys
 from typing import Tuple, Any
 import pathvalidate
-from copy import deepcopy
 import numpy as np
 from math import ceil
 
 from runner import collect_results
-from caching import CachedObject, ResultsDescription
+from caching import ResultsDescription
 
 
 def get_searchspaces_info_stats() -> dict[str, Any]:
@@ -143,12 +142,15 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
             print(f"  running {kernel_name} on {gpu_name}")
             for strategy in strategies:
                 print(f"    | with strategy {strategy['display_name']}")
-                # if the strategy is in the cache, use cached data
+
+                # setup the results description
                 if not 'options' in strategy:
                     strategy['options'] = dict()
                 strategy['options']['max_fevals'] = cutoff_point_fevals
                 results_description = ResultsDescription(kernel_name, gpu_name, strategy['name'], objective_time_keys, objective_value_key,
                                                          objective_value_keys)
+
+                # if the strategy is in the cache, use cached data
                 if 'ignore_cache' not in strategy and results_description.has_results():
                     print("| retrieved from cache")
                     continue

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+from caching import ResultsDescription
 
 
 class Curve(ABC):
@@ -28,6 +29,12 @@ class Curve(ABC):
         else:
             raise ValueError(f"'deterministic' argument must be boolean, is {deterministic}")
         super().__init__()
+
+    def __init__(self, results_description: ResultsDescription) -> None:
+        """ Initialize using a ResultsDescription """
+        super().__init__()
+        # TODO
+        raise NotImplementedError()
 
     @abstractmethod
     def get_curve_over_fevals(self, fevals: np.ndarray) -> np.ndarray:
