@@ -18,14 +18,14 @@ class ResultsDescription():
     """ Object to store a description of the results and retrieve results for an optimization algorithm on a search space """
 
     def __init__(self, kernel_name: str, device_name: str, strategy_name: str, objective_time_keys: str, objective_value_key: str,
-                 objective_value_keys: str) -> None:
+                 objective_values_key: str) -> None:
         self.__stored = False
         self.kernel_name = kernel_name
         self.device_name = device_name
         self.strategy_name = strategy_name
         self.objective_time_keys = objective_time_keys
         self.objective_value_key = objective_value_key
-        self.objective_value_keys = objective_value_keys
+        self.objective_values_key = objective_values_key
         self.numpy_arrays_keys = [
             'fevals_results', 'time_results', 'objective_time_results', 'objective_value_results', 'objective_value_best_results', 'objective_value_stds'
         ]    # the order must not be changed here!
@@ -52,7 +52,7 @@ class ResultsDescription():
         """ Set and cache the results """
         return self.__write_to_file(arrays)
 
-    def __read_from_file(self) -> list(np.ndarray):
+    def __read_from_file(self) -> list[np.ndarray]:
         """ Read and verify the accompanying numpy arrays from file """
         self.__check_for_file()
         filepath = self.__get_cache_filepath()

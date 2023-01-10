@@ -122,7 +122,7 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
     # variables for comparison
     objective_time_keys = ['times']
     objective_value_key = 'time'
-    objective_value_keys = ['times']
+    objective_values_key = 'times'
 
     # execute each strategy in the experiment per GPU and kernel
     results_descriptions: dict[str, dict[str, Any]] = dict()
@@ -148,7 +148,7 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                     strategy['options'] = dict()
                 strategy['options']['max_fevals'] = cutoff_point_fevals
                 results_description = ResultsDescription(kernel_name, gpu_name, strategy['name'], objective_time_keys, objective_value_key,
-                                                         objective_value_keys)
+                                                         objective_values_key)
 
                 # if the strategy is in the cache, use cached data
                 if 'ignore_cache' not in strategy and results_description.has_results():
@@ -156,8 +156,7 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                     continue
 
                 # execute each strategy that is not in the cache
-                results_description = collect_results(kernel, kernel_name, gpu_name, strategy, results_description, profiling, minimization=True,
-                                                      error_value=1e20)
+                results_description = collect_results(kernel, strategy, results_description, profiling=profiling, minimization=True, error_value=1e20)
 
             # set the results
             results_descriptions[gpu_name][kernel_name] = results_description

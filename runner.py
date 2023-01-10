@@ -9,6 +9,11 @@ import yappi
 from caching import ResultsDescription
 
 
+def is_invalid_objective_value(objective_value: float, error_value) -> bool:
+    """ Returns whether an objective value is invalid by checking against NaN and the error value """
+    return np.isnan(objective_value) or objective_value == error_value
+
+
 def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool) -> Tuple[list, int]:
     """ Execute a strategy, return the result, runtime and optional profiling statistics """
 
@@ -119,22 +124,29 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         cumulative_objective_time = 0
         objective_value_best = np.nan
         for evaluation_index, evaluation in enumerate(repeat):
-            # extract the objective value and time spent
-            cumulative_total_time += sum(evaluation['times']) / 1000    # TODO the miliseconds to seconds conversion is specific to Kernel Tuner
-            cumulative_objective_time += sum(evaluation[time_key] for time_key in objective_time_keys) / 1000
             objective_value = evaluation[objective_value_key]
-            objective_value_best = opt_func(objective_value, objective_value_best)
-            objective_value_std = np.std(e for e in evaluation[objective_values_key] if e is not error_value)
+            if not is_invalid_objective_value(objective_value, error_value):
+                # extract the objectives and time spent
+                if not np.isnan(cumulative_total_time):
+                    cumulative_total_time += sum(evaluation['times']) / 1000    # TODO the miliseconds to seconds conversion is specific to Kernel Tuner
+                if not np.isnan(cumulative_objective_time):
+                    cumulative_objective_time += sum(sum(evaluation[time_key]) for time_key in objective_time_keys) / 1000
+                objective_value_best = opt_func([objective_value, objective_value_best])
+                objective_value_std = np.std(list(e for e in evaluation[objective_values_key] if e is not error_value))
+            else:
+                # set the values to NaN
+                cumulative_total_time = np.NaN
+                cumulative_objective_time = np.NaN
 
             # write to the arrays
             fevals_results[evaluation_index, repeat_index] = evaluation_index
             time_results[evaluation_index, repeat_index] = cumulative_total_time
             objective_time_results[evaluation_index, repeat_index] = cumulative_objective_time
-            if objective_value is not error_value:    # if it is an error value, it must stay NaN
+            if not is_invalid_objective_value(objective_value, error_value):    # if it is an error value, it must stay NaN
                 objective_value_results[evaluation_index, repeat_index] = objective_value
+                objective_value_stds[evaluation_index, repeat_index] = objective_value_std
             if not np.isnan(objective_value_best):
                 objective_value_best_results[evaluation_index, repeat_index] = objective_value_best
-            objective_value_stds[evaluation_index, repeat_index] = objective_value_std
 
     # write to file
     numpy_arrays = {
