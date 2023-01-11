@@ -90,6 +90,7 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
 
     # combine the results to numpy arrays and write to a file
     write_results(repeated_results, results_description, minimization, error_value=error_value)
+    assert results_description.has_results()
     return results_description
 
 

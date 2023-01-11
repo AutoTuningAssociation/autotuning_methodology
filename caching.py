@@ -31,7 +31,7 @@ class ResultsDescription():
         ]    # the order must not be changed here!
 
     def __get_cache_filename(self) -> str:
-        return f"{self.kernel_name}_{self.device_name}_{self.strategy_name}"
+        return f"{self.kernel_name}_{self.device_name}_{self.strategy_name}.npz"
 
     def __get_cache_filepath(self) -> str:
         return f"{self.__get_cache_filename()}"

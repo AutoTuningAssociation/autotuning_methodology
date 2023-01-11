@@ -152,7 +152,7 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
 
                 # if the strategy is in the cache, use cached data
                 if 'ignore_cache' not in strategy and results_description.has_results():
-                    print("| retrieved from cache")
+                    print("    | -> retrieved from cache")
                     continue
 
                 # execute each strategy that is not in the cache
