@@ -125,9 +125,10 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
     objective_values_key = 'times'
 
     # execute each strategy in the experiment per GPU and kernel
-    results_descriptions: dict[str, dict[str, Any]] = dict()
+    results_descriptions: dict[str, dict[str, dict[str, ResultsDescription]]] = dict()
     gpu_name: str
     for gpu_name in experiment['GPUs']:
+        print(f" | running on GPU '{gpu_name}'")
         results_descriptions[gpu_name] = dict()
         for index, kernel in enumerate(kernels):
             kernel_name = kernel_names[index]
@@ -139,27 +140,28 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
             # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
             # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
 
-            print(f"  running {kernel_name} on {gpu_name}")
+            print(f" | - optimizing kernel '{kernel_name}'")
+            results_descriptions[gpu_name][kernel_name] = dict()
             for strategy in strategies:
-                print(f"    | with strategy {strategy['display_name']}")
+                print(f" | - | using strategy '{strategy['display_name']}'")
+                strategy_name = strategy['name']
 
                 # setup the results description
                 if not 'options' in strategy:
                     strategy['options'] = dict()
                 strategy['options']['max_fevals'] = cutoff_point_fevals
-                results_description = ResultsDescription(kernel_name, gpu_name, strategy['name'], objective_time_keys, objective_value_key,
-                                                         objective_values_key)
+                results_description = ResultsDescription(kernel_name, gpu_name, strategy_name, objective_time_keys, objective_value_key, objective_values_key)
 
                 # if the strategy is in the cache, use cached data
                 if 'ignore_cache' not in strategy and results_description.has_results():
-                    print("    | -> retrieved from cache")
+                    print(" | - |-> retrieved from cache")
                     continue
 
                 # execute each strategy that is not in the cache
                 results_description = collect_results(kernel, strategy, results_description, profiling=profiling, minimization=True, error_value=1e20)
 
-            # set the results
-            results_descriptions[gpu_name][kernel_name] = results_description
+                # set the results
+                results_descriptions[gpu_name][kernel_name][strategy_name] = results_description
 
     return experiment, strategies, results_descriptions
 
