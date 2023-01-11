@@ -7,7 +7,8 @@ import warnings
 from sklearn.metrics import auc
 from math import ceil
 
-from experiments import (execute_experiment, create_expected_results, get_searchspaces_info_stats, calc_cutoff_point, get_random_curve)
+from experiments import (execute_experiment, get_searchspaces_info_stats, calc_cutoff_point, get_random_curve)
+from curves import StochasticOptimizationAlgorithm
 
 import sys
 
@@ -75,18 +76,19 @@ class Visualize:
     def __init__(self, experiment_filename: str) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.experiment, self.strategies, self.caches = execute_experiment(
+            self.experiment, self.strategies, self.results_descriptions = execute_experiment(
                 experiment_filename,
                 profiling=False,
                 searchspaces_info_stats=searchspaces_info_stats,
             )
         print("\n\n")
+        print("Visualizing")
 
         # visualize
         all_strategies_curves = list()
         for gpu_name in self.experiment["GPUs"]:
             for kernel_name in self.experiment["kernels"]:
-                print(f"  visualizing {kernel_name} on {gpu_name}")
+                print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
 
                 # create the figure and plots
                 fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
@@ -96,19 +98,15 @@ class Visualize:
                 fig.canvas.manager.set_window_title(title)
                 fig.suptitle(title)
 
-                # prefetch the cached strategy results
-                cache = self.caches[gpu_name][kernel_name]
-                strategies_data = list()
+                # fetch the cached strategy results as curves
+                strategies_curves = list()
                 for strategy in self.strategies:
-                    expected_results = create_expected_results()
-                    cached_data = cache.get_strategy_results(
-                        strategy["name"],
-                        strategy["repeats"],
-                        expected_results,
-                    )
-                    if cached_data is None:
-                        raise ValueError(f"Strategy {strategy['display_name']} not in cache, make sure execute_experiment() has ran first")
-                    strategies_data.append(cached_data)
+                    results_description = self.results_descriptions[gpu_name][kernel_name][strategy["name"]]
+                    if results_description is None:
+                        raise ValueError(f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first")
+                    strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
+
+                exit(0)
 
                 # visualize the results
                 info = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]

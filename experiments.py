@@ -134,6 +134,7 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
             kernel_name = kernel_names[index]
             stats_info = searchspaces_info_stats[gpu_name]['kernels'][kernel_name]
 
+            # TODO set cutoff point?
             cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_quantile, stats_info)
             # mean_feval_time = (stats_info['mean'] * stats_info['repeats']) / 1000    # in seconds
             # cutoff_point_time = cutoff_point_fevals * mean_feval_time
@@ -143,22 +144,23 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
             print(f" | - optimizing kernel '{kernel_name}'")
             results_descriptions[gpu_name][kernel_name] = dict()
             for strategy in strategies:
-                print(f" | - | using strategy '{strategy['display_name']}'")
                 strategy_name = strategy['name']
+                strategy_display_name = strategy['display_name']
+                stochastic = strategy['stochastic']
+                print(f" | - | using strategy '{strategy['display_name']}'")
 
                 # setup the results description
                 if not 'options' in strategy:
                     strategy['options'] = dict()
                 strategy['options']['max_fevals'] = cutoff_point_fevals
-                results_description = ResultsDescription(kernel_name, gpu_name, strategy_name, objective_time_keys, objective_value_key, objective_values_key)
+                results_description = ResultsDescription(kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic, objective_time_keys,
+                                                         objective_value_key, objective_values_key)
 
                 # if the strategy is in the cache, use cached data
                 if 'ignore_cache' not in strategy and results_description.has_results():
                     print(" | - |-> retrieved from cache")
-                    continue
-
-                # execute each strategy that is not in the cache
-                results_description = collect_results(kernel, strategy, results_description, profiling=profiling, minimization=True, error_value=1e20)
+                else:    # execute each strategy that is not in the cache
+                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling, minimization=True, error_value=1e20)
 
                 # set the results
                 results_descriptions[gpu_name][kernel_name][strategy_name] = results_description
