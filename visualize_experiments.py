@@ -8,7 +8,7 @@ from sklearn.metrics import auc
 from math import ceil
 
 from experiments import (execute_experiment, get_searchspaces_info_stats, calc_cutoff_point, get_random_curve)
-from curves import StochasticOptimizationAlgorithm
+from curves import Curve, StochasticOptimizationAlgorithm
 
 import sys
 
@@ -99,13 +99,14 @@ class Visualize:
                 fig.suptitle(title)
 
                 # fetch the cached strategy results as curves
-                strategies_curves = list()
+                strategies_curves: list[Curve] = list()
                 for strategy in self.strategies:
                     results_description = self.results_descriptions[gpu_name][kernel_name][strategy["name"]]
                     if results_description is None:
                         raise ValueError(f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first")
                     strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
 
+                strategies_curves[0].get_curve_over_fevals(np.arange(20, 300))
                 exit(0)
 
                 # visualize the results
