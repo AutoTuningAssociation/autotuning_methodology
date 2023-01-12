@@ -43,7 +43,6 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
 
 def collect_results(kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, minimization: bool, error_value) -> ResultsDescription:
     """ Executes optimization algorithms to capture optimization algorithm behaviour """
-    print(f"Running {strategy['display_name']}")
     min_num_evals: int = strategy['minimum_number_of_evaluations']
     # TODO put the tune options in the .json in strategy_defaults?
     tune_options = {
@@ -64,7 +63,17 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
     # repeat the strategy as specified
     repeated_results = list()
     total_time_results = np.array([])
-    for rep in progressbar.progressbar(range(strategy['repeats']), redirect_stdout=True):
+    for rep in progressbar.progressbar(
+            range(strategy['repeats']), redirect_stdout=True, prefix=' | - |-> running: ', widgets=[
+                progressbar.PercentageLabelBar(),
+                ' [',
+                progressbar.SimpleProgress(format='%(value_s)s/%(max_value_s)s'),
+                ', ',
+                progressbar.Timer(format='Elapsed: %(elapsed)s'),
+                ', ',
+                progressbar.ETA(),
+                ']',
+            ]):
         attempt = 0
         only_invalid = True
         while only_invalid or len_res < min_num_evals:

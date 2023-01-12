@@ -66,7 +66,7 @@ class ResultsDescription():
         if self.__stored is True:
             raise ValueError(f"Do not overwrite a ResultsDescription")
         self.__stored = True
-        np.savez(self.__get_cache_filepath(), resultsdescription=self, **arrays)
+        np.savez_compressed(self.__get_cache_filepath(), resultsdescription=self, **arrays)
 
     def set_results(self, arrays: Dict):
         """ Set and cache the results """

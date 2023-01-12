@@ -48,12 +48,12 @@ class Curve(ABC):
             assert self.__x_time.ndim == 2
             assert self.__y.ndim == 2
 
-    # @abstractmethod
+    @abstractmethod
     def get_curve_over_fevals(self, fevals: np.ndarray) -> np.ndarray:
         """ Get the curve over function evaluations, returns NaN beyond limits. """
         pass
 
-    # @abstractmethod
+    @abstractmethod
     def get_curve_over_time(self, time: np.ndarray) -> np.ndarray:
         """ Get the curve over time using isotonic regression, returns NaN beyond limits. """
         pass
