@@ -106,7 +106,7 @@ class Visualize:
                         raise ValueError(f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first")
                     strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
 
-                strategies_curves[0].get_curve_over_fevals(np.arange(20, 300))
+                strategies_curves[0].get_curve_over_fevals(np.arange(-10, 20))
                 exit(0)
 
                 # visualize the results
