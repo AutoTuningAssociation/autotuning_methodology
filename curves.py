@@ -59,6 +59,21 @@ class Curve(ABC):
         """ Get the curve at the specified times using isotonic regression, returns NaN beyond limits. """
         return time
 
+    def pad_array_fevals(self, array: np.ndarray, target_array: np.ndarray) -> np.ndarray:
+        """ Pad an array of fevals with NaNs based on the target array, assumes both arrays are incremented by one feval per element """
+        # TODO remove assumption of increment by one by rewriting to checking whether array is consecutively in target_array, taking the difference in starts and ends of target_array
+        if array.ndim == 1:
+            limit_difference_start = int(np.max([array[0] - target_array[0], 0]))    # find the number of fevals missing before the start
+            limit_difference_end = int(np.max([target_array[-1] - array[-1], 0]))    # find the number of fevals missing after the end
+        elif array.ndim == 2:
+            limit_difference_start = int(np.max([array[0][0] - target_array[0], 0]))    # find the number of fevals missing before the start
+            limit_difference_end = int(np.max([target_array[-1] - array[-1][0], 0]))    # find the number of fevals missing after the end
+        else:
+            raise NotImplementedError("Padding arrays beyond two dimensions is not implemented")
+        array = np.pad(array, pad_width=((limit_difference_start, limit_difference_end)), constant_values=np.nan)
+        assert array.shape == target_array.shape    # verify that the curve is now in the requested shape
+        return array
+
 
 class RandomBaseline(Curve):
     pass
@@ -78,18 +93,15 @@ class DeterministicOptimizationAlgorithm(Curve):
 class StochasticOptimizationAlgorithm(Curve):
 
     def get_curve_over_fevals(self, fevals: np.ndarray) -> np.ndarray:
-        # matching_indices = np.array([np.isin(x_column, fevals, assume_unique=True).nonzero()[0] for x_column in self._x_fevals.T]).transpose()
         matching_indices_mask = np.array([np.isin(x_column, fevals, assume_unique=True)
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
         masked = np.where(matching_indices_mask, self._y, np.nan)    # apply the mask, filling NaN for False
-        print(masked.shape)
+        masked_fevals = np.where(matching_indices_mask, self._x_fevals, np.nan)
+        print(masked)
+        print(masked_fevals)
         curve = np.nanmean(masked, axis=1)    # get the curve by taking the mean
         curve = curve[~np.isnan(curve)]    # remove the NaN, yielding an array which <= fevals.shape
-        limit_difference_start = int(np.max([self._x_fevals[0][0] - fevals[0], 0]))    # find the number of fevals missing before the start
-        limit_difference_end = int(np.max([fevals[-1] - self._x_fevals[-1][0], 0]))    # find the number of fevals missing after the end
-        curve = np.pad(curve, pad_width=((limit_difference_start, limit_difference_end)),
-                       constant_values=np.nan)    # pad with NaN where outside the range, yielding an array which == fevals.shape
-        assert curve.shape == fevals.shape    # verify that the curve is now in the requested shape
+        curve = self.pad_array_fevals(curve, fevals)    # pad with NaN where outside the range, yielding an array which == fevals.shape
         return super().get_curve_over_fevals(curve)
 
     def get_curve_over_time(self, time: np.ndarray) -> np.ndarray:
