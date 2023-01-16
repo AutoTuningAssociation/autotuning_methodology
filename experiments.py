@@ -65,9 +65,10 @@ def get_strategies(experiment: dict) -> dict:
     return strategies
 
 
-def calc_cutoff_point(cutoff_percentile, stats_info):
-    absolute_optimum = stats_info["absolute_optimum"]
-    median = stats_info['median']
+def calc_cutoff_point(cutoff_percentile: float, stats_info) -> Tuple[float, int]:
+    """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point) """
+    absolute_optimum: float = stats_info["absolute_optimum"]
+    median: float = stats_info['median']
     inverted_sorted_times_arr = np.array(stats_info['sorted_times'])
     inverted_sorted_times_arr = inverted_sorted_times_arr[::-1]
     N = inverted_sorted_times_arr.shape[0]
@@ -106,11 +107,13 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
     """ Executes the experiment by retrieving it from the cache or running it """
     experiment = get_experiment(filepath)
     print(f"Starting experiment \'{experiment['name']}\'")
-    kernel_path = experiment.get('kernel_path', "")
-    cutoff_quantile = experiment.get('cutoff_quantile', 0.975)
-    curve_segment_factor = experiment.get('curve_segment_factor', 0.05)
+    kernel_path: str = experiment.get('kernel_path', "")
+    cutoff_quantile: float = experiment.get('cutoff_quantile', 0.975)
+    cutoff_type: str = experiment.get('cutoff_type', "fevals")
+    assert cutoff_type == 'fevals' or cutoff_type == 'time'
+    curve_segment_factor: float = experiment.get('curve_segment_factor', 0.05)
     assert isinstance(curve_segment_factor, float)
-    time_resolution = experiment.get('resolution', 1e4)
+    time_resolution: float = experiment.get('resolution', 1e4)
     if int(time_resolution) != time_resolution:
         raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
     time_resolution = int(time_resolution)
@@ -134,12 +137,13 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
             kernel_name = kernel_names[index]
             stats_info = searchspaces_info_stats[gpu_name]['kernels'][kernel_name]
 
-            # TODO set cutoff point?
+            # set cutoff point
             cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_quantile, stats_info)
-            # mean_feval_time = (stats_info['mean'] * stats_info['repeats']) / 1000    # in seconds
-            # cutoff_point_time = cutoff_point_fevals * mean_feval_time
-            # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
-            # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
+            if cutoff_type == 'time':
+                mean: float = stats_info['mean']
+                repeats: int = stats_info['repeats']
+                mean_feval_time = (mean * repeats) / 1000    # in seconds # TODO change this to the new specified output format in kernel_info_generator
+                cutoff_point_time = cutoff_point_fevals * mean_feval_time
 
             print(f" | - optimizing kernel '{kernel_name}'")
             results_descriptions[gpu_name][kernel_name] = dict()
@@ -152,7 +156,11 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 # setup the results description
                 if not 'options' in strategy:
                     strategy['options'] = dict()
-                strategy['options']['max_fevals'] = cutoff_point_fevals
+                limit_margin = 1.1    # 10% margin for non-valid evaluations
+                if cutoff_type == 'time':
+                    strategy['options']['time_limit'] = cutoff_point_time * limit_margin
+                else:
+                    strategy['options']['max_fevals'] = cutoff_point_fevals * limit_margin
                 results_description = ResultsDescription(kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic, objective_time_keys,
                                                          objective_value_key, objective_values_key)
 

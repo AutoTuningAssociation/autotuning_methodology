@@ -109,6 +109,10 @@ class Visualize:
                 # random_baseline = TODO if plot_relative_to_baseline else None
                 random_baseline = None
 
+                # set the x-axis range
+                # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
+                # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
+
                 # get the cached strategy results as curves
                 strategies_curves: list[Curve] = list()
                 for strategy in self.strategies:
@@ -298,9 +302,9 @@ class Visualize:
     def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, baseline_curve=None):
         """ Plots all optimization strategies with number of function evaluations on the x-axis """
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        absolute_optimum = info["absolute_optimum"]
-        absolute_difference = info['absolute_difference']
-        median = info['median']
+        absolute_optimum: float = info["absolute_optimum"]
+        absolute_difference: float = info['absolute_difference']
+        median: float = info['median']
         median_optimum_distance = median - absolute_optimum
 
         # plot the absolute optimum

@@ -51,14 +51,14 @@ class Curve(ABC):
         assert self._x_fevals.shape == self._x_time.shape == self._y.shape
 
     @abstractmethod
-    def get_curve_over_fevals(self, target_fevals: np.ndarray) -> np.ndarray:
+    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
         """ Get the curve over the specified range of function evaluations, returns NaN beyond limits. """
-        return target_fevals
+        return fevals_range
 
     @abstractmethod
-    def get_curve_over_time(self, target_time: np.ndarray) -> np.ndarray:
+    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         """ Get the curve at the specified times using isotonic regression, returns NaN beyond limits. """
-        return target_time
+        return time_range
 
     def fevals_find_pad_width(self, array: np.ndarray, target_array: np.ndarray) -> tuple[int, int]:
         """ Find the amount of padding required on both sides of array to match target_array """
@@ -80,24 +80,44 @@ class Curve(ABC):
 
 
 class RandomBaseline(Curve):
-    pass
+
+    def __init__(self, device_name: str, kernel_name: str) -> None:
+        self.name = "randomsearch_baseline"
+        self.display_name = "Random Search baseline"
+        self.device_name = device_name
+        self.kernel_name = kernel_name
+        self.stochastic = False
+
+        self._x_fevals = None
+        self._x_time = None
+        self._y = None
+
+        self.check_attributes()
+
+    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
+        raise NotImplementedError()
+        return super().get_curve_over_fevals(curve)
+
+    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
+        raise NotImplementedError()
+        return super().get_curve_over_time(time)
 
 
 class DeterministicOptimizationAlgorithm(Curve):
 
-    def get_curve_over_fevals(self, fevals: np.ndarray) -> np.ndarray:
+    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
         raise NotImplementedError()
         return super().get_curve_over_fevals(curve)
 
-    def get_curve_over_time(self, time: np.ndarray) -> np.ndarray:
+    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         raise NotImplementedError()
         return super().get_curve_over_time(time)
 
 
 class StochasticOptimizationAlgorithm(Curve):
 
-    def get_curve_over_fevals(self, target_fevals: np.ndarray) -> np.ndarray:
-        matching_indices_mask = np.array([np.isin(x_column, target_fevals, assume_unique=True)
+    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
+        matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
         masked_values = np.where(matching_indices_mask, self._y, np.nan)    # apply the mask to the values, filling NaN for False
         masked_fevals = np.where(matching_indices_mask, self._x_fevals, np.nan).transpose()    # apply the mask to the fevals, filling NaN for False
@@ -106,10 +126,10 @@ class StochasticOptimizationAlgorithm(Curve):
         fevals = masked_fevals[0]    # safe to use as every repeat has the same array of fevals
         curve = np.nanmean(masked_values, axis=1)    # get the curve by taking the mean
         curve = curve[~np.isnan(curve)]    # remove the NaN, yielding an array which <= fevals.shape
-        pad_width = self.fevals_find_pad_width(fevals, target_fevals)
+        pad_width = self.fevals_find_pad_width(fevals, fevals_range)
         curve = np.pad(curve, pad_width=pad_width, constant_values=np.nan)    # pad with NaN where outside the range, yielding an array which == fevals.shape
-        assert curve.shape == target_fevals.shape
+        assert curve.shape == fevals_range.shape
         return super().get_curve_over_fevals(curve)
 
-    def get_curve_over_time(self, target_time: np.ndarray) -> np.ndarray:
-        return super().get_curve_over_time(target_time)
+    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
+        return super().get_curve_over_time(time_range)
