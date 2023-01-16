@@ -4,6 +4,7 @@ from caching import ResultsDescription
 
 
 class Curve(ABC):
+    """ The Curve object can produce NumPy arrays directly suitable for plotting """
 
     def __init__(self, results_description: ResultsDescription) -> None:
         """ Initialize using a ResultsDescription """

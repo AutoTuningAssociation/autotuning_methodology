@@ -50,7 +50,7 @@ def smoothing_filter(array: np.ndarray, window_length: int, a_min=None, a_max=No
 
 
 class Visualize:
-    """Class for visualization of experiments"""
+    """ Class for visualization of experiments """
 
     x_metric_displayname = dict({
         "num_evals": "Number of function evaluations used",
@@ -81,8 +81,15 @@ class Visualize:
                 profiling=False,
                 searchspaces_info_stats=searchspaces_info_stats,
             )
-        print("\n\n")
+        print("\n")
         print("Visualizing")
+
+        # plot settings
+        plot_settings: dict = self.experiment["plot"]
+        plot_relative_to_baseline: bool = plot_settings["plot_relative_to_baseline"]
+        plot_fevals: bool = plot_settings["plot_fevals"]
+        plot_time: bool = plot_settings["plot_time"]
+        plot_aggregated: bool = plot_settings["plot_aggregated"]
 
         # visualize
         all_strategies_curves = list()
@@ -98,7 +105,11 @@ class Visualize:
                 fig.canvas.manager.set_window_title(title)
                 fig.suptitle(title)
 
-                # fetch the cached strategy results as curves
+                # get the random baseline
+                # random_baseline = TODO if plot_relative_to_baseline else None
+                random_baseline = None
+
+                # get the cached strategy results as curves
                 strategies_curves: list[Curve] = list()
                 for strategy in self.strategies:
                     results_description = self.results_descriptions[gpu_name][kernel_name][strategy["name"]]
@@ -106,49 +117,43 @@ class Visualize:
                         raise ValueError(f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first")
                     strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
 
-                strategies_curves[0].get_curve_over_fevals(np.arange(-10, 20))
-                exit(0)
-
                 # visualize the results
                 info = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]
-                self.plot_strategies_fevals(axs[1], strategies_data, info, cache)
-                subtract_baseline = self.experiment["relative_to_baseline"]
-                strategies_curves = self.get_strategies_curves(cache, strategies_data, info, subtract_baseline=subtract_baseline)
-                self.plot_strategies_curves(
-                    axs[0],
-                    strategies_data,
-                    strategies_curves,
-                    info,
-                    subtract_baseline=subtract_baseline,
-                )
+                if plot_time:
+                    self.plot_strategies_curves(axs[0], info, strategies_curves, random_baseline)
+                if plot_fevals:
+                    fevals_range = np.arange(50, 600)
+                    self.plot_strategies_fevals(axs[1], info, strategies_curves, fevals_range, random_baseline)
                 all_strategies_curves.append(strategies_curves)
 
                 # finalize the figure and display it
-                fig.tight_layout()
-                plt.show()
+                if plot_time or plot_fevals:
+                    fig.tight_layout()
+                    plt.show()
 
         # plot the aggregated data
-        fig, axs = plt.subplots(ncols=1, figsize=(15, 8))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-        if not hasattr(axs, "__len__"):
-            axs = [axs]
-        title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
-        fig.canvas.manager.set_window_title(title)
-        fig.suptitle(title)
+        if plot_aggregated:
+            fig, axs = plt.subplots(ncols=1, figsize=(15, 8))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+            if not hasattr(axs, "__len__"):
+                axs = [axs]
+            title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
+            fig.canvas.manager.set_window_title(title)
+            fig.suptitle(title)
 
-        # gather the aggregate y axis for each strategy
-        print("\n")
-        strategies_aggregated = list()
-        for strategy_index, strategy in enumerate(self.strategies):
-            perf = list()
-            y_axis_temp = list()
-            for strategies_curves in all_strategies_curves:
-                for strategy_curve in strategies_curves["strategies"]:
-                    if strategy_curve["strategy_index"] == strategy_index:
-                        perf.append(strategy_curve["performance"])
-                        y_axis_temp.append(strategy_curve["y_axis"])
-            print(f"{strategy['display_name']} performance across kernels: {np.mean(perf)}")
-            y_axis = np.array(y_axis_temp)
-            strategies_aggregated.append(np.mean(y_axis, axis=0))
+        # # gather the aggregate y axis for each strategy
+        # print("\n")
+        # strategies_aggregated = list()
+        # for strategy_index, strategy in enumerate(self.strategies):
+        #     perf = list()
+        #     y_axis_temp = list()
+        #     for strategies_curves in all_strategies_curves:
+        #         for strategy_curve in strategies_curves["strategies"]:
+        #             if strategy_curve["strategy_index"] == strategy_index:
+        #                 perf.append(strategy_curve["performance"])
+        #                 y_axis_temp.append(strategy_curve["y_axis"])
+        #     print(f"{strategy['display_name']} performance across kernels: {np.mean(perf)}")
+        #     y_axis = np.array(y_axis_temp)
+        #     strategies_aggregated.append(np.mean(y_axis, axis=0))
 
         # # finalize the figure and display it
         # self.plot_aggregated_curves(axs[0], strategies_aggregated)
@@ -290,66 +295,37 @@ class Visualize:
         indices_found = np.array(indices_found)
         return indices_found
 
-    def plot_strategies_fevals(self, ax: plt.Axes, strategies_data: list, info: dict, cache):
+    def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, baseline_curve=None):
         """ Plots all optimization strategies with number of function evaluations on the x-axis """
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         absolute_optimum = info["absolute_optimum"]
         absolute_difference = info['absolute_difference']
         median = info['median']
         median_optimum_distance = median - absolute_optimum
-        ax.axhline(1, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
-        x_axis, y_axis_baseline = cache.get_baseline()
+        # plot the absolute optimum
+        absolute_optimum_relative = 1 if baseline_curve is not None else absolute_optimum
+        ax.axhline(absolute_optimum_relative, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
-        # plot calculated random trajectory
-        sorted_times = np.array(info['sorted_times'])
-        # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / absolute_difference)    # to fraction of optimum
-        # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / median_optimum_distance)    # to fraction of median-optimum difference
-        cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(0.98, info)
-        random_curve = get_random_curve(cutoff_point_fevals, sorted_times)
-        # ax.plot(random_curve, label="random trajectory", color='black', ls='--')
-        ax.axhline(0, label="random trajectory", color="black", ls="--")
-
-        clipstart = 10
-        random_curve = random_curve[clipstart:]
+        # plot baseline
+        # sorted_times = np.array(info['sorted_times'])
+        # # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / absolute_difference)    # to fraction of optimum
+        # # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / median_optimum_distance)    # to fraction of median-optimum difference
+        # cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(0.98, info)
+        # random_curve = get_random_curve(cutoff_point_fevals, sorted_times)
+        # # ax.plot(random_curve, label="random trajectory", color='black', ls='--')
+        if baseline_curve is not None:
+            ax.axhline(0, label="baseline trajectory", color="black", ls="--")
 
         # plot each strategy
-        x_axis_max = 0
-        y_min = np.PINF
-        y_axis_max = np.NINF
         for strategy_index, strategy in enumerate(self.strategies):
             if "hide" in strategy.keys() and strategy["hide"]:
                 continue
 
             # get the data
             color = colors[strategy_index]
-            strategy = strategies_data[strategy_index]
-            results = np.array(strategy["results"]["num_function_evaluations_repeated_results"])
-            # results = 1 - ((results - absolute_optimum) / absolute_difference)    # to fraction of optimum
-            # results = 1 - ((results - absolute_optimum) / median_optimum_distance)    # to fraction of median-optimum difference
-            # results = (results - random_curve) / (absolute_optimum - random_curve)
-            num_repeats = len(results[0])
-            # results_obj_mean = np.median(results, axis=1)
+            strategy_curve = strategies_curves[strategy_index]
 
-            results_indices = self.get_indices(sorted_times, results[clipstart:])
-            mean_over_trials = list()
-            for trial_indices in results_indices:
-                #if len(trial_indices) > 0:
-                mean_index = np.mean(trial_indices)
-                if not np.isnan(mean_index):
-                    mean_index = round(mean_index)
-                mean_over_trials.append(mean_index)
-            # mean_over_trials = [round(x) for x in results_indices.mean(axis=1)]
-            invalid_configs = np.isnan(mean_over_trials)
-            mean_over_trials = np.array(mean_over_trials)[~invalid_configs]
-            mean_over_trials = mean_over_trials.astype(int)
-            results_of_mean_index = sorted_times[mean_over_trials]
-            random_curve_strategy = random_curve.copy()[~invalid_configs]
-            results_obj_mean = results_of_mean_index
-
-            results_obj_std = np.std(results, axis=1)
-            x_axis_max = max(len(results_obj_mean), x_axis_max)
-            y_axis_max = max(max(results_obj_mean), y_axis_max)
             # ax.fill_between(
             #     range(len(results_obj_mean)),
             #     results_obj_mean - results_obj_std,
@@ -358,20 +334,21 @@ class Visualize:
             #     antialiased=True,
             #     color=color,
             # )
-            results_obj_mean = ((results_obj_mean - random_curve_strategy) / (absolute_optimum - random_curve_strategy))
-            y_min = min(min(results_obj_mean), y_min)
-            ax.plot(results_obj_mean, label=f"{strategy['display_name']}", color=color)
+            # results_obj_mean = ((results_obj_mean - random_curve_strategy) / (absolute_optimum - random_curve_strategy))
+            # y_min = min(min(results_obj_mean), y_min)
+            ax.plot(fevals_range, strategy_curve.get_curve_over_fevals(fevals_range), label=f"{strategy['display_name']}", color=color)
 
         # plot cutoff point
         def plot_cutoff_point(cutoff_percentile):
             cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, info)
             print("")
-            print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
+            # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
             # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
             # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
             ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
 
-        plot_cutoff_point(0.980)
+        if baseline_curve is not None:
+            plot_cutoff_point(0.980)
 
         # # plot the absolute optimum
         # if absolute_optimum is not None:
@@ -384,21 +361,13 @@ class Visualize:
         #     )
 
         # ax.set_ylim(bottom=absolute_optimum * 0.9, top=y_axis_max * 1.1)
-        ax.set_ylim(bottom=y_min, top=1)
+        # ax.set_ylim(bottom=y_min, top=1)
         ax.set_xlabel(self.x_metric_displayname["num_evals"])
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"])
         ax.legend()
 
-    def plot_strategies_curves(
-        self,
-        ax: plt.Axes,
-        strategies_data: list,
-        strategies_curves: dict,
-        info: dict,
-        shaded=True,
-        plot_errors=False,
-        subtract_baseline=True,
-    ):
+    def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, baseline_curve=None, shaded=True,
+                               plot_errors=False):
         """Plots all optimization strategy curves"""
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
