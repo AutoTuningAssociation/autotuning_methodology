@@ -6,6 +6,7 @@
   "GPUs": [
     "RTX_2070_SUPER"
   ],
+  "minimization": true,
   "resolution": 1e3,
   "curve_segment_factor": 0.05,
   "cutoff_quantile": 0.98,

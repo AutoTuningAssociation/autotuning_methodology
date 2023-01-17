@@ -108,6 +108,7 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
     experiment = get_experiment(filepath)
     print(f"Starting experiment \'{experiment['name']}\'")
     kernel_path: str = experiment.get('kernel_path', "")
+    minimization: bool = experiment.get('minimization', True)
     cutoff_quantile: float = experiment.get('cutoff_quantile', 0.975)
     cutoff_type: str = experiment.get('cutoff_type', "fevals")
     assert cutoff_type == 'fevals' or cutoff_type == 'time'
@@ -168,7 +169,8 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 if 'ignore_cache' not in strategy and results_description.has_results():
                     print(" | - |-> retrieved from cache")
                 else:    # execute each strategy that is not in the cache
-                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling, minimization=True, error_value=1e20)
+                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling, minimization=minimization,
+                                                          error_value=1e20)
 
                 # set the results
                 results_descriptions[gpu_name][kernel_name][strategy_name] = results_description

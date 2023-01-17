@@ -9,6 +9,7 @@ from math import ceil
 
 from experiments import (execute_experiment, get_searchspaces_info_stats, calc_cutoff_point, get_random_curve)
 from curves import Curve, StochasticOptimizationAlgorithm
+from baseline import Baseline, RandomSearchBaseline
 
 import sys
 
@@ -74,6 +75,7 @@ class Visualize:
     })
 
     def __init__(self, experiment_filename: str) -> None:
+        # silently execute the experiment
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.experiment, self.strategies, self.results_descriptions = execute_experiment(
@@ -85,6 +87,7 @@ class Visualize:
         print("Visualizing")
 
         # plot settings
+        minimization: bool = self.experiment["minimization"]
         plot_settings: dict = self.experiment["plot"]
         plot_relative_to_baseline: bool = plot_settings["plot_relative_to_baseline"]
         plot_fevals: bool = plot_settings["plot_fevals"]
@@ -106,8 +109,7 @@ class Visualize:
                 fig.suptitle(title)
 
                 # get the random baseline
-                # random_baseline = TODO if plot_relative_to_baseline else None
-                random_baseline = None
+                random_baseline = RandomSearchBaseline(minimization) if plot_relative_to_baseline else None
 
                 # set the x-axis range
                 # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
@@ -135,14 +137,14 @@ class Visualize:
                     fig.tight_layout()
                     plt.show()
 
-        # plot the aggregated data
-        if plot_aggregated:
-            fig, axs = plt.subplots(ncols=1, figsize=(15, 8))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-            if not hasattr(axs, "__len__"):
-                axs = [axs]
-            title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
-            fig.canvas.manager.set_window_title(title)
-            fig.suptitle(title)
+        # # plot the aggregated data
+        # if plot_aggregated:
+        #     fig, axs = plt.subplots(ncols=1, figsize=(15, 8))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+        #     if not hasattr(axs, "__len__"):
+        #         axs = [axs]
+        #     title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
+        #     fig.canvas.manager.set_window_title(title)
+        #     fig.suptitle(title)
 
         # # gather the aggregate y axis for each strategy
         # print("\n")
@@ -182,10 +184,6 @@ class Visualize:
 
         # y_min = absolute_optimum if minimization else info["median"]
         # y_max = info["median"] if minimization else absolute_optimum
-
-        # monte carlo simulation over cache
-        def draw_random(xs, k):
-            return np.random.choice(xs, size=k, replace=False)
 
         # normalize
         if subtract_baseline:
@@ -268,38 +266,8 @@ class Visualize:
         print(f"Mean performance across strategies: {np.mean(performances)}")    # the higher the mean, the easier a search space is for the baseline
         return strategies_curves
 
-    def get_indices(self, dist, draws):
-        dist = np.array(dist)
-        draws = np.array(draws)
-        if draws.ndim == 1:
-            indices_found = []
-            for x in draws:
-                if not np.isnan(x):
-                    indices = np.where(x == dist)[0]
-                    indices = round(np.mean(indices))
-                    indices_found.append(indices)
-                else:
-                    indices_per_trial.append(np.NaN)
-            #indices = np.concatenate([np.where(x == dist) for x in draws]).flatten()
-        elif draws.ndim == 2:
-            indices_found = []
-            for y in draws:
-                indices_per_trial = []
-                for x in y:
-                    if not np.isnan(x):
-                        indices = np.where(x == dist)[0]
-                        indices = round(np.mean(indices))
-                        indices_per_trial.append(indices)
-                    else:
-                        indices_per_trial.append(np.NaN)
-                indices_found.append(indices_per_trial)
-            #indices = [np.concatenate([np.where(x == dist) for x in y]).flatten() for y in draws]
-        else:
-            raise Exception("Expected draws to be 1D or 2D")
-        indices_found = np.array(indices_found)
-        return indices_found
-
-    def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, baseline_curve=None):
+    def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, baseline_curve: Baseline = None,
+                               relative_to_baseline=True):
         """ Plots all optimization strategies with number of function evaluations on the x-axis """
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         absolute_optimum: float = info["absolute_optimum"]
@@ -308,8 +276,8 @@ class Visualize:
         median_optimum_distance = median - absolute_optimum
 
         # plot the absolute optimum
-        absolute_optimum_relative = 1 if baseline_curve is not None else absolute_optimum
-        ax.axhline(absolute_optimum_relative, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
+        absolute_optimum_y_value = 1 if baseline_curve is not None else absolute_optimum
+        ax.axhline(absolute_optimum_y_value, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
         # plot baseline
         # sorted_times = np.array(info['sorted_times'])
@@ -319,7 +287,10 @@ class Visualize:
         # random_curve = get_random_curve(cutoff_point_fevals, sorted_times)
         # # ax.plot(random_curve, label="random trajectory", color='black', ls='--')
         if baseline_curve is not None:
-            ax.axhline(0, label="baseline trajectory", color="black", ls="--")
+            if relative_to_baseline is True:
+                ax.axhline(0, label="baseline trajectory", color="black", ls="--")
+            else:
+                ax.plot(baseline_curve.get_curve_over_fevals(fevals_range), label="baseline curve", color="black", ls="--")
 
         # plot each strategy
         for strategy_index, strategy in enumerate(self.strategies):
@@ -330,6 +301,7 @@ class Visualize:
             color = colors[strategy_index]
             strategy_curve = strategies_curves[strategy_index]
 
+            # TODO visualize error
             # ax.fill_between(
             #     range(len(results_obj_mean)),
             #     results_obj_mean - results_obj_std,
@@ -354,23 +326,11 @@ class Visualize:
         if baseline_curve is not None:
             plot_cutoff_point(0.980)
 
-        # # plot the absolute optimum
-        # if absolute_optimum is not None:
-        #     ax.plot(
-        #         [0, x_axis_max],
-        #         [absolute_optimum, absolute_optimum],
-        #         linestyle="-",
-        #         label="True optimum {}".format(round(absolute_optimum, 3)),
-        #         color="black",
-        #     )
-
-        # ax.set_ylim(bottom=absolute_optimum * 0.9, top=y_axis_max * 1.1)
-        # ax.set_ylim(bottom=y_min, top=1)
         ax.set_xlabel(self.x_metric_displayname["num_evals"])
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"])
         ax.legend()
 
-    def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, baseline_curve=None, shaded=True,
+    def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, baseline_curve=None, shaded=True,
                                plot_errors=False):
         """Plots all optimization strategy curves"""
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
