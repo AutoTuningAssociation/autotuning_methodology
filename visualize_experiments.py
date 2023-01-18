@@ -7,7 +7,7 @@ import warnings
 from sklearn.metrics import auc
 from math import ceil
 
-from experiments import (execute_experiment, get_searchspaces_info_stats, calc_cutoff_point, get_random_curve)
+from experiments import (execute_experiment, get_searchspaces_info_stats, calc_cutoff_point_fevals_time, get_random_curve)
 from curves import Curve, StochasticOptimizationAlgorithm
 from baseline import Baseline, RandomSearchBaseline
 
@@ -78,7 +78,7 @@ class Visualize:
         # silently execute the experiment
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.experiment, self.strategies, self.results_descriptions = execute_experiment(
+            self.experiment, self.strategies, self.results_descriptions: Tuple[dict, dict, dict] = execute_experiment(
                 experiment_filename,
                 profiling=False,
                 searchspaces_info_stats=searchspaces_info_stats,
@@ -86,13 +86,23 @@ class Visualize:
         print("\n")
         print("Visualizing")
 
+        # settings
+        minimization: bool = self.experiment.get("minimization", True)
+        cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
+        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.5)
+        cutoff_type: str = self.experiment.get('cutoff_type', "fevals")
+        assert cutoff_type == 'fevals' or cutoff_type == 'time'
+        time_resolution: float = self.experiment.get('resolution', 1e4)
+        if int(time_resolution) != time_resolution:
+            raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
+        time_resolution = int(time_resolution)
+
         # plot settings
-        minimization: bool = self.experiment["minimization"]
-        plot_settings: dict = self.experiment["plot"]
-        plot_relative_to_baseline: bool = plot_settings["plot_relative_to_baseline"]
-        plot_fevals: bool = plot_settings["plot_fevals"]
-        plot_time: bool = plot_settings["plot_time"]
-        plot_aggregated: bool = plot_settings["plot_aggregated"]
+        plot_settings: dict = self.experiment.get("plot")
+        plot_relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
+        plot_fevals: bool = plot_settings.get("plot_fevals", True)
+        plot_time: bool = plot_settings.get("plot_time", True)
+        plot_aggregated: bool = plot_settings.get("plot_aggregated")
 
         # visualize
         all_strategies_curves = list()
@@ -111,10 +121,6 @@ class Visualize:
                 # get the random baseline
                 random_baseline = RandomSearchBaseline(minimization) if plot_relative_to_baseline else None
 
-                # set the x-axis range
-                # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
-                # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
-
                 # get the cached strategy results as curves
                 strategies_curves: list[Curve] = list()
                 for strategy in self.strategies:
@@ -123,13 +129,20 @@ class Visualize:
                         raise ValueError(f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first")
                     strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
 
-                # visualize the results
+                # set the x-axis range
                 info = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]
+                _, cutoff_point_fevals, cutoff_point_time: Tuple[float, int, float] = calc_cutoff_point_fevals_time(cutoff_percentile, info)
+                _, cutoff_point_fevals_start, cutoff_point_time_start: Tuple[float, int, float] = calc_cutoff_point_fevals_time(cutoff_percentile_start, info)
+                fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals)
+                time_range = np.linspace(start=cutoff_point_time_start, stop=cutoff_point_time, num=time_resolution)
+                # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
+                # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
+
+                # visualize the results
                 if plot_time:
-                    self.plot_strategies_curves(axs[0], info, strategies_curves, random_baseline)
+                    self.plot_strategies_curves(axs[0], info, strategies_curves, time_range, random_baseline, plot_relative_to_baseline)
                 if plot_fevals:
-                    fevals_range = np.arange(50, 600)
-                    self.plot_strategies_fevals(axs[1], info, strategies_curves, fevals_range, random_baseline)
+                    self.plot_strategies_fevals(axs[1], info, strategies_curves, fevals_range, random_baseline, plot_relative_to_baseline)
                 all_strategies_curves.append(strategies_curves)
 
                 # finalize the figure and display it
@@ -330,8 +343,8 @@ class Visualize:
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"])
         ax.legend()
 
-    def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, baseline_curve=None, shaded=True,
-                               plot_errors=False):
+    def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, baseline_curve=None,
+                               relative_to_baseline=True, shaded=True, plot_errors=False):
         """Plots all optimization strategy curves"""
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 

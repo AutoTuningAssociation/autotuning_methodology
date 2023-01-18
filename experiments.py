@@ -65,7 +65,7 @@ def get_strategies(experiment: dict) -> dict:
     return strategies
 
 
-def calc_cutoff_point(cutoff_percentile: float, stats_info) -> Tuple[float, int]:
+def calc_cutoff_point(cutoff_percentile: float, stats_info: dict) -> Tuple[float, int]:
     """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point) """
     absolute_optimum: float = stats_info["absolute_optimum"]
     median: float = stats_info['median']
@@ -84,6 +84,16 @@ def calc_cutoff_point(cutoff_percentile: float, stats_info) -> Tuple[float, int]
     # i = next(x[0] for x in enumerate(inverted_sorted_times_arr) if cutoff_percentile * x[1] <= arr[-1])
     fevals_to_cutoff_point = ceil(i / (N + 1 - i))
     return objective_value_at_cutoff_point, fevals_to_cutoff_point
+
+
+def calc_cutoff_point_fevals_time(cutoff_percentile: float, stats_info: dict) -> Tuple[float, int, float]:
+    """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point) """
+    cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, stats_info)
+    mean: float = stats_info['mean']
+    repeats: int = stats_info['repeats']
+    mean_feval_time = (mean * repeats) / 1000    # in seconds # TODO change this to the new specified output format in kernel_info_generator
+    cutoff_point_time = cutoff_point_fevals * mean_feval_time
+    return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
 
 
 def get_random_curve(cutoff_point_fevals: int, sorted_times: list, time_resolution: int = None) -> np.ndarray:
@@ -109,15 +119,11 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
     print(f"Starting experiment \'{experiment['name']}\'")
     kernel_path: str = experiment.get('kernel_path', "")
     minimization: bool = experiment.get('minimization', True)
-    cutoff_quantile: float = experiment.get('cutoff_quantile', 0.975)
+    cutoff_percentile: float = experiment.get('cutoff_percentile', 1)
     cutoff_type: str = experiment.get('cutoff_type', "fevals")
     assert cutoff_type == 'fevals' or cutoff_type == 'time'
     curve_segment_factor: float = experiment.get('curve_segment_factor', 0.05)
     assert isinstance(curve_segment_factor, float)
-    time_resolution: float = experiment.get('resolution', 1e4)
-    if int(time_resolution) != time_resolution:
-        raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
-    time_resolution = int(time_resolution)
     change_directory("../cached_data_used" + kernel_path)
     strategies = get_strategies(experiment)
     kernel_names = experiment['kernels']
@@ -139,18 +145,13 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
             stats_info = searchspaces_info_stats[gpu_name]['kernels'][kernel_name]
 
             # set cutoff point
-            cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_quantile, stats_info)
-            if cutoff_type == 'time':
-                mean: float = stats_info['mean']
-                repeats: int = stats_info['repeats']
-                mean_feval_time = (mean * repeats) / 1000    # in seconds # TODO change this to the new specified output format in kernel_info_generator
-                cutoff_point_time = cutoff_point_fevals * mean_feval_time
+            _, cutoff_point_fevals, cutoff_point_time = calc_cutoff_point_fevals_time(cutoff_percentile, stats_info)
 
             print(f" | - optimizing kernel '{kernel_name}'")
             results_descriptions[gpu_name][kernel_name] = dict()
             for strategy in strategies:
-                strategy_name = strategy['name']
-                strategy_display_name = strategy['display_name']
+                strategy_name: str = strategy['name']
+                strategy_display_name: str = strategy['display_name']
                 stochastic = strategy['stochastic']
                 print(f" | - | using strategy '{strategy['display_name']}'")
 
