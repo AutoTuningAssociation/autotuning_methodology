@@ -7,7 +7,7 @@ import warnings
 from sklearn.metrics import auc
 from math import ceil
 
-from experiments import execute_experiment, get_searchspaces_info_stats, calc_cutoff_point_fevals_time, get_random_curve
+from experiments import execute_experiment, get_searchspaces_info_stats, calc_cutoff_point_fevals_time
 from curves import Curve, StochasticOptimizationAlgorithm
 from baseline import Baseline, RandomSearchBaseline
 
@@ -89,7 +89,7 @@ class Visualize:
         # settings
         minimization: bool = self.experiment.get("minimization", True)
         cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
-        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.5)
+        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0)
         cutoff_type: str = self.experiment.get('cutoff_type', "fevals")
         assert cutoff_type == 'fevals' or cutoff_type == 'time'
         time_resolution: float = self.experiment.get('resolution', 1e4)
@@ -118,9 +118,6 @@ class Visualize:
                 fig.canvas.manager.set_window_title(title)
                 fig.suptitle(title)
 
-                # get the random baseline
-                random_baseline = RandomSearchBaseline(minimization) if plot_relative_to_baseline else None
-
                 # get the cached strategy results as curves
                 strategies_curves: list[Curve] = list()
                 for strategy in self.strategies:
@@ -133,13 +130,14 @@ class Visualize:
                 info: dict = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]
                 _, cutoff_point_fevals, cutoff_point_time = calc_cutoff_point_fevals_time(cutoff_percentile, info)
                 _, cutoff_point_fevals_start, cutoff_point_time_start = calc_cutoff_point_fevals_time(cutoff_percentile_start, info)
-                print(cutoff_point_fevals_start)
-                print(cutoff_point_time_start)
-                exit(0)
                 fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals)
                 time_range = np.linspace(start=cutoff_point_time_start, stop=cutoff_point_time, num=time_resolution)
                 # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
                 # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
+
+                # get the random baseline
+                sorted_times = np.sort(info['sorted_times'])
+                random_baseline = RandomSearchBaseline(minimization, sorted_times) if plot_relative_to_baseline else None
 
                 # visualize the results
                 if plot_time:
@@ -292,7 +290,7 @@ class Visualize:
         median_optimum_distance = median - absolute_optimum
 
         # plot the absolute optimum
-        absolute_optimum_y_value = 1 if baseline_curve is not None else absolute_optimum
+        absolute_optimum_y_value = 1 if relative_to_baseline else absolute_optimum
         ax.axhline(absolute_optimum_y_value, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
         # plot baseline
@@ -328,19 +326,22 @@ class Visualize:
             # )
             # results_obj_mean = ((results_obj_mean - random_curve_strategy) / (absolute_optimum - random_curve_strategy))
             # y_min = min(min(results_obj_mean), y_min)
-            ax.plot(fevals_range, strategy_curve.get_curve_over_fevals(fevals_range), label=f"{strategy['display_name']}", color=color)
+            curve = strategy_curve.get_curve_over_fevals(fevals_range)
+            if relative_to_baseline:
+                curve = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve, absolute_optimum)
+            ax.plot(fevals_range, curve, label=f"{strategy['display_name']}", color=color)
 
-        # plot cutoff point
-        def plot_cutoff_point(cutoff_percentile):
-            cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, info)
-            print("")
-            # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
-            # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
-            # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
-            ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
+        # # plot cutoff point
+        # def plot_cutoff_point(cutoff_percentile):
+        #     cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, info)
+        #     print("")
+        #     # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
+        #     # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
+        #     # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
+        #     ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
 
-        if baseline_curve is not None:
-            plot_cutoff_point(0.980)
+        # if baseline_curve is not None:
+        #     plot_cutoff_point(0.980)
 
         ax.set_xlabel(self.x_metric_displayname["num_evals"])
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"])

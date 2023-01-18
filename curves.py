@@ -47,7 +47,7 @@ class Curve(ABC):
             assert self._y.ndim == 1
         else:
             assert self._x_fevals.ndim == 2
-            assert all(self._x[0] == 0)    # the first function evaluation must be 1
+            assert all(self._x_fevals[0] == 0)    # the first function evaluation must be 1
             assert self._x_time.ndim == 2
             assert self._y.ndim == 2
         assert self._x_fevals.shape == self._x_time.shape == self._y.shape

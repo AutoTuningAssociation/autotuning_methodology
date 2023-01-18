@@ -96,23 +96,6 @@ def calc_cutoff_point_fevals_time(cutoff_percentile: float, stats_info: dict) ->
     return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
 
 
-def get_random_curve(cutoff_point_fevals: int, sorted_times: list, time_resolution: int = None) -> np.ndarray:
-    """ Returns the values of the random curve at each function evaluation """
-    dist = sorted_times
-    ks = range(cutoff_point_fevals) if time_resolution is None else np.linspace(0, cutoff_point_fevals, time_resolution)
-
-    def redwhite_index(dist, M):
-        N = len(dist)
-        # print("Running for subset size", M, end="\r", flush=True)
-        #index = (N+1)*(N+1-M)*math.comb(N, M-1) / math.comb(N, M) / (M+1)
-        index = M * (N + 1) / (M + 1)
-        index = round(index)
-        return dist[N - 1 - index]
-
-    draws = np.array([redwhite_index(dist, k) for k in ks])
-    return draws
-
-
 def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: dict) -> Tuple[dict, dict, dict]:
     """ Executes the experiment by retrieving it from the cache or running it """
     experiment = get_experiment(filepath)
