@@ -7,7 +7,7 @@ import warnings
 from sklearn.metrics import auc
 from math import ceil
 
-from experiments import (execute_experiment, get_searchspaces_info_stats, calc_cutoff_point_fevals_time, get_random_curve)
+from experiments import execute_experiment, get_searchspaces_info_stats, calc_cutoff_point_fevals_time, get_random_curve
 from curves import Curve, StochasticOptimizationAlgorithm
 from baseline import Baseline, RandomSearchBaseline
 
@@ -78,7 +78,7 @@ class Visualize:
         # silently execute the experiment
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.experiment, self.strategies, self.results_descriptions: Tuple[dict, dict, dict] = execute_experiment(
+            self.experiment, self.strategies, self.results_descriptions = execute_experiment(
                 experiment_filename,
                 profiling=False,
                 searchspaces_info_stats=searchspaces_info_stats,
@@ -130,9 +130,12 @@ class Visualize:
                     strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
 
                 # set the x-axis range
-                info = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]
-                _, cutoff_point_fevals, cutoff_point_time: Tuple[float, int, float] = calc_cutoff_point_fevals_time(cutoff_percentile, info)
-                _, cutoff_point_fevals_start, cutoff_point_time_start: Tuple[float, int, float] = calc_cutoff_point_fevals_time(cutoff_percentile_start, info)
+                info: dict = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]
+                _, cutoff_point_fevals, cutoff_point_time = calc_cutoff_point_fevals_time(cutoff_percentile, info)
+                _, cutoff_point_fevals_start, cutoff_point_time_start = calc_cutoff_point_fevals_time(cutoff_percentile_start, info)
+                print(cutoff_point_fevals_start)
+                print(cutoff_point_time_start)
+                exit(0)
                 fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals)
                 time_range = np.linspace(start=cutoff_point_time_start, stop=cutoff_point_time, num=time_resolution)
                 # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)

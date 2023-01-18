@@ -29,7 +29,7 @@ def change_directory(path: str):
 
 def get_experiment(filename: str) -> dict:
     """ Gets the experiment from the .json file """
-    folder = 'experiments/'
+    folder = 'experiment_files/'
     extension = '.json'
     if not filename.endswith(extension):
         filename = filename + extension
@@ -158,11 +158,11 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 # setup the results description
                 if not 'options' in strategy:
                     strategy['options'] = dict()
-                limit_margin = 1.1    # 10% margin for non-valid evaluations
+                cutoff_margin = 1.1    # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
                 if cutoff_type == 'time':
-                    strategy['options']['time_limit'] = cutoff_point_time * limit_margin
+                    strategy['options']['time_limit'] = cutoff_point_time * cutoff_margin
                 else:
-                    strategy['options']['max_fevals'] = cutoff_point_fevals * limit_margin
+                    strategy['options']['max_fevals'] = cutoff_point_fevals * cutoff_margin
                 results_description = ResultsDescription(kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic, objective_time_keys,
                                                          objective_value_key, objective_values_key)
 

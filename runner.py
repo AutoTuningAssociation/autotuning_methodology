@@ -93,7 +93,7 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
     if profiling:
         stats = yappi.get_func_stats()
         # stats.print_all()
-        path = "../experiments/profilings/random/profile-v2.prof"
+        path = "../old_experiments/profilings/random/profile-v2.prof"
         stats.save(path, type="pstat")    # pylint: disable=no-member
         yappi.clear_stats()
 
@@ -149,7 +149,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
                 cumulative_objective_time = np.NaN
 
             # write to the arrays
-            fevals_results[evaluation_index, repeat_index] = evaluation_index
+            fevals_results[evaluation_index, repeat_index] = evaluation_index + 1    # number of function evaluations are counted from 1 instead of 0
             time_results[evaluation_index, repeat_index] = cumulative_total_time
             objective_time_results[evaluation_index, repeat_index] = cumulative_objective_time
             if not is_invalid_objective_value(objective_value, error_value):    # if it is an error value, it must stay NaN
