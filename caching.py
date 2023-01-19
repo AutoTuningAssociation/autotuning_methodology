@@ -1,3 +1,4 @@
+from __future__ import annotations    # for referring to class within own method
 import numpy as np
 from typing import Dict
 from pathlib import Path
@@ -21,6 +22,7 @@ class ResultsDescription():
     def __init__(self, folder_id: str, kernel_name: str, device_name: str, strategy_name: str, strategy_display_name: str, stochastic: bool,
                  objective_time_keys: str, objective_value_key: str, objective_values_key: str) -> None:
         # all attributes must be hashable for symetric difference checking
+        self._version = "1.0.0"
         self.__stored = False
         self.__folder_id = folder_id
         self.kernel_name = kernel_name
@@ -35,11 +37,17 @@ class ResultsDescription():
             'fevals_results', 'time_results', 'objective_time_results', 'objective_value_results', 'objective_value_best_results', 'objective_value_stds'
         ]    # the order must not be changed here!
 
-    def is_same_as(self, other: any) -> bool:
-        """ Check for equality against another object """
+    def is_same_as(self, other: ResultsDescription) -> bool:
+        """ Check for equality against another ResultsDescription object """
         # check if same type
         if not isinstance(other, ResultsDescription):
             raise NotImplemented(f"Can not compare to object of type {type(other)}")
+
+        # check if same version
+        if not hasattr(other, "_version"):
+            raise ValueError("ResultsDescription compared against has no version number")
+        if self._version != other._version:
+            raise ValueError(f"Incompatible versions: {self._version} (own), {other._version} (other)")
 
         # check if same keys
         symetric_difference_keys = self.__dict__.keys() ^ other.__dict__.keys()
