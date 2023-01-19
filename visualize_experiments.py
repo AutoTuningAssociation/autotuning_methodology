@@ -327,9 +327,6 @@ class Visualize:
             # results_obj_mean = ((results_obj_mean - random_curve_strategy) / (absolute_optimum - random_curve_strategy))
             # y_min = min(min(results_obj_mean), y_min)
             curve = strategy_curve.get_curve_over_fevals(fevals_range, sorted_times)
-            # curve = strategy_curve.get_curve_over_fevals(np.arange(10, 600, 5))
-            # print(list(curve))
-            # exit(0)
             if relative_to_baseline:
                 # sanity check: see if the calculated random curve is equal to itself
                 # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))

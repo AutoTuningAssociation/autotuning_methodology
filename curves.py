@@ -171,7 +171,7 @@ class StochasticOptimizationAlgorithm(Curve):
             # for each value, get the index in the distribution
             indices = self._get_indices(masked_values, dist)
             # get the mean index per feval
-            indices_mean = np.median(indices, axis=1)
+            indices_mean = np.mean(indices, axis=1)
             indices_mean_rounded = np.array(np.round(indices_mean), dtype=int)
             # obtain the curve by looking up the associated values
             curve = dist[indices_mean_rounded]
@@ -182,7 +182,7 @@ class StochasticOptimizationAlgorithm(Curve):
         pad_width = self.fevals_find_pad_width(fevals, fevals_range)
         curve = np.pad(curve, pad_width=pad_width, constant_values=np.nan)    # pad with NaN where outside the range, yielding an array which == fevals.shape
         assert curve.shape == fevals_range.shape
-        return super().get_curve_over_fevals(curve)
+        return curve
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         return super().get_curve_over_time(time_range)
