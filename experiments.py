@@ -100,6 +100,7 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
     """ Executes the experiment by retrieving it from the cache or running it """
     experiment = get_experiment(filepath)
     print(f"Starting experiment \'{experiment['name']}\'")
+    experiment_folder_id = experiment.get('folder_id')
     kernel_path: str = experiment.get('kernel_path', "")
     minimization: bool = experiment.get('minimization', True)
     cutoff_percentile: float = experiment.get('cutoff_percentile', 1)
@@ -145,9 +146,9 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 if cutoff_type == 'time':
                     strategy['options']['time_limit'] = cutoff_point_time * cutoff_margin
                 else:
-                    strategy['options']['max_fevals'] = cutoff_point_fevals * cutoff_margin
-                results_description = ResultsDescription(kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic, objective_time_keys,
-                                                         objective_value_key, objective_values_key)
+                    strategy['options']['max_fevals'] = int(round(cutoff_point_fevals * cutoff_margin))
+                results_description = ResultsDescription(experiment_folder_id, kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic,
+                                                         objective_time_keys, objective_value_key, objective_values_key)
 
                 # if the strategy is in the cache, use cached data
                 if 'ignore_cache' not in strategy and results_description.has_results():

@@ -89,7 +89,7 @@ class Visualize:
         # settings
         minimization: bool = self.experiment.get("minimization", True)
         cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
-        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0)
+        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
         cutoff_type: str = self.experiment.get('cutoff_type', "fevals")
         assert cutoff_type == 'fevals' or cutoff_type == 'time'
         time_resolution: float = self.experiment.get('resolution', 1e4)
@@ -137,7 +137,7 @@ class Visualize:
 
                 # get the random baseline
                 sorted_times = np.sort(info['sorted_times'])
-                random_baseline = RandomSearchBaseline(minimization, sorted_times) if plot_relative_to_baseline else None
+                random_baseline = RandomSearchBaseline(minimization, sorted_times)
 
                 # visualize the results
                 if plot_time:
@@ -294,7 +294,7 @@ class Visualize:
         ax.axhline(absolute_optimum_y_value, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
         # plot baseline
-        # sorted_times = np.array(info['sorted_times'])
+        sorted_times = np.sort(info['sorted_times'])
         # # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / absolute_difference)    # to fraction of optimum
         # # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / median_optimum_distance)    # to fraction of median-optimum difference
         # cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(0.98, info)
@@ -326,8 +326,13 @@ class Visualize:
             # )
             # results_obj_mean = ((results_obj_mean - random_curve_strategy) / (absolute_optimum - random_curve_strategy))
             # y_min = min(min(results_obj_mean), y_min)
-            curve = strategy_curve.get_curve_over_fevals(fevals_range)
+            curve = strategy_curve.get_curve_over_fevals(fevals_range, sorted_times)
+            # curve = strategy_curve.get_curve_over_fevals(np.arange(10, 600, 5))
+            # print(list(curve))
+            # exit(0)
             if relative_to_baseline:
+                # sanity check: see if the calculated random curve is equal to itself
+                # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))
                 curve = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve, absolute_optimum)
             ax.plot(fevals_range, curve, label=f"{strategy['display_name']}", color=color)
 
@@ -344,7 +349,7 @@ class Visualize:
         #     plot_cutoff_point(0.980)
 
         ax.set_xlabel(self.x_metric_displayname["num_evals"])
-        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"])
+        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
 
     def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, baseline_curve=None,

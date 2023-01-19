@@ -78,7 +78,7 @@ class RandomSearchBaseline(Baseline):
         indices_found = np.array(indices_found)
         return indices_found
 
-    def _redwhite_index(self, M: int, minimize=True) -> float:
+    def _redwhite_index(self, M: int) -> float:
         """ Get the expected value in the distribution for a single budget """
         N = self.N
         index = M * (N + 1) / (M + 1)
@@ -88,10 +88,29 @@ class RandomSearchBaseline(Baseline):
         return dist[index]
 
     def _get_random_curve(self, fevals_range: np.ndarray) -> np.ndarray:
-        """ Returns the draw values of the random curve at each function evaluation """
+        """ Returns the drawn values of the random curve at each function evaluation """
         ks = fevals_range - 1    # because ranges of number of function evaluations start at 1, we need to subtract 1 to use the index version
         draws = np.array([self._redwhite_index(k) for k in ks])
         return draws
+
+    def _draw_random(self, xs: np.ndarray, k: int):
+        return np.random.choice(xs, size=k, replace=False)
+
+    def _stats_max(self, xs: np.ndarray, k: int, trials: int, opt_func: callable) -> np.ndarray:
+        # print("Running for stats max size", k, end="\r", flush=True)
+        return np.array([opt_func(self._draw_random(xs, k)) for trial in range(trials)])
+
+    def _get_random_curve_means(self, fevals_range: np.ndarray) -> np.ndarray:
+        """ Returns the mean drawn values of the random curve at each function evaluation """
+        trials = 500
+        dist = self.dist_descending
+        opt_func = np.min if self.minimization else np.max
+        results = np.array([self._stats_max(dist, budget, trials, opt_func) for budget in fevals_range])
+        val_indices = self._get_indices(results)
+        # Find the mean index per list of trial runs per function evaluation.
+        mean_indices = [round(x) for x in val_indices.mean(axis=1)]
+        val_results_index_mean = dist[mean_indices]
+        return val_results_index_mean
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
         curve = self._get_random_curve(fevals_range)
