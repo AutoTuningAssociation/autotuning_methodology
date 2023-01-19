@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Dict
+from pathlib import Path
 
 
 class Results():
@@ -17,10 +18,11 @@ class Results():
 class ResultsDescription():
     """ Object to store a description of the results and retrieve results for an optimization algorithm on a search space """
 
-    def __init__(self, kernel_name: str, device_name: str, strategy_name: str, strategy_display_name: str, stochastic: bool, objective_time_keys: str,
-                 objective_value_key: str, objective_values_key: str) -> None:
+    def __init__(self, folder_id: str, kernel_name: str, device_name: str, strategy_name: str, strategy_display_name: str, stochastic: bool,
+                 objective_time_keys: str, objective_value_key: str, objective_values_key: str) -> None:
         # all attributes must be hashable for symetric difference checking
         self.__stored = False
+        self.__folder_id = folder_id
         self.kernel_name = kernel_name
         self.device_name = device_name
         self.strategy_name = strategy_name
@@ -46,6 +48,8 @@ class ResultsDescription():
 
         # check if same value for each key
         for attribute_key, attribute_value in self.__dict__.items():
+            if attribute_key == 'strategy_display_name':
+                continue
             assert attribute_value == other.__dict__[attribute_key]
 
         return True
@@ -53,20 +57,29 @@ class ResultsDescription():
     def __get_cache_filename(self) -> str:
         return f"{self.kernel_name}_{self.device_name}_{self.strategy_name}.npz"
 
-    def __get_cache_filepath(self) -> str:
-        return f"{self.__get_cache_filename()}"
+    def __get_cache_filepath(self) -> Path:
+        """ Get the filepath to this experiment """
+        return Path("visualizations") / self.__folder_id
+
+    def __get_cache_full_filepath(self) -> Path:
+        """ Get the filepath for this file, including the filename and extension """
+        return self.__get_cache_filepath() / self.__get_cache_filename()
 
     def __check_for_file(self) -> bool:
         """ Check whether the file exists """
-        self.__stored = np.DataSource().exists(self.__get_cache_filepath())
+        full_filepath = self.__get_cache_full_filepath()
+        self.__stored = full_filepath.exists() and np.DataSource().exists(full_filepath)
         return self.__stored
 
     def __write_to_file(self, arrays: Dict):
         """ Write the resultsdescription and the accompanying numpy arrays to file """
         if self.__stored is True:
             raise ValueError(f"Do not overwrite a ResultsDescription")
+        filepath = self.__get_cache_filepath()
+        if not filepath.exists():
+            filepath.mkdir(parents=True, exist_ok=False)
         self.__stored = True
-        np.savez_compressed(self.__get_cache_filepath(), resultsdescription=self, **arrays)
+        np.savez_compressed(self.__get_cache_full_filepath(), resultsdescription=self, **arrays)
 
     def set_results(self, arrays: Dict):
         """ Set and cache the results """
@@ -75,12 +88,12 @@ class ResultsDescription():
     def __read_from_file(self) -> list[np.ndarray]:
         """ Read and verify the accompanying numpy arrays from file """
         self.__check_for_file()
-        filepath = self.__get_cache_filepath()
+        full_filepath = self.__get_cache_full_filepath()
         if self.__stored is False:
-            raise ValueError(f"File {filepath} does not exist")
+            raise ValueError(f"File {full_filepath} does not exist")
 
         # load the data and verify the resultsdescription object is the same
-        data = np.load(filepath, allow_pickle=True)
+        data = np.load(full_filepath, allow_pickle=True)
         data_results_description = data['resultsdescription'].item()
         assert self.is_same_as(data_results_description)
 
