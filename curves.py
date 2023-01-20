@@ -81,30 +81,6 @@ class Curve(ABC):
         return padding
 
 
-class RandomBaseline(Curve):
-
-    def __init__(self, device_name: str, kernel_name: str) -> None:
-        self.name = "randomsearch_baseline"
-        self.display_name = "Random Search baseline"
-        self.device_name = device_name
-        self.kernel_name = kernel_name
-        self.stochastic = False
-
-        self._x_fevals = None
-        self._x_time = None
-        self._y = None
-
-        self.check_attributes()
-
-    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
-        return super().get_curve_over_fevals(curve)
-
-    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
-        return super().get_curve_over_time(time)
-
-
 class DeterministicOptimizationAlgorithm(Curve):
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
@@ -150,7 +126,7 @@ class StochasticOptimizationAlgorithm(Curve):
         indices_found = np.array(indices_found)
         return indices_found
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None) -> np.ndarray:
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         # first filter to only get the fevals range
         matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
@@ -171,18 +147,35 @@ class StochasticOptimizationAlgorithm(Curve):
             # for each value, get the index in the distribution
             indices = self._get_indices(masked_values, dist)
             # get the mean index per feval
-            indices_mean = np.mean(indices, axis=1)
-            indices_mean_rounded = np.array(np.round(indices_mean), dtype=int)
-            # obtain the curve by looking up the associated values
-            curve = dist[indices_mean_rounded]
+            indices_mean = np.array(np.round(np.nanmean(indices, axis=1)), dtype=int)
+            # get the standard error on the indices per feval
+            indices_std = np.array(np.round(np.nanstd(indices, axis=1)), dtype=int)
+            indices_lower_err = np.clip(indices_mean - indices_std, a_min=0, a_max=dist.shape[0] - 1)
+            indices_upper_err = np.clip(indices_mean + indices_std, a_min=0, a_max=dist.shape[0] - 1)
+            # obtain the curves by looking up the associated values
+            curve = dist[indices_mean]
+            curve_lower_err = dist[indices_lower_err]
+            curve_upper_err = dist[indices_upper_err]
         else:
-            # obtain the curve
+            # obtain the curves
             curve = np.nanmean(masked_values, axis=1)    # get the curve by taking the mean
-        curve = curve[~np.isnan(curve)]    # remove remaining NaN, yielding an array which <= fevals.shape
-        pad_width = self.fevals_find_pad_width(fevals, fevals_range)
-        curve = np.pad(curve, pad_width=pad_width, constant_values=np.nan)    # pad with NaN where outside the range, yielding an array which == fevals.shape
+            curve_std = np.nanstd(masked_values, axis=1)
+            curve_lower_err = curve - curve_std
+            curve_upper_err = curve + curve_std
+
+        # # remove remaining NaN, yielding an array which <= fevals.shape
+        # curve = curve[~np.isnan(curve)]
+        # curve_lower_err = curve_lower_err[~np.isnan(curve_lower_err)]
+        # curve_upper_err = curve_upper_err[~np.isnan(curve_upper_err)]
+
+        # pad with NaN where outside the range, yielding an array which == fevals.shape
+        if curve.shape != fevals_range.shape:
+            pad_width = self.fevals_find_pad_width(fevals, fevals_range)
+            curve = np.pad(curve, pad_width=pad_width, constant_values=np.nan)
+            curve_lower_err = np.pad(curve_lower_err, pad_width=pad_width, constant_values=np.nan)
+            curve_upper_err = np.pad(curve_upper_err, pad_width=pad_width, constant_values=np.nan)
         assert curve.shape == fevals_range.shape
-        return curve
+        return curve, curve_lower_err, curve_upper_err
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         return super().get_curve_over_time(time_range)

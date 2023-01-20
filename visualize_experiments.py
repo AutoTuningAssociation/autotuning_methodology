@@ -284,7 +284,7 @@ class Visualize:
         return strategies_curves
 
     def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, baseline_curve: Baseline = None,
-                               relative_to_baseline=True):
+                               relative_to_baseline=True, plot_errors=True):
         """ Plots all optimization strategies with number of function evaluations on the x-axis """
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         absolute_optimum: float = info["absolute_optimum"]
@@ -307,7 +307,7 @@ class Visualize:
             if relative_to_baseline is True:
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
             else:
-                ax.plot(baseline_curve.get_curve_over_fevals(fevals_range), label="baseline curve", color="black", ls="--")
+                ax.plot(fevals_range, baseline_curve.get_curve_over_fevals(fevals_range), label="baseline curve", color="black", ls="--")
 
         # plot each strategy
         for strategy_index, strategy in enumerate(self.strategies):
@@ -318,22 +318,18 @@ class Visualize:
             color = colors[strategy_index]
             strategy_curve = strategies_curves[strategy_index]
 
-            # TODO visualize error
-            # ax.fill_between(
-            #     range(len(results_obj_mean)),
-            #     results_obj_mean - results_obj_std,
-            #     results_obj_mean + results_obj_std,
-            #     alpha=0.2,
-            #     antialiased=True,
-            #     color=color,
-            # )
-            # results_obj_mean = ((results_obj_mean - random_curve_strategy) / (absolute_optimum - random_curve_strategy))
-            # y_min = min(min(results_obj_mean), y_min)
-            curve = strategy_curve.get_curve_over_fevals(fevals_range, sorted_times)
+            # obtain the curves
+            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_fevals(fevals_range, sorted_times)
             if relative_to_baseline:
                 # sanity check: see if the calculated random curve is equal to itself
                 # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))
                 curve = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve, absolute_optimum)
+                curve_lower_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_lower_err, absolute_optimum)
+                curve_upper_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_upper_err, absolute_optimum)
+
+            # visualize
+            if plot_errors:
+                ax.fill_between(fevals_range, curve_lower_err, curve_upper_err, alpha=0.2, antialiased=True, color=color)
             ax.plot(fevals_range, curve, label=f"{strategy['display_name']}", color=color)
 
         # # plot cutoff point
@@ -348,6 +344,7 @@ class Visualize:
         # if baseline_curve is not None:
         #     plot_cutoff_point(0.980)
 
+        ax.set_xlim(tuple([fevals_range[0], fevals_range[-1]]))
         ax.set_xlabel(self.x_metric_displayname["num_evals"])
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
