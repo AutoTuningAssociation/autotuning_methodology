@@ -103,6 +103,9 @@ class Visualize:
         plot_fevals: bool = plot_settings.get("plot_fevals", True)
         plot_time: bool = plot_settings.get("plot_time", True)
         plot_aggregated: bool = plot_settings.get("plot_aggregated")
+        num_cols: int = 2 if plot_fevals and plot_time else 1
+        if not plot_fevals and not plot_time:
+            raise ValueError(f"At least one of 'plot_fevals' and 'plot_time' must be True")
 
         # visualize
         all_strategies_curves = list()
@@ -111,7 +114,7 @@ class Visualize:
                 print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
 
                 # create the figure and plots
-                fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+                fig, axs = plt.subplots(nrows=1, ncols=num_cols, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
                 if not hasattr(axs, "__len__"):
                     axs = [axs]
                 title = f"{kernel_name} on {gpu_name}"
@@ -143,7 +146,7 @@ class Visualize:
                 if plot_time:
                     self.plot_strategies_curves(axs[0], info, strategies_curves, time_range, random_baseline, plot_relative_to_baseline)
                 if plot_fevals:
-                    self.plot_strategies_fevals(axs[1], info, strategies_curves, fevals_range, random_baseline, plot_relative_to_baseline)
+                    self.plot_strategies_fevals(axs[-1], info, strategies_curves, fevals_range, random_baseline, plot_relative_to_baseline)
                 all_strategies_curves.append(strategies_curves)
 
                 # finalize the figure and display it
