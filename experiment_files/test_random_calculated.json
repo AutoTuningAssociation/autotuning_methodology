@@ -16,7 +16,8 @@
     "plot_relative_to_baseline": true,
     "plot_fevals": true,
     "plot_time": false,
-    "plot_aggregated": false
+    "plot_aggregated": false,
+    "plot_confidence_interval": 0.95
   },
   "strategy_defaults": {
     "repeats": 100,
