@@ -85,7 +85,7 @@
           "type": "boolean",
           "default": true
         },
-        "plot_confidence_level": {
+        "confidence_level": {
           "type": [
             "number",
             "null"

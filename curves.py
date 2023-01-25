@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
 import numpy as np
+from math import floor, ceil, sqrt
+from statistics import NormalDist
 from caching import ResultsDescription
 
 
@@ -193,36 +195,21 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_confidence_interval(self, values: np.ndarray, confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
         """ Calculates the non-parametric confidence interval for repeated individual configurations, assumed to be IID """
         assert values.ndim == 2    # should be two-dimensional (iterations, repeats)
-        from math import floor, ceil, sqrt
+        distribution = NormalDist()    # TODO check if binomial is more appropriate (calculate according to book)
+        z = distribution.inv_cdf((1 + confidence_level) / 2.)
         n = values.shape[1]
-        alpha = 1 - confidence_level
-        area_per_tail = alpha / 2
         q = 0.5
-        z = 1.96
-        base = z * sqrt(n * q * (1 - q))
-        lower_rank = max(floor(n * q - base), 0)
-        upper_rank = min(ceil(n * q + base), n - 1)
+        nq = n * q
+        base = z * sqrt(nq * (1 - q))
+        lower_rank = max(floor(nq - base), 0)
+        upper_rank = min(ceil(nq + base), n - 1)
         confidence_interval_lower = np.full(values.shape[0], np.nan)
         confidence_interval_upper = np.full(values.shape[0], np.nan)
-        print(f"  {lower_rank}, {upper_rank}")
 
-        # for each function evaluation, calculate the confidence interval
-        for feval_index, feval_repeats in enumerate(values):
-            feval_repeats_sorted = np.sort(feval_repeats)
+        # for each function evaluation, look up the confidence interval
+        fevals_repeats_sorted = np.sort(values, axis=1)
+        for feval_index, feval_repeats_sorted in enumerate(fevals_repeats_sorted):
             confidence_interval_lower[feval_index] = feval_repeats_sorted[lower_rank]
             confidence_interval_upper[feval_index] = feval_repeats_sorted[upper_rank]
 
         return confidence_interval_lower, confidence_interval_upper
-
-    def get_times_confidence_interval(times: list, confidence_level=0.95) -> Tuple[float, float]:
-        """ Calculate the non-parametric confidence interval for repeated configurations, assumed to be IID """
-        alpha = 1 - confidence_level
-        area_per_tail = alpha / 2
-        n = len(times)
-        times.sort()
-        np_times = np.array(times)
-        lower_rank = floor((n - 1.96 * sqrt(n)) / 2)
-        upper_rank = ceil(1 + ((n + 1.96 * sqrt(n)) / 2))
-        print(f"  {lower_rank}, {upper_rank}")
-        # TODO how much does using the binomial distribution here change the outcome, and is it possible?
-        return np_times[max(lower_rank, 0)], np_times[min(upper_rank, n - 1)]

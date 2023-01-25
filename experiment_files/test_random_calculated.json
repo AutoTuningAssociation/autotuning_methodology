@@ -18,7 +18,7 @@
     "plot_fevals": true,
     "plot_time": false,
     "plot_aggregated": false,
-    "plot_confidence_level": 0.95
+    "confidence_level": 0.95
   },
   "strategy_defaults": {
     "repeats": 100,

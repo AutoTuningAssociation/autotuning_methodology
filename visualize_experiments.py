@@ -286,7 +286,7 @@ class Visualize:
                                baseline_curve: Baseline = None, plot_errors=True):
         """ Plots all optimization strategies with number of function evaluations on the x-axis """
         relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
-        confidence_level: float = plot_settings.get("plot_confidence_interval", 0.95)
+        confidence_level: float = plot_settings.get("confidence_level", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         absolute_optimum: float = info["absolute_optimum"]
         absolute_difference: float = info['absolute_difference']
