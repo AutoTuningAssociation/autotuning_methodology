@@ -1,4 +1,5 @@
 {
+  "version": "0.1.0",
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
@@ -17,7 +18,7 @@
     "plot_fevals": true,
     "plot_time": false,
     "plot_aggregated": false,
-    "plot_confidence_interval": 0.95
+    "plot_confidence_level": 0.95
   },
   "strategy_defaults": {
     "repeats": 100,

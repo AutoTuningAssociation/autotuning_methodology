@@ -99,7 +99,6 @@ class Visualize:
 
         # plot settings
         plot_settings: dict = self.experiment.get("plot")
-        plot_relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
         plot_fevals: bool = plot_settings.get("plot_fevals", True)
         plot_time: bool = plot_settings.get("plot_time", True)
         plot_aggregated: bool = plot_settings.get("plot_aggregated")
@@ -144,9 +143,9 @@ class Visualize:
 
                 # visualize the results
                 if plot_time:
-                    self.plot_strategies_curves(axs[0], info, strategies_curves, time_range, random_baseline, plot_relative_to_baseline)
+                    self.plot_strategies_curves(axs[0], info, strategies_curves, time_range, plot_settings, random_baseline)
                 if plot_fevals:
-                    self.plot_strategies_fevals(axs[-1], info, strategies_curves, fevals_range, random_baseline, plot_relative_to_baseline)
+                    self.plot_strategies_fevals(axs[-1], info, strategies_curves, fevals_range, plot_settings, random_baseline)
                 all_strategies_curves.append(strategies_curves)
 
                 # finalize the figure and display it
@@ -283,9 +282,11 @@ class Visualize:
         print(f"Mean performance across strategies: {np.mean(performances)}")    # the higher the mean, the easier a search space is for the baseline
         return strategies_curves
 
-    def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, baseline_curve: Baseline = None,
-                               relative_to_baseline=True, plot_errors=True):
+    def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, plot_settings: dict,
+                               baseline_curve: Baseline = None, plot_errors=True):
         """ Plots all optimization strategies with number of function evaluations on the x-axis """
+        relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
+        confidence_level: float = plot_settings.get("plot_confidence_interval", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         absolute_optimum: float = info["absolute_optimum"]
         absolute_difference: float = info['absolute_difference']
@@ -298,11 +299,6 @@ class Visualize:
 
         # plot baseline
         sorted_times = np.sort(info['sorted_times'])
-        # # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / absolute_difference)    # to fraction of optimum
-        # # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / median_optimum_distance)    # to fraction of median-optimum difference
-        # cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(0.98, info)
-        # random_curve = get_random_curve(cutoff_point_fevals, sorted_times)
-        # # ax.plot(random_curve, label="random trajectory", color='black', ls='--')
         if baseline_curve is not None:
             if relative_to_baseline is True:
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
@@ -319,7 +315,7 @@ class Visualize:
             strategy_curve = strategies_curves[strategy_index]
 
             # obtain the curves
-            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_fevals(fevals_range, sorted_times)
+            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_fevals(fevals_range, dist=sorted_times, confidence_level=confidence_level)
             if relative_to_baseline:
                 # sanity check: see if the calculated random curve is equal to itself
                 # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))
@@ -349,9 +345,11 @@ class Visualize:
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
 
-    def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, baseline_curve=None,
-                               relative_to_baseline=True, shaded=True, plot_errors=False):
+    def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, plot_settings: dict,
+                               baseline_curve: Baseline = None, shaded=True, plot_errors=False):
         """Plots all optimization strategy curves"""
+        relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
+        confidence_level: float = plot_settings.get("plot_confidence_interval", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
         bar_groups_markers = {

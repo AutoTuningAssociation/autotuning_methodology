@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Tuple
 import numpy as np
 from caching import ResultsDescription
 
@@ -126,7 +127,8 @@ class StochasticOptimizationAlgorithm(Curve):
         indices_found = np.array(indices_found)
         return indices_found
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
+                              confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # first filter to only get the fevals range
         matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
@@ -147,21 +149,29 @@ class StochasticOptimizationAlgorithm(Curve):
             # for each value, get the index in the distribution
             indices = self._get_indices(masked_values, dist)
             # get the mean index per feval
-            indices_mean = np.array(np.round(np.nanmean(indices, axis=1)), dtype=int)
-            # get the standard error on the indices per feval
-            indices_std = np.array(np.round(np.nanstd(indices, axis=1)), dtype=int)
-            indices_lower_err = np.clip(indices_mean - indices_std, a_min=0, a_max=dist.shape[0] - 1)
-            indices_upper_err = np.clip(indices_mean + indices_std, a_min=0, a_max=dist.shape[0] - 1)
+            indices_mean = np.array(np.round(np.nanmedian(indices, axis=1)), dtype=int)
+            if confidence_level is None:
+                # get the standard error on the indices per feval
+                indices_std = np.array(np.round(np.nanstd(indices, axis=1)), dtype=int)
+                indices_lower_err = np.clip(indices_mean - indices_std, a_min=0, a_max=dist.shape[0] - 1)
+                indices_upper_err = np.clip(indices_mean + indices_std, a_min=0, a_max=dist.shape[0] - 1)
+            else:
+                indices_lower_err, indices_upper_err = self.get_confidence_interval(indices, confidence_level)
+                indices_lower_err, indices_upper_err = indices_lower_err.astype(int), indices_upper_err.astype(int)
             # obtain the curves by looking up the associated values
             curve = dist[indices_mean]
             curve_lower_err = dist[indices_lower_err]
             curve_upper_err = dist[indices_upper_err]
         else:
             # obtain the curves
-            curve = np.nanmean(masked_values, axis=1)    # get the curve by taking the mean
-            curve_std = np.nanstd(masked_values, axis=1)
-            curve_lower_err = curve - curve_std
-            curve_upper_err = curve + curve_std
+            curve: np.ndarray = np.nanmedian(masked_values, axis=1)    # get the curve by taking the mean
+            if confidence_level is None:
+                # get the standard error
+                curve_std: np.ndarray = np.nanstd(masked_values, axis=1)
+                curve_lower_err = curve - curve_std
+                curve_upper_err = curve + curve_std
+            else:
+                curve_lower_err, curve_upper_err = self.get_confidence_interval(masked_values, confidence_level)
 
         # # remove remaining NaN, yielding an array which <= fevals.shape
         # curve = curve[~np.isnan(curve)]
@@ -179,3 +189,40 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         return super().get_curve_over_time(time_range)
+
+    def get_confidence_interval(self, values: np.ndarray, confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
+        """ Calculates the non-parametric confidence interval for repeated individual configurations, assumed to be IID """
+        assert values.ndim == 2    # should be two-dimensional (iterations, repeats)
+        from math import floor, ceil, sqrt
+        n = values.shape[1]
+        alpha = 1 - confidence_level
+        area_per_tail = alpha / 2
+        q = 0.5
+        z = 1.96
+        base = z * sqrt(n * q * (1 - q))
+        lower_rank = max(floor(n * q - base), 0)
+        upper_rank = min(ceil(n * q + base), n - 1)
+        confidence_interval_lower = np.full(values.shape[0], np.nan)
+        confidence_interval_upper = np.full(values.shape[0], np.nan)
+        print(f"  {lower_rank}, {upper_rank}")
+
+        # for each function evaluation, calculate the confidence interval
+        for feval_index, feval_repeats in enumerate(values):
+            feval_repeats_sorted = np.sort(feval_repeats)
+            confidence_interval_lower[feval_index] = feval_repeats_sorted[lower_rank]
+            confidence_interval_upper[feval_index] = feval_repeats_sorted[upper_rank]
+
+        return confidence_interval_lower, confidence_interval_upper
+
+    def get_times_confidence_interval(times: list, confidence_level=0.95) -> Tuple[float, float]:
+        """ Calculate the non-parametric confidence interval for repeated configurations, assumed to be IID """
+        alpha = 1 - confidence_level
+        area_per_tail = alpha / 2
+        n = len(times)
+        times.sort()
+        np_times = np.array(times)
+        lower_rank = floor((n - 1.96 * sqrt(n)) / 2)
+        upper_rank = ceil(1 + ((n + 1.96 * sqrt(n)) / 2))
+        print(f"  {lower_rank}, {upper_rank}")
+        # TODO how much does using the binomial distribution here change the outcome, and is it possible?
+        return np_times[max(lower_rank, 0)], np_times[min(upper_rank, n - 1)]

@@ -3,6 +3,7 @@
 import argparse
 from importlib import import_module
 import json
+from jsonschema import validate
 import os
 import sys
 from typing import Tuple, Any
@@ -28,7 +29,7 @@ def change_directory(path: str):
 
 
 def get_experiment(filename: str) -> dict:
-    """ Gets the experiment from the .json file """
+    """ Validates and gets the experiment from the .json file """
     folder = 'experiment_files/'
     extension = '.json'
     if not filename.endswith(extension):
@@ -37,8 +38,11 @@ def get_experiment(filename: str) -> dict:
     if not filename.startswith(folder):
         path = folder + filename
     safe_path = pathvalidate.sanitize_filepath(path)
-    with open(safe_path) as file:
+    schemafilepath = folder + 'schema.json'
+    with open(safe_path) as file, open(schemafilepath) as schemafile:
+        schema = json.load(schemafile)
         experiment = json.load(file)
+        validate(instance=experiment, schema=schema)
         return experiment
 
 

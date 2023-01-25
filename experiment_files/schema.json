@@ -1,10 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/product.schema.json",
+  "$id": "https://example.com/schemas/experiments/v0.1.0.schema.json",
+  "version": "0.1.0",
   "title": "Experiment",
   "description": "An experiment configuration file",
   "type": "object",
   "properties": {
+    "version": {
+      "description": "Version number of the experiment file standard",
+      "type": "string"
+    },
     "name": {
       "description": "Name of the experiment",
       "type": "string"
@@ -80,7 +85,7 @@
           "type": "boolean",
           "default": true
         },
-        "plot_confidence_interval": {
+        "plot_confidence_level": {
           "type": [
             "number",
             "null"
@@ -93,6 +98,7 @@
     }
   },
   "required": [
+    "version",
     "name",
     "folder_id",
     "kernels",
