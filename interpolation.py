@@ -5,31 +5,6 @@ from isotonic.isotonic import LpIsotonicRegression
 from scipy.interpolate import interp1d
 
 
-def get_isotonic_curve(x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package='isotonic', increasing=False, npoints=1000, power=2, ymin=None,
-                       ymax=None) -> np.ndarray:
-    """ Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic' """
-    # check if the assumptions that the input arrays are numpy arrays holds
-    assert isinstance(x, np.ndarray)
-    assert isinstance(y, np.ndarray)
-    assert isinstance(x_new, np.ndarray)
-    if package == 'sklearn':
-        if npoints != 1000:
-            warnings.warn("npoints argument is impotent for sklearn package")
-        if power != 2:
-            warnings.warn("power argument is impotent for sklearn package")
-        ir = IsotonicRegression(increasing=increasing, y_min=ymin, y_max=ymax, out_of_bounds='clip')
-        ir.fit(x, y)
-        return ir.predict(x_new)
-    elif package == 'isotonic':
-        ir = LpIsotonicRegression(npoints, increasing=increasing, power=power).fit(x, y)
-        y_isotonic_regression = ir.predict_proba(x_new)
-        # TODO check if you are not indadvertedly clipping too much here
-        if ymin is not None or ymax is not None:
-            y_isotonic_regression = np.clip(y_isotonic_regression, ymin, ymax)
-        return y_isotonic_regression
-    raise ValueError(f"Package name {package} is not a valid package name")
-
-
 def create_interpolated_results(repeated_results: list, expected_results: dict, optimization_objective: str, cutoff_point_fevals: int,
                                 objective_value_at_cutoff_point: float, time_resolution: int, time_interpolated_axis: np.ndarray, y_min=None, y_median=None,
                                 segment_factor=0.05) -> Dict[Any, Any]:

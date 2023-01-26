@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
 import numpy as np
-from math import floor, ceil, sqrt
-from statistics import NormalDist
 from caching import ResultsDescription
 
 
@@ -18,6 +16,7 @@ class Curve(ABC):
         self.device_name = results_description.device_name
         self.kernel_name = results_description.kernel_name
         self.stochastic = results_description.stochastic
+        self.minimization = results_description.minimization
 
         # result data
         results = results_description.get_results()
@@ -83,6 +82,34 @@ class Curve(ABC):
         padding = (padding_start, padding_end)
         return padding
 
+    def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package='isotonic', npoints=1000, power=2, ymin=None,
+                           ymax=None) -> np.ndarray:
+        """ Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic' """
+        # check if the assumptions that the input arrays are numpy arrays holds
+        assert isinstance(x, np.ndarray)
+        assert isinstance(y, np.ndarray)
+        assert isinstance(x_new, np.ndarray)
+        increasing = not self.minimization
+        if package == 'sklearn':
+            from sklearn.isotonic import IsotonicRegression
+            import warnings
+            if npoints != 1000:
+                warnings.warn("npoints argument is impotent for sklearn package")
+            if power != 2:
+                warnings.warn("power argument is impotent for sklearn package")
+            ir = IsotonicRegression(increasing=increasing, y_min=ymin, y_max=ymax, out_of_bounds='clip')
+            ir.fit(x, y)
+            return ir.predict(x_new)
+        elif package == 'isotonic':
+            from isotonic.isotonic import LpIsotonicRegression
+            ir = LpIsotonicRegression(npoints, increasing=increasing, power=power).fit(x, y)
+            y_isotonic_regression = ir.predict_proba(x_new)
+            # TODO check if you are not indadvertedly clipping too much here
+            if ymin is not None or ymax is not None:
+                y_isotonic_regression = np.clip(y_isotonic_regression, ymin, ymax)
+            return y_isotonic_regression
+        raise ValueError(f"Package name {package} is not a valid package name")
+
 
 class DeterministicOptimizationAlgorithm(Curve):
 
@@ -131,6 +158,8 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
                               confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        assert fevals_range.ndim == 1
+        assert dist.ndim == 1
         # first filter to only get the fevals range
         matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
@@ -143,8 +172,9 @@ class StochasticOptimizationAlgorithm(Curve):
         masked_fevals = masked_fevals.transpose()    # transpose back to original shape
         # remove fevals where every repeat has NaN
         num_repeats = masked_values.shape[1]
-        masked_fevals = masked_fevals[~np.isnan(masked_fevals).all(axis=1)].reshape(-1, num_repeats)
-        masked_values = masked_values[~np.isnan(masked_values).all(axis=1)].reshape(-1, num_repeats)
+        nan_mask = ~np.isnan(masked_values).all(axis=1)
+        masked_fevals = masked_fevals[nan_mask].reshape(-1, num_repeats)
+        masked_values = masked_values[nan_mask].reshape(-1, num_repeats)
         assert fevals_range.shape[0] == masked_values.shape[0] == masked_fevals.shape[0]
         # if a distribution is included
         if dist is not None:
@@ -158,6 +188,7 @@ class StochasticOptimizationAlgorithm(Curve):
                 indices_lower_err = np.clip(indices_mean - indices_std, a_min=0, a_max=dist.shape[0] - 1)
                 indices_upper_err = np.clip(indices_mean + indices_std, a_min=0, a_max=dist.shape[0] - 1)
             else:
+                # get the confidence interval
                 indices_lower_err, indices_upper_err = self.get_confidence_interval(indices, confidence_level)
                 indices_lower_err, indices_upper_err = indices_lower_err.astype(int), indices_upper_err.astype(int)
             # obtain the curves by looking up the associated values
@@ -173,6 +204,7 @@ class StochasticOptimizationAlgorithm(Curve):
                 curve_lower_err = curve - curve_std
                 curve_upper_err = curve + curve_std
             else:
+                # get the confidence interval
                 curve_lower_err, curve_upper_err = self.get_confidence_interval(masked_values, confidence_level)
 
         # # remove remaining NaN, yielding an array which <= fevals.shape
@@ -180,7 +212,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # curve_lower_err = curve_lower_err[~np.isnan(curve_lower_err)]
         # curve_upper_err = curve_upper_err[~np.isnan(curve_upper_err)]
 
-        # pad with NaN where outside the range, yielding an array which == fevals.shape
+        # pad with NaN where outside the range, yielding an array.shape == fevals.shape
         if curve.shape != fevals_range.shape:
             pad_width = self.fevals_find_pad_width(fevals, fevals_range)
             curve = np.pad(curve, pad_width=pad_width, constant_values=np.nan)
@@ -189,12 +221,69 @@ class StochasticOptimizationAlgorithm(Curve):
         assert curve.shape == fevals_range.shape
         return curve, curve_lower_err, curve_upper_err
 
-    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        return super().get_curve_over_time(time_range)
+    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        assert time_range.ndim == 1
+        assert dist.ndim == 1
+
+        times = self._x_time
+        values = self._y
+
+        # remove iterations where every repeat has NaN
+        num_repeats = values.shape[1]
+        nan_mask = ~np.isnan(values).all(axis=1)
+        times = times[nan_mask].reshape(-1, num_repeats)
+        values = values[nan_mask].reshape(-1, num_repeats)
+        num_fevals = values.shape[0]
+
+        # filter to only get the time range (but keep the raw data for the isotonic regression)
+        range_mask = (time_range[0] <= times) & (times <= time_range[-1])
+        masked_times = np.where(range_mask, times, np.nan)
+        masked_values = np.where(range_mask, values, np.nan)
+
+        # remove masked iterations where every repeat has NaN
+        masked_num_repeats = masked_values.shape[1]
+        nan_mask = ~np.isnan(masked_values).all(axis=1)
+        masked_times = masked_times[nan_mask].reshape(-1, masked_num_repeats)
+        masked_values = masked_values[nan_mask].reshape(-1, masked_num_repeats)
+
+        # bin the values to their closest point in time_range
+        bins = [[] for _ in range(len(time_range))]
+        for multi_index, value in np.ndenumerate(masked_values):
+            # look up the index of the closest point in time_range, write the value to this bin
+            if not np.isnan(value):
+                index = (np.abs(time_range - masked_times[multi_index])).argmin()
+                bins[index].append(value)
+
+        # convert the lists to numpy arrays
+        bins = list(np.array(bin) for bin in bins)
+        # TODO calculate the confidence interval for each bin
+        if confidence_level is None:
+            pass
+        else:
+            pass
+
+        # if a distribution is included
+        if dist is not None:
+            # for each value, get the index in the distribution
+            indices = self._get_indices(values, dist)
+            indices_curve = self.get_isotonic_curve(times, indices, time_range, npoints=num_fevals)
+            indices_curve = np.array(np.round(indices_curve), dtype=int)
+            curve = dist[indices_curve]
+        else:
+            # obtain the curves
+            pass
+
+        # pad with NaN where outside the range, yielding an array.shape == fevals.shape
+        assert curve.shape == time_range.shape
+        return curve, curve_lower_err, curve_upper_err
 
     def get_confidence_interval(self, values: np.ndarray, confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
         """ Calculates the non-parametric confidence interval for repeated individual configurations, assumed to be IID """
+        from math import floor, ceil, sqrt
         assert values.ndim == 2    # should be two-dimensional (iterations, repeats)
+
+        # confidence interval using normal distribution assumption
+        from statistics import NormalDist
         distribution = NormalDist()    # TODO check if binomial is more appropriate (calculate according to book)
         z = distribution.inv_cdf((1 + confidence_level) / 2.)
         n = values.shape[1]
@@ -205,6 +294,11 @@ class StochasticOptimizationAlgorithm(Curve):
         upper_rank = min(ceil(nq + base), n - 1)
         confidence_interval_lower = np.full(values.shape[0], np.nan)
         confidence_interval_upper = np.full(values.shape[0], np.nan)
+
+        # # confidence interval according to Hoefler 2015 (student-t)
+        # alpha = 1 - confidence_level
+        # mean = values.mean()
+        # t = t(n - 1, alpha / 2)
 
         # for each function evaluation, look up the confidence interval
         fevals_repeats_sorted = np.sort(values, axis=1)

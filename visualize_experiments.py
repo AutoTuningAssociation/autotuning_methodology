@@ -349,98 +349,159 @@ class Visualize:
                                baseline_curve: Baseline = None, shaded=True, plot_errors=False):
         """Plots all optimization strategy curves"""
         relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
-        confidence_level: float = plot_settings.get("plot_confidence_interval", 0.95)
+        confidence_level: float = plot_settings.get("confidence_level", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
-        bar_groups_markers = {
-            "reference": ".",
-            "old": "+",
-            "new": "d"
-        }
-
-        baseline = strategies_curves["baseline"]
-        x_axis = baseline["x_axis"]
+        absolute_optimum: float = info["absolute_optimum"]
+        absolute_difference: float = info['absolute_difference']
+        median: float = info['median']
+        median_optimum_distance = median - absolute_optimum
 
         # plot the absolute optimum
-        absolute_optimum = info["absolute_optimum"]
-        if subtract_baseline is False and absolute_optimum is not None:
-            ax.axhline(absolute_optimum, label="Absolute optimum {}".format(round(absolute_optimum, 3)), c='black', ls='-')
-        else:
-            ax.axhline(0, label="Random search", c='black', ls=':')
-            ax.axhline(1, label="Absolute optimum {}".format(round(absolute_optimum, 3)), c='black', ls='-.')
+        absolute_optimum_y_value = 1 if relative_to_baseline else absolute_optimum
+        ax.axhline(absolute_optimum_y_value, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
-        color_index = 0
-        marker = ","
-        y_min = np.PINF
-        y_max = np.NINF
-        for strategy_curves in strategies_curves["strategies"]:
-            # get the data
-            strategy = strategies_data[strategy_curves["strategy_index"]]
-            y_axis = strategy_curves["y_axis"]
-            y_axis_std = strategy_curves["y_axis_std"]
-            y_axis_std_lower = strategy_curves["y_axis_std_lower"]
-            y_axis_std_upper = strategy_curves["y_axis_std_upper"]
-            y_min = min(y_min, np.min(y_axis))
-            y_max = max(y_max, np.max(y_axis))
-
-            # set colors, transparencies and markers
-            color = colors[color_index]
-            color_index += 1
-            alpha = 1.0
-            fill_alpha = 0.2
-            if "bar_group" in strategy:
-                bar_group = strategy["bar_group"]
-                marker = bar_groups_markers[bar_group]
-
-            # plot the data
-            if shaded is True:
-                if plot_errors:
-                    ax.fill_between(
-                        x_axis,
-                        y_axis_std_lower,
-                        y_axis_std_upper,
-                        alpha=fill_alpha,
-                        antialiased=True,
-                        color=color,
-                    )
-                ax.plot(
-                    x_axis,
-                    y_axis,
-                    marker=marker,
-                    alpha=alpha,
-                    linestyle="-",
-                    label=f"{strategy['display_name']}",
-                    color=color,
-                )
+        # plot baseline
+        sorted_times = np.sort(info['sorted_times'])
+        if baseline_curve is not None:
+            if relative_to_baseline is True:
+                ax.axhline(0, label="baseline trajectory", color="black", ls="--")
             else:
-                if plot_errors:
-                    ax.errorbar(
-                        x_axis,
-                        y_axis,
-                        y_axis_std,
-                        marker=marker,
-                        alpha=alpha,
-                        linestyle="--",
-                        label=strategy["display_name"],
-                    )
-                else:
-                    ax.plot(
-                        x_axis,
-                        y_axis,
-                        marker=marker,
-                        linestyle="-",
-                        label=f"{strategy['display_name']}",
-                        color=color,
-                    )
+                ax.plot(time_range, baseline_curve.get_curve_over_time(time_range), label="baseline curve", color="black", ls="--")
 
-        # finalize plot
-        ax.axis([np.min(x_axis), np.max(x_axis), y_min * 0.9, y_max * 1.1])
-        ax.set_xlabel(self.x_metric_displayname["kerneltime"])
-        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max" if subtract_baseline else "objective"])
-        ax.set_ylim(bottom=y_min, top=1)
+        # plot each strategy
+        for strategy_index, strategy in enumerate(self.strategies):
+            if "hide" in strategy.keys() and strategy["hide"]:
+                continue
+
+            # get the data
+            color = colors[strategy_index]
+            strategy_curve = strategies_curves[strategy_index]
+
+            # obtain the curves
+            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_time(time_range, dist=sorted_times, confidence_level=confidence_level)
+            if relative_to_baseline:
+                # sanity check: see if the calculated random curve is equal to itself
+                # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))
+                curve = baseline_curve.get_standardised_curve_over_time(time_range, curve, absolute_optimum)
+                curve_lower_err = baseline_curve.get_standardised_curve_over_time(time_range, curve_lower_err, absolute_optimum)
+                curve_upper_err = baseline_curve.get_standardised_curve_over_time(time_range, curve_upper_err, absolute_optimum)
+
+            # visualize
+            if plot_errors:
+                ax.fill_between(time_range, curve_lower_err, curve_upper_err, alpha=0.2, antialiased=True, color=color)
+            ax.plot(time_range, curve, label=f"{strategy['display_name']}", color=color)
+
+        # # plot cutoff point
+        # def plot_cutoff_point(cutoff_percentile):
+        #     cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, info)
+        #     print("")
+        #     # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
+        #     # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
+        #     # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
+        #     ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
+
+        # if baseline_curve is not None:
+        #     plot_cutoff_point(0.980)
+
+        ax.set_xlim(tuple([time_range[0], time_range[-1]]))
+        ax.set_xlabel(self.x_metric_displayname["num_evals"])
+        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
-        if plot_errors is False:
-            ax.grid(axis="y", zorder=0, alpha=0.7)
+
+        # OLD CODE
+        # relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
+        # confidence_level: float = plot_settings.get("plot_confidence_interval", 0.95)
+        # colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+        # bar_groups_markers = {
+        #     "reference": ".",
+        #     "old": "+",
+        #     "new": "d"
+        # }
+
+        # baseline = strategies_curves["baseline"]
+        # x_axis = baseline["x_axis"]
+
+        # # plot the absolute optimum
+        # absolute_optimum = info["absolute_optimum"]
+        # if subtract_baseline is False and absolute_optimum is not None:
+        #     ax.axhline(absolute_optimum, label="Absolute optimum {}".format(round(absolute_optimum, 3)), c='black', ls='-')
+        # else:
+        #     ax.axhline(0, label="Random search", c='black', ls=':')
+        #     ax.axhline(1, label="Absolute optimum {}".format(round(absolute_optimum, 3)), c='black', ls='-.')
+
+        # color_index = 0
+        # marker = ","
+        # y_min = np.PINF
+        # y_max = np.NINF
+        # for strategy_curves in strategies_curves["strategies"]:
+        #     # get the data
+        #     strategy = strategies_data[strategy_curves["strategy_index"]]
+        #     y_axis = strategy_curves["y_axis"]
+        #     y_axis_std = strategy_curves["y_axis_std"]
+        #     y_axis_std_lower = strategy_curves["y_axis_std_lower"]
+        #     y_axis_std_upper = strategy_curves["y_axis_std_upper"]
+        #     y_min = min(y_min, np.min(y_axis))
+        #     y_max = max(y_max, np.max(y_axis))
+
+        #     # set colors, transparencies and markers
+        #     color = colors[color_index]
+        #     color_index += 1
+        #     alpha = 1.0
+        #     fill_alpha = 0.2
+        #     if "bar_group" in strategy:
+        #         bar_group = strategy["bar_group"]
+        #         marker = bar_groups_markers[bar_group]
+
+        #     # plot the data
+        #     if shaded is True:
+        #         if plot_errors:
+        #             ax.fill_between(
+        #                 x_axis,
+        #                 y_axis_std_lower,
+        #                 y_axis_std_upper,
+        #                 alpha=fill_alpha,
+        #                 antialiased=True,
+        #                 color=color,
+        #             )
+        #         ax.plot(
+        #             x_axis,
+        #             y_axis,
+        #             marker=marker,
+        #             alpha=alpha,
+        #             linestyle="-",
+        #             label=f"{strategy['display_name']}",
+        #             color=color,
+        #         )
+        #     else:
+        #         if plot_errors:
+        #             ax.errorbar(
+        #                 x_axis,
+        #                 y_axis,
+        #                 y_axis_std,
+        #                 marker=marker,
+        #                 alpha=alpha,
+        #                 linestyle="--",
+        #                 label=strategy["display_name"],
+        #             )
+        #         else:
+        #             ax.plot(
+        #                 x_axis,
+        #                 y_axis,
+        #                 marker=marker,
+        #                 linestyle="-",
+        #                 label=f"{strategy['display_name']}",
+        #                 color=color,
+        #             )
+
+        # # finalize plot
+        # ax.axis([np.min(x_axis), np.max(x_axis), y_min * 0.9, y_max * 1.1])
+        # ax.set_xlabel(self.x_metric_displayname["kerneltime"])
+        # ax.set_ylabel(self.y_metric_displayname["objective_baseline_max" if subtract_baseline else "objective"])
+        # ax.set_ylim(bottom=y_min, top=1)
+        # ax.legend()
+        # if plot_errors is False:
+        #     ax.grid(axis="y", zorder=0, alpha=0.7)
 
     def plot_aggregated_curves(self, ax: plt.Axes, strategies_aggregated: list):
         ax.axhline(0, label="Random search", c='black', ls=':')

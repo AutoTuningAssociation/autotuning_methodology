@@ -20,9 +20,9 @@ class ResultsDescription():
     """ Object to store a description of the results and retrieve results for an optimization algorithm on a search space """
 
     def __init__(self, folder_id: str, kernel_name: str, device_name: str, strategy_name: str, strategy_display_name: str, stochastic: bool,
-                 objective_time_keys: str, objective_value_key: str, objective_values_key: str) -> None:
+                 objective_time_keys: str, objective_value_key: str, objective_values_key: str, minimization: bool) -> None:
         # all attributes must be hashable for symetric difference checking
-        self._version = "1.0.0"
+        self._version = "1.1.0"
         self.__stored = False
         self.__folder_id = folder_id
         self.kernel_name = kernel_name
@@ -33,6 +33,7 @@ class ResultsDescription():
         self.objective_time_keys = objective_time_keys
         self.objective_value_key = objective_value_key
         self.objective_values_key = objective_values_key
+        self.minimization = minimization
         self.numpy_arrays_keys = [
             'fevals_results', 'time_results', 'objective_time_results', 'objective_value_results', 'objective_value_best_results', 'objective_value_stds'
         ]    # the order must not be changed here!

@@ -152,14 +152,13 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 else:
                     strategy['options']['max_fevals'] = int(round(cutoff_point_fevals * cutoff_margin))
                 results_description = ResultsDescription(experiment_folder_id, kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic,
-                                                         objective_time_keys, objective_value_key, objective_values_key)
+                                                         objective_time_keys, objective_value_key, objective_values_key, minimization)
 
                 # if the strategy is in the cache, use cached data
                 if 'ignore_cache' not in strategy and results_description.has_results():
                     print(" | - |-> retrieved from cache")
                 else:    # execute each strategy that is not in the cache
-                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling, minimization=minimization,
-                                                          error_value=1e20)
+                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling, error_value=1e20)
 
                 # set the results
                 results_descriptions[gpu_name][kernel_name][strategy_name] = results_description

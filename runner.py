@@ -41,7 +41,7 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
     return res, total_time_ms
 
 
-def collect_results(kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, minimization: bool, error_value) -> ResultsDescription:
+def collect_results(kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, error_value) -> ResultsDescription:
     """ Executes optimization algorithms to capture optimization algorithm behaviour """
     min_num_evals: int = strategy['minimum_number_of_evaluations']
     # TODO put the tune options in the .json in strategy_defaults?
@@ -98,12 +98,12 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
         yappi.clear_stats()
 
     # combine the results to numpy arrays and write to a file
-    write_results(repeated_results, results_description, minimization, error_value=error_value)
+    write_results(repeated_results, results_description, error_value=error_value)
     assert results_description.has_results()
     return results_description
 
 
-def write_results(repeated_results: list, results_description: ResultsDescription, minimization: bool, error_value):
+def write_results(repeated_results: list, results_description: ResultsDescription, error_value):
     """ Combine the results and write them to a numpy file """
 
     # get the objective value and time keys
@@ -127,7 +127,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
     objective_value_stds = get_nan_array()
 
     # combine the results
-    opt_func = np.nanmin if minimization is True else np.nanmax
+    opt_func = np.nanmin if results_description.minimization is True else np.nanmax
 
     for repeat_index, repeat in enumerate(repeated_results):
         cumulative_total_time = 0

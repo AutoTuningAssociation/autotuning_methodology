@@ -18,8 +18,8 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_relative_to_baseline": true,
-    "plot_fevals": true,
-    "plot_time": false,
+    "plot_fevals": false,
+    "plot_time": true,
     "plot_aggregated": false,
     "confidence_level": 0.95
   },
