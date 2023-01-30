@@ -345,7 +345,7 @@ class Visualize:
         ax.legend()
 
     def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, plot_settings: dict,
-                               baseline_curve: Baseline = None, shaded=True, plot_errors=False):
+                               baseline_curve: Baseline = None, plot_errors=True):
         """Plots all optimization strategy curves"""
         relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
@@ -404,7 +404,7 @@ class Visualize:
         #     plot_cutoff_point(0.980)
 
         ax.set_xlim(tuple([time_range[0], time_range[-1]]))
-        ax.set_xlabel(self.x_metric_displayname["num_evals"])
+        ax.set_xlabel(self.x_metric_displayname["total_time"])
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
 

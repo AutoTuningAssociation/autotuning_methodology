@@ -253,70 +253,53 @@ class StochasticOptimizationAlgorithm(Curve):
         values = np.where(range_mask_margin, values, np.nan)
         num_fevals, num_repeats = values.shape
 
-        # remove iterations where more than 10% of repeats has NaN
-        print(np.count_nonzero(np.isnan(times), axis=1), times.shape)
-        print(np.count_nonzero(np.isnan(times), axis=1) < ceil())
+        # remove all NaNs, yielding a 1D array (because iterations has no meaning for over time anyway, and isotonic regression requires a 1D array)
+        no_nan_mask = ~np.isnan(times) & ~np.isnan(values)    # only keep indices where both the times and values are not NaN
+        times_1D = times[no_nan_mask]
+        values_1D = values[no_nan_mask]
+        assert times_1D.ndim == 1
+        assert times_1D.shape == values_1D.shape
+        assert np.all(~np.isnan(times_1D))
+        assert np.all(~np.isnan(values_1D))
 
         # filter to only get the time range (for the binned error calculation)
         range_mask = (time_range[0] <= times) & (times <= time_range[-1])
         assert np.all(np.count_nonzero(range_mask, axis=0) > 1), "Not enough overlap in time range and time values"
         masked_times = np.where(range_mask, times, np.nan)
         masked_values = np.where(range_mask, values, np.nan)
+        assert masked_times.ndim == 2
+        assert masked_times.shape == masked_values.shape
 
-        # bin the values to their closest point in time_range
-        bins = [[] for _ in range(len(time_range))]
+        # bin the values to their closest point in low resolution time_range
+        time_range_low_res = np.linspace(time_range[0], time_range[-1], num=num_fevals)    # should result in on average num_repeat observations per bin
+        bins = [[] for _ in range(len(time_range_low_res))]
         for multi_index, value in np.ndenumerate(masked_values):
-            # look up the index of the closest point in time_range, write the value to this bin
+            # for each element look up the index of the closest point in time_range, write the value to this bin
             if not np.isnan(value):
-                index = (np.abs(time_range - masked_times[multi_index])).argmin()
+                index = (np.abs(time_range_low_res - masked_times[multi_index])).argmin()
                 bins[index].append(value)
 
         # calculate the confidence interval for each bin
         bins = list([np.array(bin) for bin in bins])
         if confidence_level is None:
-            # get the standard error
+            # get the standard error, interpolate missing bins
             curve_std: np.ndarray = np.nanstd(bins, axis=1)
+            curve_std = np.interp(time_range, time_range_low_res, curve_std)
             curve_lower_err = curve - curve_std
             curve_upper_err = curve + curve_std
         else:
             # calculate in bins, interpolate missing bins
             curve_lower_err, curve_upper_err = self.get_confidence_interval_jagged(bins, confidence_level)
+            curve_lower_err, curve_upper_err = np.interp(time_range, time_range_low_res,
+                                                         curve_lower_err), np.interp(time_range, time_range_low_res, curve_upper_err)
             # alternative: calculate using get_confidence_interval, interpolate to time_range afterwards (cons: naive assumption that the times roughly match per function evaluation)
             # curve_lower_err, curve_upper_err = self.get_confidence_interval(values, confidence_level)
-
-        # replace NaNs where possible, because isotonic regression requires no NaN
-        NaN_replacement_tolerance = 0.05
-        NaN_error_string = f"Number of NaNs must be less than {NaN_replacement_tolerance*100}% of the number of repeats"
-        assert np.all(np.count_nonzero(np.isnan(times), axis=1) < ceil(NaN_replacement_tolerance * times.shape[1])), NaN_error_string
-        assert np.all(np.count_nonzero(np.isnan(values), axis=1) < ceil(NaN_replacement_tolerance * values.shape[1])), NaN_error_string
-        if np.count_nonzero(np.isnan(times)) > 0:
-            repeats_mean = np.nanmean(times, axis=1)
-            nan_indices = np.where(np.isnan(times))
-            times[nan_indices] = np.take(repeats_mean, nan_indices[0])
-        if np.count_nonzero(np.isnan(values)) > 0:
-            true_median_values = values
-            # if the number of non-NaN repeats is even, set one more value to NaN to make sure it is odd
-            where_even = np.count_nonzero(~np.isnan(true_median_values), axis=1) % 2 == 0
-            where_even_indices = np.nonzero(where_even)[0]
-            for even_index in where_even_indices:
-                # set a random non-NaN value to NaN to make the number of non-NaN values odd
-                random_valid_index = np.random.choice(np.nonzero(~np.isnan(true_median_values[even_index]))[0])
-                true_median_values[even_index, random_valid_index] = np.nan
-            # check that each row has an odd number of non-NaN values
-            assert np.all(np.count_nonzero(~np.isnan(true_median_values), axis=1) %
-                          2 == 1), "Number of non-NaN values per repeat must be odd to get an existing median value"
-            repeats_mean = np.nanmedian(true_median_values, axis=1)    # median instead of mean as we need to be able to look the values up in the distribution
-            nan_indices = np.where(np.isnan(values))
-            values[nan_indices] = np.take(repeats_mean, nan_indices[0])
-        assert np.count_nonzero(np.isnan(times)) == 0
-        assert np.count_nonzero(np.isnan(values)) == 0
-        assert times.shape == values.shape
 
         # if a distribution is included
         if dist is not None:
             # for each value, get the index in the distribution
-            indices = self._get_indices(values, dist)
-            indices_curve = self.get_isotonic_curve(times, indices, time_range, npoints=num_fevals, package='sklearn')
+            indices = self._get_indices(values_1D, dist)
+            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, npoints=num_fevals, package='sklearn')
             indices_curve = np.array(np.round(indices_curve), dtype=int)
             curve = dist[indices_curve]
         else:
