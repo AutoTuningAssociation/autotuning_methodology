@@ -135,6 +135,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         objective_value_best = np.nan
         for evaluation_index, evaluation in enumerate(repeat):
             objective_value = evaluation[objective_value_key]
+            cumulative_total_time += evaluation['strategy_time'] / 1000    # TODO the miliseconds to seconds conversion is specific to Kernel Tuner
             if not is_invalid_objective_value(objective_value, error_value):
                 # extract the objectives and time spent
                 if not np.isnan(cumulative_total_time):
@@ -144,9 +145,11 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
                 objective_value_best = opt_func([objective_value, objective_value_best])
                 objective_value_std = np.std(list(e for e in evaluation[objective_values_key] if e is not error_value))
             else:
-                # set the values to NaN
-                cumulative_total_time = np.NaN
-                cumulative_objective_time = np.NaN
+                pass
+                # TODO figure out what to do here - how should we count total time and objective time if there is an invalid value? Cumulating NaN is useless for large number of repeats
+                # # set the values to NaN
+                # cumulative_total_time = np.NaN
+                # cumulative_objective_time = np.NaN
 
             # write to the arrays
             fevals_results[evaluation_index, repeat_index] = evaluation_index + 1    # number of function evaluations are counted from 1 instead of 0

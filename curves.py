@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 import numpy as np
 from caching import ResultsDescription
+from math import floor, ceil, sqrt
 
 
 class Curve(ABC):
@@ -89,6 +90,13 @@ class Curve(ABC):
         assert isinstance(x, np.ndarray)
         assert isinstance(y, np.ndarray)
         assert isinstance(x_new, np.ndarray)
+        assert x_new.ndim == 1
+
+        if x.ndim > 1:
+            x = x.flatten()
+        if y.ndim > 1:
+            y = y.flatten()
+
         increasing = not self.minimization
         if package == 'sklearn':
             from sklearn.isotonic import IsotonicRegression
@@ -160,6 +168,8 @@ class StochasticOptimizationAlgorithm(Curve):
                               confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         assert fevals_range.ndim == 1
         assert dist.ndim == 1
+        assert np.all(np.isfinite(fevals_range))
+
         # first filter to only get the fevals range
         matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
@@ -223,6 +233,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         assert time_range.ndim == 1
+        assert np.all(np.isfinite(time_range))
         assert dist.ndim == 1
 
         times = self._x_time
@@ -233,18 +244,24 @@ class StochasticOptimizationAlgorithm(Curve):
         nan_mask = ~np.isnan(values).all(axis=1)
         times = times[nan_mask].reshape(-1, num_repeats)
         values = values[nan_mask].reshape(-1, num_repeats)
-        num_fevals = values.shape[0]
 
-        # filter to only get the time range (but keep the raw data for the isotonic regression)
+        # filter to get the time range with a margin on both ends for the isotonic regression
+        time_range_margin = 0.1
+        range_mask_margin = (time_range[0] * (1 - time_range_margin) <= times) & (times <= time_range[-1] * (1 + time_range_margin))
+        assert np.all(np.count_nonzero(range_mask_margin, axis=0) > 1), "Not enough overlap in time range and time values"
+        times = np.where(range_mask_margin, times, np.nan)
+        values = np.where(range_mask_margin, values, np.nan)
+        num_fevals, num_repeats = values.shape
+
+        # remove iterations where more than 10% of repeats has NaN
+        print(np.count_nonzero(np.isnan(times), axis=1), times.shape)
+        print(np.count_nonzero(np.isnan(times), axis=1) < ceil())
+
+        # filter to only get the time range (for the binned error calculation)
         range_mask = (time_range[0] <= times) & (times <= time_range[-1])
+        assert np.all(np.count_nonzero(range_mask, axis=0) > 1), "Not enough overlap in time range and time values"
         masked_times = np.where(range_mask, times, np.nan)
         masked_values = np.where(range_mask, values, np.nan)
-
-        # remove masked iterations where every repeat has NaN
-        masked_num_repeats = masked_values.shape[1]
-        nan_mask = ~np.isnan(masked_values).all(axis=1)
-        masked_times = masked_times[nan_mask].reshape(-1, masked_num_repeats)
-        masked_values = masked_values[nan_mask].reshape(-1, masked_num_repeats)
 
         # bin the values to their closest point in time_range
         bins = [[] for _ in range(len(time_range))]
@@ -254,19 +271,52 @@ class StochasticOptimizationAlgorithm(Curve):
                 index = (np.abs(time_range - masked_times[multi_index])).argmin()
                 bins[index].append(value)
 
-        # convert the lists to numpy arrays
-        bins = list(np.array(bin) for bin in bins)
-        # TODO calculate the confidence interval for each bin
+        # calculate the confidence interval for each bin
+        bins = list([np.array(bin) for bin in bins])
         if confidence_level is None:
-            pass
+            # get the standard error
+            curve_std: np.ndarray = np.nanstd(bins, axis=1)
+            curve_lower_err = curve - curve_std
+            curve_upper_err = curve + curve_std
         else:
-            pass
+            # calculate in bins, interpolate missing bins
+            curve_lower_err, curve_upper_err = self.get_confidence_interval_jagged(bins, confidence_level)
+            # alternative: calculate using get_confidence_interval, interpolate to time_range afterwards (cons: naive assumption that the times roughly match per function evaluation)
+            # curve_lower_err, curve_upper_err = self.get_confidence_interval(values, confidence_level)
+
+        # replace NaNs where possible, because isotonic regression requires no NaN
+        NaN_replacement_tolerance = 0.05
+        NaN_error_string = f"Number of NaNs must be less than {NaN_replacement_tolerance*100}% of the number of repeats"
+        assert np.all(np.count_nonzero(np.isnan(times), axis=1) < ceil(NaN_replacement_tolerance * times.shape[1])), NaN_error_string
+        assert np.all(np.count_nonzero(np.isnan(values), axis=1) < ceil(NaN_replacement_tolerance * values.shape[1])), NaN_error_string
+        if np.count_nonzero(np.isnan(times)) > 0:
+            repeats_mean = np.nanmean(times, axis=1)
+            nan_indices = np.where(np.isnan(times))
+            times[nan_indices] = np.take(repeats_mean, nan_indices[0])
+        if np.count_nonzero(np.isnan(values)) > 0:
+            true_median_values = values
+            # if the number of non-NaN repeats is even, set one more value to NaN to make sure it is odd
+            where_even = np.count_nonzero(~np.isnan(true_median_values), axis=1) % 2 == 0
+            where_even_indices = np.nonzero(where_even)[0]
+            for even_index in where_even_indices:
+                # set a random non-NaN value to NaN to make the number of non-NaN values odd
+                random_valid_index = np.random.choice(np.nonzero(~np.isnan(true_median_values[even_index]))[0])
+                true_median_values[even_index, random_valid_index] = np.nan
+            # check that each row has an odd number of non-NaN values
+            assert np.all(np.count_nonzero(~np.isnan(true_median_values), axis=1) %
+                          2 == 1), "Number of non-NaN values per repeat must be odd to get an existing median value"
+            repeats_mean = np.nanmedian(true_median_values, axis=1)    # median instead of mean as we need to be able to look the values up in the distribution
+            nan_indices = np.where(np.isnan(values))
+            values[nan_indices] = np.take(repeats_mean, nan_indices[0])
+        assert np.count_nonzero(np.isnan(times)) == 0
+        assert np.count_nonzero(np.isnan(values)) == 0
+        assert times.shape == values.shape
 
         # if a distribution is included
         if dist is not None:
             # for each value, get the index in the distribution
             indices = self._get_indices(values, dist)
-            indices_curve = self.get_isotonic_curve(times, indices, time_range, npoints=num_fevals)
+            indices_curve = self.get_isotonic_curve(times, indices, time_range, npoints=num_fevals, package='sklearn')
             indices_curve = np.array(np.round(indices_curve), dtype=int)
             curve = dist[indices_curve]
         else:
@@ -278,8 +328,7 @@ class StochasticOptimizationAlgorithm(Curve):
         return curve, curve_lower_err, curve_upper_err
 
     def get_confidence_interval(self, values: np.ndarray, confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
-        """ Calculates the non-parametric confidence interval for repeated individual configurations, assumed to be IID """
-        from math import floor, ceil, sqrt
+        """ Calculates the non-parametric confidence interval for repeated function evaluations, assumed to be IID """
         assert values.ndim == 2    # should be two-dimensional (iterations, repeats)
 
         # confidence interval using normal distribution assumption
@@ -306,4 +355,37 @@ class StochasticOptimizationAlgorithm(Curve):
             confidence_interval_lower[feval_index] = feval_repeats_sorted[lower_rank]
             confidence_interval_upper[feval_index] = feval_repeats_sorted[upper_rank]
 
+        return confidence_interval_lower, confidence_interval_upper
+
+    def get_confidence_interval_jagged(self, bins: list[np.ndarray], confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
+        """ Calculates the non-parametric confidence interval for jagged bins, assumed to be IID, slower than get_confidence_interval() """
+        confidence_interval_lower = np.full(len(bins), np.nan)
+        confidence_interval_upper = np.full(len(bins), np.nan)
+
+        # confidence interval using normal distribution assumption
+        from statistics import NormalDist
+        distribution = NormalDist()    # TODO check if binomial is more appropriate (calculate according to book)
+        z = distribution.inv_cdf((1 + confidence_level) / 2.)
+        q = 0.5
+
+        # for each bin, look up the confidence interval
+        for feval_index, bin in enumerate(bins):
+            n = len(bin)
+            if n <= 0:
+                continue
+            bin = np.sort(bin)
+            base = z * sqrt(n * q * (1 - q))
+            lower_rank = max(floor(n * q - base), 0)
+            upper_rank = min(ceil(n * q + base), n - 1)
+            confidence_interval_lower[feval_index] = bin[lower_rank]
+            confidence_interval_upper[feval_index] = bin[upper_rank]
+
+        # interpolate missing values
+        nan_mask = np.isnan(confidence_interval_lower)    # is the same is np.isnan(confidence_interval_upper)
+        confidence_interval_lower[nan_mask] = np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), confidence_interval_lower[~nan_mask])
+        confidence_interval_upper[nan_mask] = np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), confidence_interval_upper[~nan_mask])
+
+        # check before returning
+        assert not np.isnan(confidence_interval_lower).any()
+        assert not np.isnan(confidence_interval_upper).any()
         return confidence_interval_lower, confidence_interval_upper

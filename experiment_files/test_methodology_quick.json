@@ -3,9 +3,7 @@
   "name": "Test new methodology",
   "folder_id": "test_new_methodology",
   "kernels": [
-    "pnpoly",
-    "convolution",
-    "GEMM"
+    "pnpoly"
   ],
   "GPUs": [
     "RTX_2070_SUPER"
@@ -17,7 +15,7 @@
   "cutoff_percentile_start": 0.01,
   "cutoff_type": "fevals",
   "plot": {
-    "plot_relative_to_baseline": true,
+    "plot_relative_to_baseline": false,
     "plot_fevals": false,
     "plot_time": true,
     "plot_aggregated": false,

@@ -69,6 +69,14 @@ def get_strategies(experiment: dict) -> dict:
     return strategies
 
 
+def median_time_per_feval(stats_info: dict) -> float:
+    """ Median time in seconds per function evaluation """
+    median: float = stats_info['median']
+    repeats: int = stats_info['repeats']
+    median_feval_time = (median * repeats) / 1000    # in seconds # TODO change this to the new specified output format in kernel_info_generator
+    return median_feval_time
+
+
 def calc_cutoff_point(cutoff_percentile: float, stats_info: dict) -> Tuple[float, int]:
     """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point) """
     absolute_optimum: float = stats_info["absolute_optimum"]
@@ -93,10 +101,7 @@ def calc_cutoff_point(cutoff_percentile: float, stats_info: dict) -> Tuple[float
 def calc_cutoff_point_fevals_time(cutoff_percentile: float, stats_info: dict) -> Tuple[float, int, float]:
     """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point) """
     cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, stats_info)
-    mean: float = stats_info['mean']
-    repeats: int = stats_info['repeats']
-    mean_feval_time = (mean * repeats) / 1000    # in seconds # TODO change this to the new specified output format in kernel_info_generator
-    cutoff_point_time = cutoff_point_fevals * mean_feval_time
+    cutoff_point_time = cutoff_point_fevals * median_time_per_feval(stats_info)
     return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
 
 
@@ -146,11 +151,13 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
                 # setup the results description
                 if not 'options' in strategy:
                     strategy['options'] = dict()
-                cutoff_margin = 1.1    # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
-                if cutoff_type == 'time':
-                    strategy['options']['time_limit'] = cutoff_point_time * cutoff_margin
-                else:
-                    strategy['options']['max_fevals'] = int(round(cutoff_point_fevals * cutoff_margin))
+                cutoff_margin = 2.0    # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
+
+                # TODO make sure this works correctly (but how could it?)
+                # if cutoff_type == 'time':
+                #     strategy['options']['time_limit'] = cutoff_point_time * cutoff_margin
+                # else:
+                strategy['options']['max_fevals'] = int(ceil(cutoff_point_fevals * cutoff_margin))
                 results_description = ResultsDescription(experiment_folder_id, kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic,
                                                          objective_time_keys, objective_value_key, objective_values_key, minimization)
 

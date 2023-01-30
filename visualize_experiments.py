@@ -5,7 +5,6 @@ from typing import Tuple, Any
 import matplotlib.pyplot as plt
 import warnings
 from sklearn.metrics import auc
-from math import ceil
 
 from experiments import execute_experiment, get_searchspaces_info_stats, calc_cutoff_point_fevals_time
 from curves import Curve, StochasticOptimizationAlgorithm
@@ -366,7 +365,7 @@ class Visualize:
             if relative_to_baseline is True:
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
             else:
-                ax.plot(time_range, baseline_curve.get_curve_over_time(time_range), label="baseline curve", color="black", ls="--")
+                ax.plot(time_range, baseline_curve.get_curve_over_time(time_range, info), label="baseline curve", color="black", ls="--")
 
         # plot each strategy
         for strategy_index, strategy in enumerate(self.strategies):
@@ -378,6 +377,7 @@ class Visualize:
             strategy_curve = strategies_curves[strategy_index]
 
             # obtain the curves
+            print(strategy['display_name'])
             curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_time(time_range, dist=sorted_times, confidence_level=confidence_level)
             if relative_to_baseline:
                 # sanity check: see if the calculated random curve is equal to itself

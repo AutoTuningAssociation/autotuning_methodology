@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+from experiments import median_time_per_feval
 
 
 class Baseline(ABC):
@@ -42,6 +43,9 @@ class RandomSearchBaseline(Baseline):
         assert np.all(self.dist_descending[:-1] >= self.dist_descending[1:])
         self._redwhite_index_dist = self.dist_descending if minimization else self.dist_descending
         super().__init__(minimization)
+
+    def time_to_fevals(self, time_range: np.ndarray) -> np.ndarray:
+        """ Convert a time range to a number of function evaluations range """
 
     def _draw_random(xs, k):
         """ Monte Carlo simulation over cache """
@@ -88,7 +92,7 @@ class RandomSearchBaseline(Baseline):
         return dist[index]
 
     def _get_random_curve(self, fevals_range: np.ndarray) -> np.ndarray:
-        """ Returns the drawn values of the random curve at each function evaluation """
+        """ Returns the drawn values of the random curve at each number of function evaluation """
         ks = fevals_range - 1    # because ranges of number of function evaluations start at 1, we need to subtract 1 to use the index version
         draws = np.array([self._redwhite_index(k) for k in ks])
         return draws
@@ -116,13 +120,16 @@ class RandomSearchBaseline(Baseline):
         curve = self._get_random_curve(fevals_range)
         return super().get_curve_over_fevals(curve)
 
-    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
+    def get_curve_over_time(self, time_range: np.ndarray, stats_info: dict) -> np.ndarray:
         # TODO map from time range to fevals
+        median_feval_time = median_time_per_feval(stats_info)
+        fevals_range = np.maximum(time_range / median_feval_time, 0)
         curve = self._get_random_curve(time_range)
         indices = self._get_indices(curve)
+        # indices_interpolated = np.interp(, fevals_range, indices)
+        assert indices.shape == time_range.shape
+        return self.dist_descending[indices]
         # TODO map from fevals to time, use indices to get this curve
-        return super().get_curve_over_time(curve)
 
     def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray, absolute_optimum: float) -> np.ndarray:
         random_curve = self.get_curve_over_fevals(fevals_range)
@@ -132,6 +139,6 @@ class RandomSearchBaseline(Baseline):
         standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
         return standardised_curve
 
-    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
+    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray, absolute_optimum: float) -> np.ndarray:
         raise NotImplementedError()
         return super().get_standardised_curve_over_fevals(strategy_curve)
