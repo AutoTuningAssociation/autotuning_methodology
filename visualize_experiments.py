@@ -106,7 +106,7 @@ class Visualize:
             raise ValueError(f"At least one of 'plot_fevals' and 'plot_time' must be True")
 
         # visualize
-        all_strategies_curves = list()
+        aggregation_data: list[tuple[RandomSearchBaseline, list[Curve], dict, np.ndarray]] = list()
         for gpu_name in self.experiment["GPUs"]:
             for kernel_name in self.experiment["kernels"]:
                 print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
@@ -140,146 +140,34 @@ class Visualize:
                 sorted_times = np.sort(info['sorted_times'])
                 random_baseline = RandomSearchBaseline(minimization, sorted_times)
 
+                # collect aggregatable data
+                if plot_aggregated:
+                    aggregation_data.append(tuple([random_baseline, strategies_curves, info, time_range]))
+
                 # visualize the results
                 if plot_time:
                     self.plot_strategies_curves(axs[0], info, strategies_curves, time_range, plot_settings, random_baseline)
                 if plot_fevals:
                     self.plot_strategies_fevals(axs[-1], info, strategies_curves, fevals_range, plot_settings, random_baseline)
-                all_strategies_curves.append(strategies_curves)
 
                 # finalize the figure and display it
                 if plot_time or plot_fevals:
                     fig.tight_layout()
                     plt.show()
 
-        # # plot the aggregated data
-        # if plot_aggregated:
-        #     fig, axs = plt.subplots(ncols=1, figsize=(15, 8))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-        #     if not hasattr(axs, "__len__"):
-        #         axs = [axs]
-        #     title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
-        #     fig.canvas.manager.set_window_title(title)
-        #     fig.suptitle(title)
+        # plot the aggregated data
+        if plot_aggregated:
+            fig, axs = plt.subplots(ncols=1, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+            if not hasattr(axs, "__len__"):
+                axs = [axs]
+            title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
+            fig.canvas.manager.set_window_title(title)
+            fig.suptitle(title)
 
-        # # gather the aggregate y axis for each strategy
-        # print("\n")
-        # strategies_aggregated = list()
-        # for strategy_index, strategy in enumerate(self.strategies):
-        #     perf = list()
-        #     y_axis_temp = list()
-        #     for strategies_curves in all_strategies_curves:
-        #         for strategy_curve in strategies_curves["strategies"]:
-        #             if strategy_curve["strategy_index"] == strategy_index:
-        #                 perf.append(strategy_curve["performance"])
-        #                 y_axis_temp.append(strategy_curve["y_axis"])
-        #     print(f"{strategy['display_name']} performance across kernels: {np.mean(perf)}")
-        #     y_axis = np.array(y_axis_temp)
-        #     strategies_aggregated.append(np.mean(y_axis, axis=0))
-
-        # # finalize the figure and display it
-        # self.plot_aggregated_curves(axs[0], strategies_aggregated)
-        # fig.tight_layout()
-        # plt.show()
-
-    def get_strategies_curves(
-        self,
-        cache,
-        strategies_data: list,
-        info: dict,
-        subtract_baseline=True,
-        smoothing=False,
-        minimization=True,
-        smoothing_factor=100,
-    ) -> dict:
-        """Extract the strategies results"""
-        # get the baseline
-        x_axis, y_axis_baseline = cache.get_baseline()
-        absolute_optimum = info["absolute_optimum"]
-        y_max = absolute_optimum
-
-        # y_min = absolute_optimum if minimization else info["median"]
-        # y_max = info["median"] if minimization else absolute_optimum
-
-        # normalize
-        if subtract_baseline:
-            # y_axis_baseline = (y_axis_baseline - y_min) / (y_max - y_min)
-            y_min = y_axis_baseline
-            # y_axis_baseline = (y_axis_baseline - y_axis_baseline) / (y_max - y_min)
-
-        if smoothing:
-            y_axis_baseline = smoothing_filter(y_axis_baseline, y_axis_baseline.size / smoothing_factor)
-
-        # create resulting dict
-        strategies_curves: dict[str, Any] = dict({
-            "baseline": {
-                "x_axis": x_axis,
-                "y_axis": y_axis_baseline
-            },
-            "strategies": list(),
-        })
-
-        # clipstart = 10
-        # random_curve = y_axis_baseline[clipstart:]
-        # sorted_times = info["sorted_times"]
-
-        performances = list()
-        for strategy_index, strategy in enumerate(self.strategies):
-            if "hide" in strategy.keys() and strategy["hide"]:
-                continue
-
-            # get the data
-            strategy = strategies_data[strategy_index]
-            results = strategy["results"]
-            y_axis = np.array(results["interpolated_objective"])
-            y_axis_std = np.array(results["interpolated_objective_std"])
-            y_axis_std_lower = np.array(results["interpolated_objective_error_lower"])
-            y_axis_std_upper = np.array(results["interpolated_objective_error_upper"])
-            window_length = min(max(int(len(y_axis) * 0.5), 100), len(y_axis))
-            y_axis_std_lower = smoothing_filter(y_axis_std_lower, window_length, a_max=y_axis)
-            y_axis_std_upper = smoothing_filter(y_axis_std_upper, window_length, a_min=y_axis)
-
-            # normalize
-            if subtract_baseline:
-                y_axis = (y_axis - y_axis_baseline) / (y_max - y_axis_baseline)
-                # y_axis_std_lower = (y_axis_std_lower - y_min) / (y_max - y_min)
-                # y_axis_std_upper = (y_axis_std_upper - y_min) / (y_max - y_min)
-
-            # apply smoothing
-            if smoothing:
-                y_axis = smoothing_filter(y_axis, y_axis.size / smoothing_factor)
-
-            # find out where the global optimum is found and substract the baseline
-            # found_opt = np.argwhere(y_axis == absolute_optimum)
-            # if subtract_baseline:
-            # # y_axis =  y_axis - y_axis_baseline
-            # y_axis = y_axis_baseline / y_axis
-            # y_axis_std_lower = y_axis_baseline / y_axis_std_lower
-            # y_axis_std_upper = y_axis_baseline / y_axis_std_upper
-            # y_axis = (y_axis - y_min) / (y_max - y_min)
-
-            # quantify the performance of this strategy
-            if subtract_baseline:
-                # use mean distance
-                performance = np.mean(y_axis)
-            else:
-                # use area under curve approach
-                performance = auc(x_axis, y_axis)
-            performances.append(performance)
-            print(f"Performance of {strategy['display_name']}: {performance}")
-
-            # write to resulting dict
-            result_dict = dict({
-                "strategy_index": strategy_index,
-                "y_axis": y_axis,
-                "y_axis_std": y_axis_std,
-                "y_axis_std_lower": y_axis_std_lower,
-                "y_axis_std_upper": y_axis_std_upper,
-                "performance": performance,
-            })
-            strategies_curves["strategies"].append(result_dict)
-
-        print(f"Mean performance across strategies: {np.mean(performances)}")    # the higher the mean, the easier a search space is for the baseline
-        return strategies_curves
+            # finalize the figure and display it
+            self.plot_aggregated_curves(axs[0], aggregation_data)
+            fig.tight_layout()
+            plt.show()
 
     def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, plot_settings: dict,
                                baseline_curve: Baseline = None, plot_errors=True):
@@ -345,7 +233,7 @@ class Visualize:
         ax.legend()
 
     def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, plot_settings: dict,
-                               baseline_curve: Baseline = None, plot_errors=True):
+                               baseline_curve: Baseline = None, plot_errors=False):
         """Plots all optimization strategy curves"""
         relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
@@ -377,7 +265,6 @@ class Visualize:
             strategy_curve = strategies_curves[strategy_index]
 
             # obtain the curves
-            print(strategy['display_name'])
             curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_time(time_range, dist=sorted_times, confidence_level=confidence_level)
             if relative_to_baseline:
                 # sanity check: see if the calculated random curve is equal to itself
@@ -408,22 +295,40 @@ class Visualize:
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
 
-    def plot_aggregated_curves(self, ax: plt.Axes, strategies_aggregated: list):
+    def plot_aggregated_curves(self, ax: plt.Axes, aggregation_data: list[tuple[RandomSearchBaseline, list[Curve], dict, np.ndarray]]):
+        # plot the random baseline and absolute optimum
         ax.axhline(0, label="Random search", c='black', ls=':')
         ax.axhline(1, label="Absolute optimum", c='black', ls='-.')
-        overall_ymin = min(min(y_axis) for y_axis in strategies_aggregated)
-        for strategy_index, y_axis in enumerate(strategies_aggregated):
-            ax.plot(y_axis, label=self.strategies[strategy_index]["display_name"])
 
-        ax.set_xlabel(self.x_metric_displayname["aggregate_time"])
-        ax.set_ylabel(self.y_metric_displayname["aggregate_objective_max"])
+        # get the relative performance for each strategy
+        strategies_performance = [list() for _ in aggregation_data[0][1]]
+        for random_baseline, strategies_curves, info, time_range in aggregation_data:
+            absolute_optimum: float = info["absolute_optimum"]
+            sorted_times = np.sort(info['sorted_times'])
+            for strategy_index, strategy_curve in enumerate(strategies_curves):
+                curve, _, _ = strategy_curve.get_curve_over_time(time_range, sorted_times)
+                relative_performance = random_baseline.get_standardised_curve_over_time(time_range, curve, absolute_optimum, info)
+                strategies_performance[strategy_index].append(relative_performance)
+
+        # plot each strategy
+        for strategy_index, strategy_performances in enumerate(strategies_performance):
+            strategy_performances = np.array([p for p in strategy_performances])
+            strategy_performance: np.ndarray = np.mean(strategy_performances, axis=0)
+            ax.plot(strategy_performance, label=self.strategies[strategy_index]["display_name"])
+
+        # set the axis
+        y_axis_size = strategy_performance.size
+        cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
+        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
+        ax.set_xlabel(f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)")
+        ax.set_ylabel(self.y_metric_displayname["aggregate_objective"])
         num_ticks = 11
         ax.set_xticks(
-            np.linspace(0, y_axis.size, num_ticks),
+            np.linspace(0, y_axis_size, num_ticks),
             np.round(np.linspace(0, 1, num_ticks), 2),
         )
-        ax.set_ylim(bottom=overall_ymin, top=1.0)
-        ax.set_xlim((0, y_axis.size))
+        ax.set_ylim(top=1.0)
+        ax.set_xlim((0, y_axis_size))
         ax.legend()
 
 

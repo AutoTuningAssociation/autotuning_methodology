@@ -32,12 +32,6 @@
   },
   "strategies": [
     {
-      "name": "random_sample",
-      "strategy": "random_sample",
-      "display_name": "Random sampling",
-      "repeats": 500
-    },
-    {
       "name": "mls",
       "strategy": "mls",
       "display_name": "MLS"

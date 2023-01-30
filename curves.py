@@ -167,8 +167,9 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
                               confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         assert fevals_range.ndim == 1
-        assert dist.ndim == 1
         assert np.all(np.isfinite(fevals_range))
+        if dist is not None:
+            assert dist.ndim == 1
 
         # first filter to only get the fevals range
         matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
@@ -234,7 +235,8 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         assert time_range.ndim == 1
         assert np.all(np.isfinite(time_range))
-        assert dist.ndim == 1
+        if dist is not None:
+            assert dist.ndim == 1
 
         times = self._x_time
         values = self._y
