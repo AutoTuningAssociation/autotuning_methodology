@@ -262,6 +262,17 @@ class StochasticOptimizationAlgorithm(Curve):
         assert np.all(~np.isnan(times_1D))
         assert np.all(~np.isnan(values_1D))
 
+        # if a distribution is included
+        if dist is not None:
+            # for each value, get the index in the distribution
+            indices = self._get_indices(values_1D, dist)
+            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, npoints=num_fevals, package='sklearn')
+            indices_curve = np.array(np.round(indices_curve), dtype=int)
+            curve = dist[indices_curve]
+        else:
+            # obtain the curves
+            raise NotImplementedError()
+
         # filter to only get the time range (for the binned error calculation)
         range_mask = (time_range[0] <= times) & (times <= time_range[-1])
         assert np.all(np.count_nonzero(range_mask, axis=0) > 1), "Not enough overlap in time range and time values"
@@ -271,7 +282,8 @@ class StochasticOptimizationAlgorithm(Curve):
         assert masked_times.shape == masked_values.shape
 
         # bin the values to their closest point in low resolution time_range
-        time_range_low_res = np.linspace(time_range[0], time_range[-1], num=num_fevals)    # should result in on average num_repeat observations per bin
+        time_range_low_res = np.linspace(time_range[0], time_range[-1],
+                                         num=round(num_fevals / 10))    # should result in on average num_repeat observations per bin
         bins = [[] for _ in range(len(time_range_low_res))]
         for multi_index, value in np.ndenumerate(masked_values):
             # for each element look up the index of the closest point in time_range, write the value to this bin
@@ -283,7 +295,16 @@ class StochasticOptimizationAlgorithm(Curve):
         bins = list([np.array(bin) for bin in bins])
         if confidence_level is None:
             # get the standard error, interpolate missing bins
-            curve_std: np.ndarray = np.nanstd(bins, axis=1)
+            curve_std: np.ndarray = np.full_like(time_range_low_res, np.nan)
+            for bin_index, bin in enumerate(bins):
+                # at least three non-zero values must be present to calculate the standard error
+                if np.count_nonzero(~np.isnan(bin)) >= 3:
+                    curve_std[bin_index] = np.nanstd(bin)
+            # filter out where NaN
+            nan_mask = ~np.isnan(curve_std)
+            curve_std = curve_std[nan_mask]
+            time_range_low_res = time_range_low_res[nan_mask]
+            # interpolate missing bins
             curve_std = np.interp(time_range, time_range_low_res, curve_std)
             curve_lower_err = curve - curve_std
             curve_upper_err = curve + curve_std
@@ -294,17 +315,6 @@ class StochasticOptimizationAlgorithm(Curve):
                                                          curve_lower_err), np.interp(time_range, time_range_low_res, curve_upper_err)
             # alternative: calculate using get_confidence_interval, interpolate to time_range afterwards (cons: naive assumption that the times roughly match per function evaluation)
             # curve_lower_err, curve_upper_err = self.get_confidence_interval(values, confidence_level)
-
-        # if a distribution is included
-        if dist is not None:
-            # for each value, get the index in the distribution
-            indices = self._get_indices(values_1D, dist)
-            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, npoints=num_fevals, package='sklearn')
-            indices_curve = np.array(np.round(indices_curve), dtype=int)
-            curve = dist[indices_curve]
-        else:
-            # obtain the curves
-            pass
 
         # pad with NaN where outside the range, yielding an array.shape == fevals.shape
         assert curve.shape == time_range.shape
