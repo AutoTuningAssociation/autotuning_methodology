@@ -310,6 +310,7 @@ class StochasticOptimizationAlgorithm(Curve):
             curve_upper_err = curve + curve_std
         else:
             # calculate in bins, interpolate missing bins
+            # TODO make sure this is appropriate, calculating the confidence interval of the isotonic curve instead of the median
             curve_lower_err, curve_upper_err = self.get_confidence_interval_jagged(bins, confidence_level)
             curve_lower_err, curve_upper_err = np.interp(time_range, time_range_low_res,
                                                          curve_lower_err), np.interp(time_range, time_range_low_res, curve_upper_err)

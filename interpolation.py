@@ -61,8 +61,7 @@ def create_interpolated_results(repeated_results: list, expected_results: dict, 
     x: np.ndarray = combined_results['total_time']
     y: np.ndarray = combined_results['objective_value']
     y_std: np.ndarray = combined_results['objective_value_std']
-    # assert that the total time is monotonically non-decreasing
-    assert all(a <= b for a, b in zip(x, x[1:]))
+    assert all(a <= b for a, b in zip(x, x[1:])), "Total time is not monotonically non-decreasing"
 
     x_new = time_interpolated_axis
     npoints = int(len(x_new) * segment_factor)
