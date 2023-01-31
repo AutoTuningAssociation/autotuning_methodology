@@ -1,149 +1,121 @@
-import os
-import json
+from __future__ import annotations    # for referring to class within own method
 import numpy as np
-from typing import Union, Optional, Dict, Any
+from typing import Dict
+from pathlib import Path
 
 
-class NumpyEncoder(json.JSONEncoder):
-    """ JSON encoder for NumPy types, from https://www.programmersought.com/article/18271066028/ """
+class Results():
+    """ Object containing the results for an optimization algorithm on a search space """
 
-    def default(self, obj):    # pylint: disable=arguments-differ
-        if isinstance(obj, (np.int_, np.intc, np.intp, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64)):
-            return int(obj)
-        elif isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
-            return float(obj)
-        elif isinstance(obj, (np.ndarray)):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
+    def __init__(self, numpy_arrays: list[np.ndarray]) -> None:
+        self.fevals_results = numpy_arrays[0]
+        self.time_results = numpy_arrays[1]
+        self.objective_time_results = numpy_arrays[2]
+        self.objective_value_results = numpy_arrays[3]
+        self.objective_value_best_results = numpy_arrays[4]
+        self.objective_value_stds = numpy_arrays[5]
 
 
-class CachedObject():
-    """ Class for managing cached results """
+class ResultsDescription():
+    """ Object to store a description of the results and retrieve results for an optimization algorithm on a search space """
 
-    def __init__(self, kernel_name: str, device_name: str, baseline_time: np.ndarray, baseline_result: np.ndarray, strategies: dict):
-        try:
-            cache = CacheInterface.read(kernel_name, device_name)
-            # print("Cache with type: ", type(cache), ":\n ", cache)
-            self.kernel_name = cache['kernel_name']
-            self.device_name = cache['device_name']
-            self.obj = cache
-        except (FileNotFoundError, json.decoder.JSONDecodeError) as _:
-            print("No cached visualization found, creating new cache")
-            # make the strategies a dict with the name as key for faster lookup
-            strategies_dict = dict()
-            for strategy in strategies:
-                strategies_dict[strategy['name']] = strategy
+    def __init__(self, folder_id: str, kernel_name: str, device_name: str, strategy_name: str, strategy_display_name: str, stochastic: bool,
+                 objective_time_keys: str, objective_value_key: str, objective_values_key: str, minimization: bool) -> None:
+        # all attributes must be hashable for symetric difference checking
+        self._version = "1.1.0"
+        self.__stored = False
+        self.__folder_id = folder_id
+        self.kernel_name = kernel_name
+        self.device_name = device_name
+        self.strategy_name = strategy_name
+        self.strategy_display_name = strategy_display_name
+        self.stochastic = stochastic
+        self.objective_time_keys = objective_time_keys
+        self.objective_value_key = objective_value_key
+        self.objective_values_key = objective_values_key
+        self.minimization = minimization
+        self.numpy_arrays_keys = [
+            'fevals_results', 'time_results', 'objective_time_results', 'objective_value_results', 'objective_value_best_results', 'objective_value_stds'
+        ]    # the order must not be changed here!
 
-            self.kernel_name = kernel_name
-            self.device_name = device_name
-            self.obj = {
-                "kernel_name": kernel_name,
-                "device_name": device_name,
-                "baseline_time": baseline_time,
-                "baseline_result": baseline_result,
-                "strategies": strategies_dict
-            }
+    def is_same_as(self, other: ResultsDescription) -> bool:
+        """ Check for equality against another ResultsDescription object """
+        # check if same type
+        if not isinstance(other, ResultsDescription):
+            raise NotImplemented(f"Can not compare to object of type {type(other)}")
 
-    def read(self):
-        return CacheInterface.read(self.kernel_name, self.device_name)
+        # check if same version
+        if not hasattr(other, "_version"):
+            raise ValueError("ResultsDescription compared against has no version number")
+        if self._version != other._version:
+            raise ValueError(f"Incompatible versions: {self._version} (own), {other._version} (other)")
 
-    def write(self):
-        return CacheInterface.write(self.obj)
+        # check if same keys
+        symetric_difference_keys = self.__dict__.keys() ^ other.__dict__.keys()
+        if len(symetric_difference_keys) != 0:
+            raise KeyError(f"Difference in keys: {symetric_difference_keys}")
 
-    def delete(self):
-        return CacheInterface.delete(self.kernel_name, self.device_name)
+        # check if same value for each key
+        for attribute_key, attribute_value in self.__dict__.items():
+            if attribute_key == 'strategy_display_name':
+                continue
+            assert attribute_value == other.__dict__[attribute_key]
 
-    def has_strategy(self, strategy_name: str) -> bool:
-        """ Checks whether the cache contains the strategy with matching parameter 'name' """
-        return strategy_name in self.obj["strategies"].keys()
-
-    def has_matching_strategy(self, strategy_name: str, repeats: int) -> bool:
-        """ Checks whether the cache contains the strategy with matching parameters 'name', 'options' and 'repeats' """
-        if self.has_strategy(strategy_name):
-            strategy = self.obj['strategies'][strategy_name]
-            return (strategy['name'] == strategy_name and strategy['repeats'] == repeats)
-        return False
-
-    def recursively_compare_dict_keys(self, dict_elem, compare_elem) -> bool:
-        """ Recursively go trough a dict to check whether the keys match, returns true if they match """
-        if compare_elem is None:
-            return True
-        if isinstance(dict_elem, list):
-            for idx in range(min(len(dict_elem), len(compare_elem))):
-                if self.recursively_compare_dict_keys(dict_elem[idx], compare_elem[idx]) is False:
-                    return False
-        elif isinstance(dict_elem, dict):
-            if not isinstance(compare_elem, dict):
-                return False
-            return dict_elem.keys() == compare_elem.keys() and all(self.recursively_compare_dict_keys(dict_elem[key], compare_elem[key]) for key in dict_elem)
         return True
 
-    def get_baseline(self):
-        return np.array(self.obj["baseline_time"]), np.array(self.obj["baseline_result"])
+    def __get_cache_filename(self) -> str:
+        return f"{self.kernel_name}_{self.device_name}_{self.strategy_name}.npz"
 
-    def get_strategy(self, strategy_name: str, repeats: int) -> Optional[dict]:
-        """ Returns a strategy by matching the parameters, if it exists """
-        if self.has_matching_strategy(strategy_name, repeats):
-            return self.obj['strategies'][strategy_name]
-        return None
+    def __get_cache_filepath(self) -> Path:
+        """ Get the filepath to this experiment """
+        return Path("visualizations") / self.__folder_id
 
-    def get_strategy_results(self, strategy_name: str, repeats: int, expected_results: dict = None) -> Optional[dict]:
-        """ Checks whether the cache contains the expected results for the strategy and returns it if true """
-        cached_data = self.get_strategy(strategy_name, repeats)
-        if cached_data is not None and 'results' in cached_data and (expected_results is None
-                                                                     or self.recursively_compare_dict_keys(cached_data['results'], expected_results)):
-            return cached_data
-        return None
+    def __get_cache_full_filepath(self) -> Path:
+        """ Get the filepath for this file, including the filename and extension """
+        return self.__get_cache_filepath() / self.__get_cache_filename()
 
-    def set_strategy(self, strategy: dict[str, Any], results: dict[str, Any]):
-        """ Sets a strategy and its results """
-        strategy_name = strategy['name']
-        # delete old strategy if any
-        if self.has_strategy(strategy['name']):
-            del self.obj["strategies"][strategy_name]
-        # set new strategy
-        self.obj["strategies"][strategy_name] = strategy
-        # set new values
-        self.obj["strategies"][strategy_name]["options"] = strategy["options"]
-        self.obj["strategies"][strategy_name]["results"] = results
-        self.write()
+    def __check_for_file(self) -> bool:
+        """ Check whether the file exists """
+        full_filepath = self.__get_cache_full_filepath()
+        self.__stored = full_filepath.exists() and np.DataSource().exists(full_filepath)
+        return self.__stored
 
+    def __write_to_file(self, arrays: Dict):
+        """ Write the resultsdescription and the accompanying numpy arrays to file """
+        if self.__stored is True:
+            raise ValueError(f"Do not overwrite a ResultsDescription")
+        filepath = self.__get_cache_filepath()
+        if not filepath.exists():
+            filepath.mkdir(parents=True, exist_ok=False)
+        self.__stored = True
+        np.savez_compressed(self.__get_cache_full_filepath(), resultsdescription=self, **arrays)
 
-class CacheInterface:
-    """ Interface for cache filesystem interaction """
+    def set_results(self, arrays: Dict):
+        """ Set and cache the results """
+        return self.__write_to_file(arrays)
 
-    @staticmethod
-    def file_name(kernel_name: str, device_name: str) -> str:    # pylint: disable=no-self-argument
-        """ Combine the variables into the target filename """
-        return f"cached_plot_{kernel_name}_{device_name}.json"
+    def __read_from_file(self) -> list[np.ndarray]:
+        """ Read and verify the accompanying numpy arrays from file """
+        self.__check_for_file()
+        full_filepath = self.__get_cache_full_filepath()
+        if self.__stored is False:
+            raise ValueError(f"File {full_filepath} does not exist")
 
-    @staticmethod
-    def file_path(file_name: str) -> str:
-        """ Returns the absolute file path """
-        # TODO fix this so it works more flexibly for nested folders
-        return os.path.abspath(f"cached_visualizations/{file_name}")
+        # load the data and verify the resultsdescription object is the same
+        data = np.load(full_filepath, allow_pickle=True)
+        data_results_description = data['resultsdescription'].item()
+        assert self.is_same_as(data_results_description)
 
-    @staticmethod
-    def read(kernel_name: str, device_name: str) -> Dict[str, Any]:    # pylint: disable=no-self-argument
-        """ Read and parse a cachefile """
-        filename = CacheInterface.file_name(kernel_name, device_name)
-        with open(CacheInterface.file_path(filename)) as json_file:
-            return json.load(json_file)
+        # get the numpy arrays
+        numpy_arrays = list()
+        for numpy_array_key in self.numpy_arrays_keys:
+            numpy_arrays.append(data[numpy_array_key])
+        return numpy_arrays
 
-    @staticmethod
-    def write(cached_object: Dict[str, Any]):    # pylint: disable=no-self-argument
-        """ Serialize and write a cachefile """
-        filename = CacheInterface.file_name(cached_object['kernel_name'], cached_object['device_name'])    # pylint: disable=unsubscriptable-object
-        with open(CacheInterface.file_path(filename), 'w') as json_file:
-            json.dump(cached_object, json_file, cls=NumpyEncoder)
+    def get_results(self) -> Results:
+        """ Get the Results object """
+        return Results(self.__read_from_file())
 
-    @staticmethod
-    def delete(kernel_name: str, device_name: str) -> bool:    # pylint: disable=no-self-argument
-        """ Delete a cachefile, returns True for completion and False if file can not be deleted """
-        try:
-            import os
-            filename = CacheInterface.file_name(kernel_name, device_name)
-            os.remove(CacheInterface.file_path(filename))
-            return True
-        except OSError:
-            return False
+    def has_results(self) -> bool:
+        """ Checks whether there are results or the file exists """
+        return self.__stored or self.__check_for_file()

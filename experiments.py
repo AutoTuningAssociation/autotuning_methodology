@@ -3,16 +3,16 @@
 import argparse
 from importlib import import_module
 import json
+from jsonschema import validate
 import os
 import sys
 from typing import Tuple, Any
 import pathvalidate
-from copy import deepcopy
 import numpy as np
 from math import ceil
 
 from runner import collect_results
-from caching import CachedObject
+from caching import ResultsDescription
 
 
 def get_searchspaces_info_stats() -> dict[str, Any]:
@@ -29,8 +29,8 @@ def change_directory(path: str):
 
 
 def get_experiment(filename: str) -> dict:
-    """ Gets the experiment from the .json file """
-    folder = 'experiments/'
+    """ Validates and gets the experiment from the .json file """
+    folder = 'experiment_files/'
     extension = '.json'
     if not filename.endswith(extension):
         filename = filename + extension
@@ -38,8 +38,11 @@ def get_experiment(filename: str) -> dict:
     if not filename.startswith(folder):
         path = folder + filename
     safe_path = pathvalidate.sanitize_filepath(path)
-    with open(safe_path) as file:
+    schemafilepath = folder + 'schema.json'
+    with open(safe_path) as file, open(schemafilepath) as schemafile:
+        schema = json.load(schemafile)
         experiment = json.load(file)
+        validate(instance=experiment, schema=schema)
         return experiment
 
 
@@ -66,27 +69,18 @@ def get_strategies(experiment: dict) -> dict:
     return strategies
 
 
-def create_expected_results() -> dict:
-    """ Creates a dict to put the expected results into """
-    expected_results = dict({
-        'total_times': None,
-        'cutoff_quantile': None,
-        'curve_segment_factor': None,
-        'num_function_evaluations': None,
-        'num_function_evaluations_repeated_results': None,
-        'best_found_objective_values': None,
-        'interpolated_time': None,
-        'interpolated_objective': None,
-        'interpolated_objective_std': None,
-        'interpolated_objective_error_lower': None,
-        'interpolated_objective_error_upper': None,
-    })
-    return expected_results
+def median_time_per_feval(stats_info: dict) -> float:
+    """ Median time in seconds per function evaluation """
+    median: float = stats_info['median']
+    repeats: int = stats_info['repeats']
+    median_feval_time = (median * repeats) / 1000    # in seconds # TODO change this to the new specified output format in kernel_info_generator
+    return median_feval_time
 
 
-def calc_cutoff_point(cutoff_percentile, stats_info):
-    absolute_optimum = stats_info["absolute_optimum"]
-    median = stats_info['median']
+def calc_cutoff_point(cutoff_percentile: float, stats_info: dict) -> Tuple[float, int]:
+    """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point) """
+    absolute_optimum: float = stats_info["absolute_optimum"]
+    median: float = stats_info['median']
     inverted_sorted_times_arr = np.array(stats_info['sorted_times'])
     inverted_sorted_times_arr = inverted_sorted_times_arr[::-1]
     N = inverted_sorted_times_arr.shape[0]
@@ -104,108 +98,79 @@ def calc_cutoff_point(cutoff_percentile, stats_info):
     return objective_value_at_cutoff_point, fevals_to_cutoff_point
 
 
-def get_random_curve(cutoff_point_fevals: int, sorted_times: list, time_resolution: int = None) -> np.ndarray:
-    """ Returns the values of the random curve at each function evaluation """
-    dist = sorted_times
-    ks = range(cutoff_point_fevals) if time_resolution is None else np.linspace(0, cutoff_point_fevals, time_resolution)
-
-    def redwhite_index(dist, M):
-        N = len(dist)
-        # print("Running for subset size", M, end="\r", flush=True)
-        #index = (N+1)*(N+1-M)*math.comb(N, M-1) / math.comb(N, M) / (M+1)
-        index = M * (N + 1) / (M + 1)
-        index = round(index)
-        return dist[N - 1 - index]
-
-    draws = np.array([redwhite_index(dist, k) for k in ks])
-    return draws
+def calc_cutoff_point_fevals_time(cutoff_percentile: float, stats_info: dict) -> Tuple[float, int, float]:
+    """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point) """
+    cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, stats_info)
+    cutoff_point_time = cutoff_point_fevals * median_time_per_feval(stats_info)
+    return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
 
 
 def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: dict) -> Tuple[dict, dict, dict]:
     """ Executes the experiment by retrieving it from the cache or running it """
     experiment = get_experiment(filepath)
     print(f"Starting experiment \'{experiment['name']}\'")
-    kernel_path = experiment.get('kernel_path', "")
-    cutoff_quantile = experiment.get('cutoff_quantile', 0.975)
-    curve_segment_factor = experiment.get('curve_segment_factor', 0.05)
+    experiment_folder_id = experiment.get('folder_id')
+    kernel_path: str = experiment.get('kernel_path', "")
+    minimization: bool = experiment.get('minimization', True)
+    cutoff_percentile: float = experiment.get('cutoff_percentile', 1)
+    cutoff_type: str = experiment.get('cutoff_type', "fevals")
+    assert cutoff_type == 'fevals' or cutoff_type == 'time'
+    curve_segment_factor: float = experiment.get('curve_segment_factor', 0.05)
     assert isinstance(curve_segment_factor, float)
-    time_resolution = experiment.get('resolution', 1e4)
-    if int(time_resolution) != time_resolution:
-        raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
-    time_resolution = int(time_resolution)
     change_directory("../cached_data_used" + kernel_path)
     strategies = get_strategies(experiment)
     kernel_names = experiment['kernels']
     kernels = list(import_module(kernel_name) for kernel_name in kernel_names)
 
+    # variables for comparison
+    objective_time_keys = ['times']
+    objective_value_key = 'time'
+    objective_values_key = 'times'
+
     # execute each strategy in the experiment per GPU and kernel
-    caches: dict[str, dict[str, Any]] = dict()
+    results_descriptions: dict[str, dict[str, dict[str, ResultsDescription]]] = dict()
     gpu_name: str
     for gpu_name in experiment['GPUs']:
-        caches[gpu_name] = dict()
+        print(f" | running on GPU '{gpu_name}'")
+        results_descriptions[gpu_name] = dict()
         for index, kernel in enumerate(kernels):
             kernel_name = kernel_names[index]
             stats_info = searchspaces_info_stats[gpu_name]['kernels'][kernel_name]
-            sorted_times = stats_info['sorted_times']
-            mean_feval_time = (stats_info['mean'] * stats_info['repeats']) / 1000    # in seconds
 
-            cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_quantile, stats_info)
-            cutoff_point_time = cutoff_point_fevals * mean_feval_time
-            baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
-            baseline_executed = True
-            # objective_value_at_cutoff_point = np.quantile(np.array(stats_info['sorted_times']), 1 - cutoff_quantile)    # sorted in ascending order, so inverse quantile
-            baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
+            # set cutoff point
+            _, cutoff_point_fevals, cutoff_point_time = calc_cutoff_point_fevals_time(cutoff_percentile, stats_info)
 
-            y_min = None
-            y_median = None
-            if 'absolute_optimum' in stats_info and 'median' in stats_info:
-                y_min = stats_info['absolute_optimum']
-                y_median = stats_info['median']
-            print(f"  running {kernel_name} on {gpu_name}")
-            # get or create a cache to write the results to
-            cache = CachedObject(kernel_name, gpu_name, baseline_time_interpolated, baseline, deepcopy(strategies))
-            # baseline_time_interpolated = None
-            # baseline_executed = False
+            print(f" | - optimizing kernel '{kernel_name}'")
+            results_descriptions[gpu_name][kernel_name] = dict()
             for strategy in strategies:
-                print(f"    | with strategy {strategy['display_name']}")
-                # if the strategy is in the cache, use cached data
+                strategy_name: str = strategy['name']
+                strategy_display_name: str = strategy['display_name']
+                stochastic = strategy['stochastic']
+                print(f" | - | using strategy '{strategy['display_name']}'")
+
+                # setup the results description
                 if not 'options' in strategy:
                     strategy['options'] = dict()
-                strategy['options']['max_fevals'] = cutoff_point_fevals
-                expected_results = create_expected_results()
-                if 'ignore_cache' not in strategy:
-                    cached_data = cache.get_strategy_results(strategy['name'], strategy['repeats'], expected_results)
-                    if cached_data is not None and 'cutoff_quantile' in cached_data['results'] and cached_data['results'][
-                            'cutoff_quantile'] == cutoff_quantile and 'curve_segment_factor' in cached_data['results'] and cached_data['results'][
-                                'curve_segment_factor'] == curve_segment_factor:
-                        print("| retrieved from cache")
-                        # if baseline_time_interpolated is None and 'is_baseline' in strategy and strategy['is_baseline'] is True:
-                        #     baseline_time_interpolated = np.array(cached_data['results']['interpolated_time'])
-                        continue
+                cutoff_margin = 2.0    # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
 
-                # execute each strategy that is not in the cache
-                strategy_results = collect_results(kernel, kernel_name, gpu_name, strategy, expected_results, profiling, cutoff_point_fevals,
-                                                   cutoff_point_value, time_resolution=time_resolution, time_interpolated_axis=baseline_time_interpolated,
-                                                   y_min=y_min, y_median=y_median, segment_factor=curve_segment_factor)
-                if 'cutoff_quantile' in expected_results:
-                    strategy_results['cutoff_quantile'] = cutoff_quantile
-                if 'curve_segment_factor' in expected_results:
-                    strategy_results['curve_segment_factor'] = curve_segment_factor
+                # TODO make sure this works correctly (but how could it?)
+                # if cutoff_type == 'time':
+                #     strategy['options']['time_limit'] = cutoff_point_time * cutoff_margin
+                # else:
+                strategy['options']['max_fevals'] = int(ceil(cutoff_point_fevals * cutoff_margin))
+                results_description = ResultsDescription(experiment_folder_id, kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic,
+                                                         objective_time_keys, objective_value_key, objective_values_key, minimization)
 
-                # # if this strategy is used as the baseline, keep its x-axis (time dimension) as the baseline along which the other values are interpolated
-                # if baseline_time_interpolated is None and 'is_baseline' in strategy and strategy['is_baseline'] is True:
-                #     baseline_time_interpolated = strategy_results['interpolated_time']
-                #     baseline_executed = True    # if the baseline has been (re)executed, the other cached strategies must be re-executed as the interpolated time axis has changed
-                if baseline_time_interpolated is None:
-                    raise ValueError(f"baseline_time_interpolated should not be None here, check whether the first strategy has 'is_baseline' set to True")
-                # double check that the interpolated results are as expected
-                assert np.array_equal(baseline_time_interpolated, strategy_results['interpolated_time'])
-                assert len(baseline_time_interpolated) == len(strategy_results['interpolated_objective'])
-                # write the results to the cache
-                cache.set_strategy(deepcopy(strategy), strategy_results)
-            caches[gpu_name][kernel_name] = cache
+                # if the strategy is in the cache, use cached data
+                if 'ignore_cache' not in strategy and results_description.has_results():
+                    print(" | - |-> retrieved from cache")
+                else:    # execute each strategy that is not in the cache
+                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling, error_value=1e20)
 
-    return experiment, strategies, caches
+                # set the results
+                results_descriptions[gpu_name][kernel_name][strategy_name] = results_description
+
+    return experiment, strategies, results_descriptions
 
 
 if __name__ == "__main__":

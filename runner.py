@@ -1,54 +1,17 @@
 """ Interface to run an experiment on Kernel Tuner """
 from cProfile import label
-from copy import deepcopy
-from math import sqrt, floor, ceil
 import numpy as np
 import progressbar
 from typing import Any, Tuple, Dict
 import time as python_time
 import warnings
 import yappi
-from scipy.interpolate import interp1d
-from sklearn.isotonic import IsotonicRegression
-from isotonic.isotonic import LpIsotonicRegression
-
-record_data = ['mean_actual_num_evals']
+from caching import ResultsDescription
 
 
-def remove_duplicates(res: list, remove_duplicate_results: bool):
-    """ Removes duplicate configurations from the results """
-    if not remove_duplicate_results:
-        return res
-    unique_res = list()
-    for result in res:
-        if result not in unique_res:
-            unique_res.append(result)
-    return unique_res
-
-
-def get_isotonic_curve(x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package='isotonic', increasing=False, npoints=1000, power=2, ymin=None,
-                       ymax=None) -> np.ndarray:
-    """ Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic' """
-    # check if the assumptions that the input arrays are numpy arrays holds
-    assert isinstance(x, np.ndarray)
-    assert isinstance(y, np.ndarray)
-    assert isinstance(x_new, np.ndarray)
-    if package == 'sklearn':
-        if npoints != 1000:
-            warnings.warn("npoints argument is impotent for sklearn package")
-        if power != 2:
-            warnings.warn("power argument is impotent for sklearn package")
-        ir = IsotonicRegression(increasing=increasing, y_min=ymin, y_max=ymax, out_of_bounds='clip')
-        ir.fit(x, y)
-        return ir.predict(x_new)
-    elif package == 'isotonic':
-        ir = LpIsotonicRegression(npoints, increasing=increasing, power=power).fit(x, y)
-        y_isotonic_regression = ir.predict_proba(x_new)
-        # TODO check if you are not indadvertedly clipping too much here
-        if ymin is not None or ymax is not None:
-            y_isotonic_regression = np.clip(y_isotonic_regression, ymin, ymax)
-        return y_isotonic_regression
-    raise ValueError(f"Package name {package} is not a valid package name")
+def is_invalid_objective_value(objective_value: float, error_value) -> bool:
+    """ Returns whether an objective value is invalid by checking against NaN and the error value """
+    return np.isnan(objective_value) or objective_value == error_value
 
 
 def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool) -> Tuple[list, int]:
@@ -78,26 +41,9 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
     return res, total_time_ms
 
 
-def get_times_confidence_interval(times: list, confidence_level=0.95) -> Tuple[float, float]:
-    """ calculate the non-parametric confidence interval for repeated configurations, assumed to be IID """
-    alpha = 1 - confidence_level
-    area_per_tail = alpha / 2
-    n = len(times)
-    times.sort()
-    np_times = np.array(times)
-    lower_rank = floor((n - 1.96 * sqrt(n)) / 2)
-    upper_rank = ceil(1 + ((n + 1.96 * sqrt(n)) / 2))
-    print(f"  {lower_rank}, {upper_rank}")
-    # TODO how much does using the binomial distribution here change the outcome, and is it possible?
-    return np_times[max(lower_rank, 0)], np_times[min(upper_rank, n - 1)]
-
-
-def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, expected_results: dict, profiling: bool, cutoff_point_fevals: int,
-                    objective_value_at_cutoff_point: float, optimization_objective='time', remove_duplicate_results=True, time_resolution=1e4,
-                    time_interpolated_axis=None, y_min=None, y_median=None, segment_factor=0.05) -> dict:
-    """ Executes strategies to obtain (or retrieve from cache) the statistical data """
-    print(f"Running {strategy['display_name']}")
-    min_num_evals = strategy['minimum_number_of_evaluations']
+def collect_results(kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, error_value) -> ResultsDescription:
+    """ Executes optimization algorithms to capture optimization algorithm behaviour """
+    min_num_evals: int = strategy['minimum_number_of_evaluations']
     # TODO put the tune options in the .json in strategy_defaults?
     tune_options = {
         'verbose': False,
@@ -105,254 +51,123 @@ def collect_results(kernel, kernel_name: str, device_name: str, strategy: dict, 
         'simulation_mode': True
     }
 
-    def report_multiple_attempts(rep: int, len_res: int, len_unique_res: int, strategy_repeats: int):
+    def report_multiple_attempts(rep: int, len_res: int, strategy_repeats: int):
         """ If multiple attempts are necessary, report the reason """
         if len_res < 1:
             print(f"({rep+1}/{strategy_repeats}) No results found, trying once more...")
-        elif len_unique_res < min_num_evals:
-            print(f"Too few unique results found ({len_unique_res} in {len_res} evaluations), trying once more...")
+        elif len_res < min_num_evals:
+            print(f"Too few results found ({len_res} of {min_num_evals} required), trying once more...")
         else:
             print(f"({rep+1}/{strategy_repeats}) Only invalid results found, trying once more...")
 
     # repeat the strategy as specified
     repeated_results = list()
     total_time_results = np.array([])
-    for rep in progressbar.progressbar(range(strategy['repeats']), redirect_stdout=True):
+    for rep in progressbar.progressbar(
+            range(strategy['repeats']), redirect_stdout=True, prefix=' | - |-> running: ', widgets=[
+                progressbar.PercentageLabelBar(),
+                ' [',
+                progressbar.SimpleProgress(format='%(value_s)s/%(max_value_s)s'),
+                ', ',
+                progressbar.Timer(format='Elapsed: %(elapsed)s'),
+                ', ',
+                progressbar.ETA(),
+                ']',
+            ]):
         attempt = 0
         only_invalid = True
-        while only_invalid or (remove_duplicate_results and len_unique_res < min_num_evals):
+        while only_invalid or len_res < min_num_evals:
             if attempt > 0:
-                report_multiple_attempts(rep, len_res, len_unique_res, strategy['repeats'])
-            res, total_time_ms = tune(kernel, kernel_name, device_name, strategy, tune_options, profiling)
+                report_multiple_attempts(rep, len_res, strategy['repeats'])
+            res, total_time_ms = tune(kernel, results_description.kernel_name, results_description.device_name, strategy, tune_options, profiling)
             # TODO continue here with confidence interval
-            # for l in range(6, 32, 2):
-            #     print(f"length: {l}")
-            #     get_times_confidence_interval(list(range(l)))
-
-            # exit(0)
-            # for r in res:
-            #     if 'times' in r:
-            #         t = r['times']
-            #         ci = get_times_confidence_interval(t)
-            #         print(ci)
-            #         print(f"      {np.mean(t)}")
-            #         print(f"      {np.median(t)}")
-            #         exit(0)
             len_res: int = len(res)
-            # check if there are only invalid configs in the first 10 fevals, if so, try again
-            only_invalid = len_res < 1 or min(res[:10], key=lambda x: x['time'])['time'] == 1e20
-            unique_res = remove_duplicates(res, remove_duplicate_results)
-            len_unique_res: int = len(unique_res)
+            # check if there are only invalid configs in the first min_num_evals, if so, try again
+            only_invalid = len_res < 1 or min(res[:min_num_evals], key=lambda x: x['time'])['time'] == error_value
             attempt += 1
         # register the results
-        repeated_results.append(unique_res)
+        repeated_results.append(res)
         total_time_results = np.append(total_time_results, total_time_ms)
 
     # gather profiling data and clear the profiler before the next round
     if profiling:
         stats = yappi.get_func_stats()
         # stats.print_all()
-        path = "../experiments/profilings/random/profile-v2.prof"
+        path = "../old_experiments/profilings/random/profile-v2.prof"
         stats.save(path, type="pstat")    # pylint: disable=no-member
         yappi.clear_stats()
 
-    # create the interpolated results from the repeated results
-    results = create_interpolated_results(repeated_results, expected_results, optimization_objective, cutoff_point_fevals, objective_value_at_cutoff_point,
-                                          time_resolution, time_interpolated_axis, y_min, y_median, segment_factor)
-
-    # check that all expected results are present
-    for key in results.keys():
-        if key == 'cutoff_quantile' or key == 'curve_segment_factor':
-            continue
-        if results[key] is None:
-            raise ValueError(f"Expected result {key} was not filled in the results")
-    return results
+    # combine the results to numpy arrays and write to a file
+    write_results(repeated_results, results_description, error_value=error_value)
+    assert results_description.has_results()
+    return results_description
 
 
-def create_interpolated_results(repeated_results: list, expected_results: dict, optimization_objective: str, cutoff_point_fevals: int,
-                                objective_value_at_cutoff_point: float, time_resolution: int, time_interpolated_axis: np.ndarray, y_min=None, y_median=None,
-                                segment_factor=0.05) -> Dict[Any, Any]:
-    """ Creates a monotonically non-increasing curve from the combined objective datapoints across repeats for a strategy, interpolated for [time_resolution] points, using [time_resolution * segment_factor] piecewise linear segments """
-    results = deepcopy(expected_results)
+def write_results(repeated_results: list, results_description: ResultsDescription, error_value):
+    """ Combine the results and write them to a numpy file """
+
+    # get the objective value and time keys
+    objective_time_keys = results_description.objective_time_keys
+    objective_value_key = results_description.objective_value_key
+    objective_values_key = results_description.objective_values_key
 
     # find the maximum number of function evaluations
-    max_num_evals = max(len(res) for res in repeated_results)
+    max_num_evals = max(len(repeat) for repeat in repeated_results)
 
-    # find the minimum objective value and time spent for each evaluation per repeat
-    dtype = [('total_time', 'float64'), ('objective_value', 'float64'), ('objective_value_std', 'float64')]
-    total_times = list()
-    best_found_objective_values = list()
-    num_function_evaluations = list()
-    num_function_evaluations_repeated_results = np.empty((max_num_evals, len(repeated_results)))
-    num_function_evaluations_repeated_results[:] = np.nan    # set all to nan so they are not counted as zeros inadvertedly
-    for res_index, res in enumerate(repeated_results):
-        # extract the objective and time spent per configuration
-        repeated_results[res_index] = np.array(
-            list(tuple([sum(r['times']) /
-                        1000, r[optimization_objective], np.std(r[optimization_objective + 's'])]) for r in res if r['time'] != 1e20), dtype=dtype)
-        # take the minimum of the objective and the sum of the time
-        obj_minimum = 1e20
-        total_time = 0
-        for r_index, r in enumerate(repeated_results[res_index]):
-            total_time += r[0]
-            obj_minimum = min(r[1], obj_minimum)
-            assert obj_minimum >= y_min
-            obj_std = r[2]
-            repeated_results[res_index][r_index] = np.array(tuple([total_time, obj_minimum, obj_std]), dtype=dtype)
-            # also add results at the same number of function evaluations together
-            try:
-                num_function_evaluations_repeated_results[r_index][res_index] = obj_minimum
-            except IndexError as e:
-                raise e
-                # in case of an index error, repeated_results has more evals than max_num_evals
-                break
-        total_times.append(total_time)
-        best_found_objective_values.append(obj_minimum)
-        num_function_evaluations.append(len(repeated_results[res_index]))
+    def get_nan_array() -> np.ndarray:
+        """ get an array of NaN so they are not counted as zeros inadvertedly """
+        return np.full((max_num_evals, len(repeated_results)), np.nan)
 
-    # write to the results
-    if 'total_times' in expected_results:
-        results['total_times'] = total_times
-    if 'best_found_objective_values' in expected_results:
-        results['best_found_objective_values'] = best_found_objective_values
-    if 'num_function_evaluations' in expected_results:
-        results['num_function_evaluations'] = num_function_evaluations
-    if 'num_function_evaluations_repeated_results' in expected_results:
-        results['num_function_evaluations_repeated_results'] = num_function_evaluations_repeated_results
+    # set the arrays to write to
+    fevals_results = get_nan_array()
+    time_results = get_nan_array()
+    objective_time_results = get_nan_array()
+    objective_value_results = get_nan_array()
+    objective_value_best_results = get_nan_array()
+    objective_value_stds = get_nan_array()
 
-    # combine the results across repeats to be in time-order
-    combined_results = np.concatenate(repeated_results)
-    combined_results = np.sort(combined_results, order='total_time')    # sort objective is the total times increasing
-    x: np.ndarray = combined_results['total_time']
-    y: np.ndarray = combined_results['objective_value']
-    y_std: np.ndarray = combined_results['objective_value_std']
-    # assert that the total time is monotonically non-decreasing
-    assert all(a <= b for a, b in zip(x, x[1:]))
+    # combine the results
+    opt_func = np.nanmin if results_description.minimization is True else np.nanmax
 
-    # create the new x-axis array to interpolate
-    # if time_interpolated_axis is None:
-    #     # first create a temporary interpolation using the absolute results, using sklearn because this has arbitrary number of segments
-    #     _y_isotonic_regression = get_isotonic_curve(x, y, x, ymin=y_min, ymax=y_median, package='sklearn')
+    for repeat_index, repeat in enumerate(repeated_results):
+        cumulative_total_time = 0
+        cumulative_objective_time = 0
+        objective_value_best = np.nan
+        for evaluation_index, evaluation in enumerate(repeat):
+            objective_value = evaluation[objective_value_key]
+            cumulative_total_time += evaluation['strategy_time'] / 1000    # TODO the miliseconds to seconds conversion is specific to Kernel Tuner
+            if not is_invalid_objective_value(objective_value, error_value):
+                # extract the objectives and time spent
+                if not np.isnan(cumulative_total_time):
+                    cumulative_total_time += sum(evaluation['times']) / 1000    # TODO the miliseconds to seconds conversion is specific to Kernel Tuner
+                if not np.isnan(cumulative_objective_time):
+                    cumulative_objective_time += sum(sum(evaluation[time_key]) for time_key in objective_time_keys) / 1000
+                objective_value_best = opt_func([objective_value, objective_value_best])
+                objective_value_std = np.std(list(e for e in evaluation[objective_values_key] if e is not error_value))
+            else:
+                pass
+                # TODO figure out what to do here - how should we count total time and objective time if there is an invalid value? Cumulating NaN is useless for large number of repeats
+                # # set the values to NaN
+                # cumulative_total_time = np.NaN
+                # cumulative_objective_time = np.NaN
 
-    #     # find the cutoff point using the temporary interpolation
-    #     try:
-    #         cutoff_index = np.argwhere(_y_isotonic_regression <= objective_value_at_cutoff_point)[0]
-    #         assert cutoff_index == int(cutoff_index)    # ensure that it is an integer
-    #         cutoff_index = int(cutoff_index)
-    #         # print(f"Percentage of baseline search space used to get to cutoff quantile: {(cutoff_index / _y_isotonic_regression.size)*100}%")
-    #     except IndexError:
-    #         raise ValueError(f"The baseline has not reliably found the cutoff quantile, either decrease the cutoff or increase the allowed time.")
+            # write to the arrays
+            fevals_results[evaluation_index, repeat_index] = evaluation_index + 1    # number of function evaluations are counted from 1 instead of 0
+            time_results[evaluation_index, repeat_index] = cumulative_total_time
+            objective_time_results[evaluation_index, repeat_index] = cumulative_objective_time
+            if not is_invalid_objective_value(objective_value, error_value):    # if it is an error value, it must stay NaN
+                objective_value_results[evaluation_index, repeat_index] = objective_value
+                objective_value_stds[evaluation_index, repeat_index] = objective_value_std
+            if not np.isnan(objective_value_best):
+                objective_value_best_results[evaluation_index, repeat_index] = objective_value_best
 
-    #     # create the baseline time axis
-    #     cutoff_time = x[cutoff_index]
-    #     time_interpolated_axis = np.linspace(x[0], cutoff_time, time_resolution)
-    # else:
-    #     assert len(time_interpolated_axis) == time_resolution
-    x_new = time_interpolated_axis
-    npoints = int(len(x_new) * segment_factor)
-
-    # # calculate polynomial fit
-    # z = np.polyfit(x, y, 10)
-    # f = np.poly1d(z)
-    # y_polynomial = f(x_new)
-    # # make it monotonically non-increasing (this is a very slow function due to O(n^2) complexity)
-    # y_polynomial = list(min(y_polynomial[:i]) if i > 0 else y_polynomial[i] for i in range(len(y_polynomial)))
-
-    # calculate Isotonic Regression
-    # the median is used as the maximum because as number of samples approaches infinity, the probability that the found minimum is <= median approaches 1
-    y_isotonic_regression = get_isotonic_curve(x, y, x_new, ymin=y_min, ymax=y_median, npoints=npoints)
-    # # assert that monotonicity is satisfied in the isotonic regression
-    # assert all(a>=b for a, b in zip(y_isotonic_regression, y_isotonic_regression[1:]))
-
-    # get the errors by snapping the original x-values to the closest x_new-values, assumes both x and x_new are sorted in increasing order
-    curr_index = 0
-    x_snapped_temp = list()
-    for x_val in x:
-        try:
-            while abs(x_val - x_new[curr_index + 1]) < abs(x_val - x_new[curr_index]):
-                curr_index += 1
-            x_snapped_temp.append(curr_index)
-        except IndexError:
-            x_snapped_temp.append(x_new.size - 1)
-    snapped_indices = np.array(x_snapped_temp)    # an array of shape x with indices pointing to x_new
-    error_snapped = y - y_isotonic_regression[snapped_indices]
-
-    # seperate the lower and upper error
-    error_lower_indices = np.where(error_snapped <= 0)
-    error_upper_indices = np.where(error_snapped >= 0)
-    x_lower = x[error_lower_indices]
-    error_lower = error_snapped[error_lower_indices]
-    x_upper = x[error_upper_indices]
-    error_upper = error_snapped[error_upper_indices]
-
-    # # get the snapped error
-    # x_new_error_lower = snapped_indices[error_lower_indices]
-    # x_new_error_upper = snapped_indices[error_upper_indices]
-    # error_lower_x: np.ndarray = smoothing_filter(x_new[x_new_error_lower], 100)
-    # error_upper_x: np.ndarray = smoothing_filter(x_new[x_new_error_upper], 100)
-
-    # interpolate lower and upper error to x_new
-    f_error_lower_interpolated = interp1d(x_lower, error_lower, bounds_error=False, fill_value=tuple([error_lower[0], error_lower[-1]]))
-    f_error_upper_interpolated = interp1d(x_upper, error_upper, bounds_error=False, fill_value=tuple([error_upper[0], error_upper[-1]]))
-    error_lower_interpolated: np.ndarray = y_isotonic_regression + f_error_lower_interpolated(x_new)
-    error_upper_interpolated: np.ndarray = y_isotonic_regression + f_error_upper_interpolated(x_new)
-
-    # # do linear interpolation for the errors
-    # # get the distance between the isotonic curve and the actual datapoint for each datapoint
-    # error: np.ndarray = y - get_isotonic_curve(x, y, x, ymin=y_min, ymax=y_median, npoints=npoints)
-    # # f_error_interpolated = interp1d(x, np.abs(error), bounds_error=False, fill_value=tuple([error[0], error[-1]]))
-    # # error_interpolated = f_error_interpolated(x_new)
-    # error_lower_indices = np.where(error <= 0)
-    # error_upper_indices = np.where(error >= 0)
-    # x_lower = x[error_lower_indices]
-    # error_lower = error[error_lower_indices]
-    # x_upper = x[error_upper_indices]
-    # error_upper = error[error_upper_indices]
-    # # # interpolate to the baseline time axis, when extrapolating use the first or last value
-    # # f_error_lower_interpolated = interp1d(x_lower, error_lower, bounds_error=False, fill_value=tuple([error_lower[0], error_lower[-1]]))
-    # # f_error_upper_interpolated = interp1d(x_upper, error_upper, bounds_error=False, fill_value=tuple([error_upper[0], error_upper[-1]]))
-    # # error_lower_interpolated: np.ndarray = smoothing_filter(f_error_lower_interpolated(x_new), 100)
-    # # error_upper_interpolated: np.ndarray = smoothing_filter(f_error_upper_interpolated(x_new), 100)
-
-    # # alternative: do isotonic regression for the upper and lower values seperately
-    # error_lower_interpolated = get_isotonic_curve(x_lower, error_lower, x_new, npoints=npoints, ymax=0)
-    # error_upper_interpolated = get_isotonic_curve(x_upper, error_upper, x_new, npoints=npoints, ymin=0)
-
-    # do linear interpolation for the other attributes
-    f_li_y_std = interp1d(x, y_std, fill_value='extrapolate')
-    y_std_li: np.ndarray = f_li_y_std(x_new)
-
-    # write to the results
-    if 'interpolated_time' in expected_results:
-        results['interpolated_time'] = time_interpolated_axis    # TODO maybe not write this for every strategy, but once
-    if 'interpolated_objective' in expected_results:
-        results['interpolated_objective'] = y_isotonic_regression
-    if 'interpolated_objective_std' in expected_results:
-        results['interpolated_objective_std'] = y_std_li
-    if 'interpolated_objective_error_lower' in expected_results:
-        results['interpolated_objective_error_lower'] = error_lower_interpolated
-    if 'interpolated_objective_error_upper' in expected_results:
-        results['interpolated_objective_error_upper'] = error_upper_interpolated
-
-    return results
-
-    # # TODO plot
-    # y_isotonic_regression_1 = get_isotonic_curve(x, y, x_new, ymin=y_min, ymax=y_median, package='sklearn', npoints=npoints)
-    # y_isotonic_regression_3 = get_isotonic_curve(x, y, x_new, ymin=y_min, ymax=y_median, npoints=npoints, power=1.1)
-    # import matplotlib.pyplot as plt
-    # plt.plot(x,y,',')
-    # # plt.plot(x_new, y_polynomial)
-    # plt.plot(x, _y_isotonic_regression, label="temp_cutoff")
-    # # plt.plot(x_new, y_isotonic_regression_1, label="SKLearn")
-    # plt.plot(x_new, y_isotonic_regression, label="Isotonic")
-    # # plt.plot(x_new, y_isotonic_regression_3, label="Isotonic p=1.1")
-    # plt.plot(x_new, error_lower_interpolated, label="lower error interpolated")
-    # plt.plot(x_new, error_upper_interpolated, label="upper error interpolated")
-    # # plt.plot(error_lower_x, y_isotonic_regression[x_new_error_lower] + error_lower, label='lower error')
-    # # plt.plot(error_upper_x, y_isotonic_regression[x_new_error_upper] + error_upper, label='lower error')
-    # plt.xlim([x_new[0]-1, x_new[-1] + 1 ])
-    # plt.xlabel("Cumulative time in seconds")
-    # plt.ylabel("Minimum value found")
-    # plt.legend()
-    # plt.show()
-    # exit(0)
+    # write to file
+    numpy_arrays = {
+        'fevals_results': fevals_results,
+        'time_results': time_results,
+        'objective_time_results': objective_time_results,
+        'objective_value_results': objective_value_results,
+        'objective_value_best_results': objective_value_best_results,
+        'objective_value_stds': objective_value_stds
+    }
+    return results_description.set_results(numpy_arrays)

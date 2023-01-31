@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/experiments/v0.1.0.schema.json",
+  "version": "0.1.0",
+  "title": "Experiment",
+  "description": "An experiment configuration file",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "Version number of the experiment file standard",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name of the experiment",
+      "type": "string"
+    },
+    "folder_id": {
+      "description": "Unique ID of the folder to store the results of this experiment in",
+      "type": "string"
+    },
+    "kernels": {
+      "description": "Kernels to optimize",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "GPUs": {
+      "description": "GPUs to optimize on",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "minimization": {
+      "description": "Direction of optimization (minimize or maximize)",
+      "type": "boolean",
+      "default": true
+    },
+    "resolution": {
+      "description": "The resolution of the time range",
+      "type": "integer",
+      "minimum": 2
+    },
+    "cutoff_percentile": {
+      "description": "Fraction of difference between median and absolute optimum at which to stop the time range",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    },
+    "cutoff_percentile_start": {
+      "description": "Fraction of difference between median and absolute optimum at which to start the time range",
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMaximum": 1
+    },
+    "cutoff_type": {
+      "description": "Whether to base the cutoff on function evaluations or time",
+      "type": "string",
+      "enum": [
+        "fevals",
+        "time"
+      ]
+    },
+    "plot": {
+      "type": "object",
+      "properties": {
+        "plot_relative_to_baseline": {
+          "type": "boolean",
+          "default": true
+        },
+        "plot_fevals": {
+          "type": "boolean",
+          "default": true
+        },
+        "plot_time": {
+          "type": "boolean",
+          "default": true
+        },
+        "plot_aggregated": {
+          "type": "boolean",
+          "default": true
+        },
+        "confidence_level": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": []
+    }
+  },
+  "required": [
+    "version",
+    "name",
+    "folder_id",
+    "kernels",
+    "GPUs",
+    "minimization",
+    "resolution",
+    "cutoff_percentile",
+    "cutoff_percentile_start",
+    "cutoff_type"
+  ]
+}

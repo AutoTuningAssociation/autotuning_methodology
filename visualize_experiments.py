@@ -5,9 +5,10 @@ from typing import Tuple, Any
 import matplotlib.pyplot as plt
 import warnings
 from sklearn.metrics import auc
-from math import ceil
 
-from experiments import (execute_experiment, create_expected_results, get_searchspaces_info_stats, calc_cutoff_point, get_random_curve)
+from experiments import execute_experiment, get_searchspaces_info_stats, calc_cutoff_point_fevals_time
+from curves import Curve, StochasticOptimizationAlgorithm
+from baseline import Baseline, RandomSearchBaseline
 
 import sys
 
@@ -49,7 +50,7 @@ def smoothing_filter(array: np.ndarray, window_length: int, a_min=None, a_max=No
 
 
 class Visualize:
-    """Class for visualization of experiments"""
+    """ Class for visualization of experiments """
 
     x_metric_displayname = dict({
         "num_evals": "Number of function evaluations used",
@@ -73,442 +74,261 @@ class Visualize:
     })
 
     def __init__(self, experiment_filename: str) -> None:
+        # silently execute the experiment
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.experiment, self.strategies, self.caches = execute_experiment(
+            self.experiment, self.strategies, self.results_descriptions = execute_experiment(
                 experiment_filename,
                 profiling=False,
                 searchspaces_info_stats=searchspaces_info_stats,
             )
-        print("\n\n")
+        print("\n")
+        print("Visualizing")
+
+        # settings
+        minimization: bool = self.experiment.get("minimization", True)
+        cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
+        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
+        cutoff_type: str = self.experiment.get('cutoff_type', "fevals")
+        assert cutoff_type == 'fevals' or cutoff_type == 'time'
+        time_resolution: float = self.experiment.get('resolution', 1e4)
+        if int(time_resolution) != time_resolution:
+            raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
+        time_resolution = int(time_resolution)
+
+        # plot settings
+        plot_settings: dict = self.experiment.get("plot")
+        plot_fevals: bool = plot_settings.get("plot_fevals", True)
+        plot_time: bool = plot_settings.get("plot_time", True)
+        plot_aggregated: bool = plot_settings.get("plot_aggregated")
+        num_cols: int = 2 if plot_fevals and plot_time else 1
+        if not plot_fevals and not plot_time:
+            raise ValueError(f"At least one of 'plot_fevals' and 'plot_time' must be True")
 
         # visualize
-        all_strategies_curves = list()
+        aggregation_data: list[tuple[RandomSearchBaseline, list[Curve], dict, np.ndarray]] = list()
         for gpu_name in self.experiment["GPUs"]:
             for kernel_name in self.experiment["kernels"]:
-                print(f"  visualizing {kernel_name} on {gpu_name}")
+                print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
 
                 # create the figure and plots
-                fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+                fig, axs = plt.subplots(nrows=1, ncols=num_cols, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
                 if not hasattr(axs, "__len__"):
                     axs = [axs]
                 title = f"{kernel_name} on {gpu_name}"
                 fig.canvas.manager.set_window_title(title)
                 fig.suptitle(title)
 
-                # prefetch the cached strategy results
-                cache = self.caches[gpu_name][kernel_name]
-                strategies_data = list()
+                # get the cached strategy results as curves
+                strategies_curves: list[Curve] = list()
                 for strategy in self.strategies:
-                    expected_results = create_expected_results()
-                    cached_data = cache.get_strategy_results(
-                        strategy["name"],
-                        strategy["repeats"],
-                        expected_results,
-                    )
-                    if cached_data is None:
-                        raise ValueError(f"Strategy {strategy['display_name']} not in cache, make sure execute_experiment() has ran first")
-                    strategies_data.append(cached_data)
+                    results_description = self.results_descriptions[gpu_name][kernel_name][strategy["name"]]
+                    if results_description is None:
+                        raise ValueError(f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first")
+                    strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
+
+                # set the x-axis range
+                info: dict = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]
+                _, cutoff_point_fevals, cutoff_point_time = calc_cutoff_point_fevals_time(cutoff_percentile, info)
+                _, cutoff_point_fevals_start, cutoff_point_time_start = calc_cutoff_point_fevals_time(cutoff_percentile_start, info)
+                fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals)
+                time_range = np.linspace(start=cutoff_point_time_start, stop=cutoff_point_time, num=time_resolution)
+                # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
+                # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
+
+                # get the random baseline
+                sorted_times = np.sort(info['sorted_times'])
+                random_baseline = RandomSearchBaseline(minimization, sorted_times)
+
+                # collect aggregatable data
+                if plot_aggregated:
+                    aggregation_data.append(tuple([random_baseline, strategies_curves, info, time_range]))
 
                 # visualize the results
-                info = searchspaces_info_stats[gpu_name]["kernels"][kernel_name]
-                self.plot_strategies_fevals(axs[1], strategies_data, info, cache)
-                subtract_baseline = self.experiment["relative_to_baseline"]
-                strategies_curves = self.get_strategies_curves(cache, strategies_data, info, subtract_baseline=subtract_baseline)
-                self.plot_strategies_curves(
-                    axs[0],
-                    strategies_data,
-                    strategies_curves,
-                    info,
-                    subtract_baseline=subtract_baseline,
-                )
-                all_strategies_curves.append(strategies_curves)
+                if plot_time:
+                    self.plot_strategies_curves(axs[0], info, strategies_curves, time_range, plot_settings, random_baseline)
+                if plot_fevals:
+                    self.plot_strategies_fevals(axs[-1], info, strategies_curves, fevals_range, plot_settings, random_baseline)
 
                 # finalize the figure and display it
-                fig.tight_layout()
-                plt.show()
+                if plot_time or plot_fevals:
+                    fig.tight_layout()
+                    plt.show()
 
         # plot the aggregated data
-        fig, axs = plt.subplots(ncols=1, figsize=(15, 8))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-        if not hasattr(axs, "__len__"):
-            axs = [axs]
-        title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
-        fig.canvas.manager.set_window_title(title)
-        fig.suptitle(title)
+        if plot_aggregated:
+            fig, axs = plt.subplots(ncols=1, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+            if not hasattr(axs, "__len__"):
+                axs = [axs]
+            title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
+            fig.canvas.manager.set_window_title(title)
+            fig.suptitle(title)
 
-        # gather the aggregate y axis for each strategy
-        print("\n")
-        strategies_aggregated = list()
-        for strategy_index, strategy in enumerate(self.strategies):
-            perf = list()
-            y_axis_temp = list()
-            for strategies_curves in all_strategies_curves:
-                for strategy_curve in strategies_curves["strategies"]:
-                    if strategy_curve["strategy_index"] == strategy_index:
-                        perf.append(strategy_curve["performance"])
-                        y_axis_temp.append(strategy_curve["y_axis"])
-            print(f"{strategy['display_name']} performance across kernels: {np.mean(perf)}")
-            y_axis = np.array(y_axis_temp)
-            strategies_aggregated.append(np.mean(y_axis, axis=0))
+            # finalize the figure and display it
+            self.plot_aggregated_curves(axs[0], aggregation_data)
+            fig.tight_layout()
+            plt.show()
 
-        # # finalize the figure and display it
-        # self.plot_aggregated_curves(axs[0], strategies_aggregated)
-        # fig.tight_layout()
-        # plt.show()
-
-    def get_strategies_curves(
-        self,
-        cache,
-        strategies_data: list,
-        info: dict,
-        subtract_baseline=True,
-        smoothing=False,
-        minimization=True,
-        smoothing_factor=100,
-    ) -> dict:
-        """Extract the strategies results"""
-        # get the baseline
-        x_axis, y_axis_baseline = cache.get_baseline()
-        absolute_optimum = info["absolute_optimum"]
-        y_max = absolute_optimum
-
-        # y_min = absolute_optimum if minimization else info["median"]
-        # y_max = info["median"] if minimization else absolute_optimum
-
-        # monte carlo simulation over cache
-        def draw_random(xs, k):
-            return np.random.choice(xs, size=k, replace=False)
-
-        # normalize
-        if subtract_baseline:
-            # y_axis_baseline = (y_axis_baseline - y_min) / (y_max - y_min)
-            y_min = y_axis_baseline
-            # y_axis_baseline = (y_axis_baseline - y_axis_baseline) / (y_max - y_min)
-
-        if smoothing:
-            y_axis_baseline = smoothing_filter(y_axis_baseline, y_axis_baseline.size / smoothing_factor)
-
-        # create resulting dict
-        strategies_curves: dict[str, Any] = dict({
-            "baseline": {
-                "x_axis": x_axis,
-                "y_axis": y_axis_baseline
-            },
-            "strategies": list(),
-        })
-
-        # clipstart = 10
-        # random_curve = y_axis_baseline[clipstart:]
-        # sorted_times = info["sorted_times"]
-
-        performances = list()
-        for strategy_index, strategy in enumerate(self.strategies):
-            if "hide" in strategy.keys() and strategy["hide"]:
-                continue
-
-            # get the data
-            strategy = strategies_data[strategy_index]
-            results = strategy["results"]
-            y_axis = np.array(results["interpolated_objective"])
-            y_axis_std = np.array(results["interpolated_objective_std"])
-            y_axis_std_lower = np.array(results["interpolated_objective_error_lower"])
-            y_axis_std_upper = np.array(results["interpolated_objective_error_upper"])
-            window_length = min(max(int(len(y_axis) * 0.5), 100), len(y_axis))
-            y_axis_std_lower = smoothing_filter(y_axis_std_lower, window_length, a_max=y_axis)
-            y_axis_std_upper = smoothing_filter(y_axis_std_upper, window_length, a_min=y_axis)
-
-            # normalize
-            if subtract_baseline:
-                y_axis = (y_axis - y_axis_baseline) / (y_max - y_axis_baseline)
-                # y_axis_std_lower = (y_axis_std_lower - y_min) / (y_max - y_min)
-                # y_axis_std_upper = (y_axis_std_upper - y_min) / (y_max - y_min)
-
-            # apply smoothing
-            if smoothing:
-                y_axis = smoothing_filter(y_axis, y_axis.size / smoothing_factor)
-
-            # find out where the global optimum is found and substract the baseline
-            # found_opt = np.argwhere(y_axis == absolute_optimum)
-            # if subtract_baseline:
-            # # y_axis =  y_axis - y_axis_baseline
-            # y_axis = y_axis_baseline / y_axis
-            # y_axis_std_lower = y_axis_baseline / y_axis_std_lower
-            # y_axis_std_upper = y_axis_baseline / y_axis_std_upper
-            # y_axis = (y_axis - y_min) / (y_max - y_min)
-
-            # quantify the performance of this strategy
-            if subtract_baseline:
-                # use mean distance
-                performance = np.mean(y_axis)
-            else:
-                # use area under curve approach
-                performance = auc(x_axis, y_axis)
-            performances.append(performance)
-            print(f"Performance of {strategy['display_name']}: {performance}")
-
-            # write to resulting dict
-            result_dict = dict({
-                "strategy_index": strategy_index,
-                "y_axis": y_axis,
-                "y_axis_std": y_axis_std,
-                "y_axis_std_lower": y_axis_std_lower,
-                "y_axis_std_upper": y_axis_std_upper,
-                "performance": performance,
-            })
-            strategies_curves["strategies"].append(result_dict)
-
-        print(f"Mean performance across strategies: {np.mean(performances)}")    # the higher the mean, the easier a search space is for the baseline
-        return strategies_curves
-
-    def get_indices(self, dist, draws):
-        dist = np.array(dist)
-        draws = np.array(draws)
-        if draws.ndim == 1:
-            indices_found = []
-            for x in draws:
-                if not np.isnan(x):
-                    indices = np.where(x == dist)[0]
-                    indices = round(np.mean(indices))
-                    indices_found.append(indices)
-                else:
-                    indices_per_trial.append(np.NaN)
-            #indices = np.concatenate([np.where(x == dist) for x in draws]).flatten()
-        elif draws.ndim == 2:
-            indices_found = []
-            for y in draws:
-                indices_per_trial = []
-                for x in y:
-                    if not np.isnan(x):
-                        indices = np.where(x == dist)[0]
-                        indices = round(np.mean(indices))
-                        indices_per_trial.append(indices)
-                    else:
-                        indices_per_trial.append(np.NaN)
-                indices_found.append(indices_per_trial)
-            #indices = [np.concatenate([np.where(x == dist) for x in y]).flatten() for y in draws]
-        else:
-            raise Exception("Expected draws to be 1D or 2D")
-        indices_found = np.array(indices_found)
-        return indices_found
-
-    def plot_strategies_fevals(self, ax: plt.Axes, strategies_data: list, info: dict, cache):
+    def plot_strategies_fevals(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], fevals_range: np.ndarray, plot_settings: dict,
+                               baseline_curve: Baseline = None, plot_errors=True):
         """ Plots all optimization strategies with number of function evaluations on the x-axis """
+        relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
+        confidence_level: float = plot_settings.get("confidence_level", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        absolute_optimum = info["absolute_optimum"]
-        absolute_difference = info['absolute_difference']
-        median = info['median']
+        absolute_optimum: float = info["absolute_optimum"]
+        absolute_difference: float = info['absolute_difference']
+        median: float = info['median']
         median_optimum_distance = median - absolute_optimum
-        ax.axhline(1, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
-        x_axis, y_axis_baseline = cache.get_baseline()
+        # plot the absolute optimum
+        absolute_optimum_y_value = 1 if relative_to_baseline else absolute_optimum
+        ax.axhline(absolute_optimum_y_value, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
-        # plot calculated random trajectory
-        sorted_times = np.array(info['sorted_times'])
-        # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / absolute_difference)    # to fraction of optimum
-        # sorted_times = 1 - ((np.array(info['sorted_times']) - absolute_optimum) / median_optimum_distance)    # to fraction of median-optimum difference
-        cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(0.98, info)
-        random_curve = get_random_curve(cutoff_point_fevals, sorted_times)
-        # ax.plot(random_curve, label="random trajectory", color='black', ls='--')
-        ax.axhline(0, label="random trajectory", color="black", ls="--")
-
-        clipstart = 10
-        random_curve = random_curve[clipstart:]
+        # plot baseline
+        sorted_times = np.sort(info['sorted_times'])
+        if baseline_curve is not None:
+            if relative_to_baseline is True:
+                ax.axhline(0, label="baseline trajectory", color="black", ls="--")
+            else:
+                ax.plot(fevals_range, baseline_curve.get_curve_over_fevals(fevals_range), label="baseline curve", color="black", ls="--")
 
         # plot each strategy
-        x_axis_max = 0
-        y_min = np.PINF
-        y_axis_max = np.NINF
         for strategy_index, strategy in enumerate(self.strategies):
             if "hide" in strategy.keys() and strategy["hide"]:
                 continue
 
             # get the data
             color = colors[strategy_index]
-            strategy = strategies_data[strategy_index]
-            results = np.array(strategy["results"]["num_function_evaluations_repeated_results"])
-            # results = 1 - ((results - absolute_optimum) / absolute_difference)    # to fraction of optimum
-            # results = 1 - ((results - absolute_optimum) / median_optimum_distance)    # to fraction of median-optimum difference
-            # results = (results - random_curve) / (absolute_optimum - random_curve)
-            num_repeats = len(results[0])
-            # results_obj_mean = np.median(results, axis=1)
+            strategy_curve = strategies_curves[strategy_index]
 
-            results_indices = self.get_indices(sorted_times, results[clipstart:])
-            mean_over_trials = list()
-            for trial_indices in results_indices:
-                #if len(trial_indices) > 0:
-                mean_index = np.mean(trial_indices)
-                if not np.isnan(mean_index):
-                    mean_index = round(mean_index)
-                mean_over_trials.append(mean_index)
-            # mean_over_trials = [round(x) for x in results_indices.mean(axis=1)]
-            invalid_configs = np.isnan(mean_over_trials)
-            mean_over_trials = np.array(mean_over_trials)[~invalid_configs]
-            mean_over_trials = mean_over_trials.astype(int)
-            results_of_mean_index = sorted_times[mean_over_trials]
-            random_curve_strategy = random_curve.copy()[~invalid_configs]
-            results_obj_mean = results_of_mean_index
+            # obtain the curves
+            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_fevals(fevals_range, dist=sorted_times, confidence_level=confidence_level)
+            if relative_to_baseline:
+                # sanity check: see if the calculated random curve is equal to itself
+                # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))
+                curve = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve, absolute_optimum)
+                curve_lower_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_lower_err, absolute_optimum)
+                curve_upper_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_upper_err, absolute_optimum)
 
-            results_obj_std = np.std(results, axis=1)
-            x_axis_max = max(len(results_obj_mean), x_axis_max)
-            y_axis_max = max(max(results_obj_mean), y_axis_max)
-            # ax.fill_between(
-            #     range(len(results_obj_mean)),
-            #     results_obj_mean - results_obj_std,
-            #     results_obj_mean + results_obj_std,
-            #     alpha=0.2,
-            #     antialiased=True,
-            #     color=color,
-            # )
-            results_obj_mean = ((results_obj_mean - random_curve_strategy) / (absolute_optimum - random_curve_strategy))
-            y_min = min(min(results_obj_mean), y_min)
-            ax.plot(results_obj_mean, label=f"{strategy['display_name']}", color=color)
+            # visualize
+            if plot_errors:
+                ax.fill_between(fevals_range, curve_lower_err, curve_upper_err, alpha=0.2, antialiased=True, color=color)
+            ax.plot(fevals_range, curve, label=f"{strategy['display_name']}", color=color)
 
-        # plot cutoff point
-        def plot_cutoff_point(cutoff_percentile):
-            cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, info)
-            print("")
-            print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
-            # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
-            # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
-            ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
+        # # plot cutoff point
+        # def plot_cutoff_point(cutoff_percentile):
+        #     cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, info)
+        #     print("")
+        #     # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
+        #     # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
+        #     # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
+        #     ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
 
-        plot_cutoff_point(0.980)
+        # if baseline_curve is not None:
+        #     plot_cutoff_point(0.980)
 
-        # # plot the absolute optimum
-        # if absolute_optimum is not None:
-        #     ax.plot(
-        #         [0, x_axis_max],
-        #         [absolute_optimum, absolute_optimum],
-        #         linestyle="-",
-        #         label="True optimum {}".format(round(absolute_optimum, 3)),
-        #         color="black",
-        #     )
-
-        # ax.set_ylim(bottom=absolute_optimum * 0.9, top=y_axis_max * 1.1)
-        ax.set_ylim(bottom=y_min, top=1)
+        ax.set_xlim(tuple([fevals_range[0], fevals_range[-1]]))
         ax.set_xlabel(self.x_metric_displayname["num_evals"])
-        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"])
+        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
 
-    def plot_strategies_curves(
-        self,
-        ax: plt.Axes,
-        strategies_data: list,
-        strategies_curves: dict,
-        info: dict,
-        shaded=True,
-        plot_errors=False,
-        subtract_baseline=True,
-    ):
+    def plot_strategies_curves(self, ax: plt.Axes, info: dict, strategies_curves: list[Curve], time_range: np.ndarray, plot_settings: dict,
+                               baseline_curve: Baseline = None, plot_errors=False):
         """Plots all optimization strategy curves"""
+        relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
+        confidence_level: float = plot_settings.get("confidence_level", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
-        bar_groups_markers = {
-            "reference": ".",
-            "old": "+",
-            "new": "d"
-        }
-
-        baseline = strategies_curves["baseline"]
-        x_axis = baseline["x_axis"]
+        absolute_optimum: float = info["absolute_optimum"]
+        absolute_difference: float = info['absolute_difference']
+        median: float = info['median']
+        median_optimum_distance = median - absolute_optimum
 
         # plot the absolute optimum
-        absolute_optimum = info["absolute_optimum"]
-        if subtract_baseline is False and absolute_optimum is not None:
-            ax.axhline(absolute_optimum, label="Absolute optimum {}".format(round(absolute_optimum, 3)), c='black', ls='-')
-        else:
-            ax.axhline(0, label="Random search", c='black', ls=':')
-            ax.axhline(1, label="Absolute optimum {}".format(round(absolute_optimum, 3)), c='black', ls='-.')
+        absolute_optimum_y_value = 1 if relative_to_baseline else absolute_optimum
+        ax.axhline(absolute_optimum_y_value, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
-        color_index = 0
-        marker = ","
-        y_min = np.PINF
-        y_max = np.NINF
-        for strategy_curves in strategies_curves["strategies"]:
-            # get the data
-            strategy = strategies_data[strategy_curves["strategy_index"]]
-            y_axis = strategy_curves["y_axis"]
-            y_axis_std = strategy_curves["y_axis_std"]
-            y_axis_std_lower = strategy_curves["y_axis_std_lower"]
-            y_axis_std_upper = strategy_curves["y_axis_std_upper"]
-            y_min = min(y_min, np.min(y_axis))
-            y_max = max(y_max, np.max(y_axis))
-
-            # set colors, transparencies and markers
-            color = colors[color_index]
-            color_index += 1
-            alpha = 1.0
-            fill_alpha = 0.2
-            if "bar_group" in strategy:
-                bar_group = strategy["bar_group"]
-                marker = bar_groups_markers[bar_group]
-
-            # plot the data
-            if shaded is True:
-                if plot_errors:
-                    ax.fill_between(
-                        x_axis,
-                        y_axis_std_lower,
-                        y_axis_std_upper,
-                        alpha=fill_alpha,
-                        antialiased=True,
-                        color=color,
-                    )
-                ax.plot(
-                    x_axis,
-                    y_axis,
-                    marker=marker,
-                    alpha=alpha,
-                    linestyle="-",
-                    label=f"{strategy['display_name']}",
-                    color=color,
-                )
+        # plot baseline
+        sorted_times = np.sort(info['sorted_times'])
+        if baseline_curve is not None:
+            if relative_to_baseline is True:
+                ax.axhline(0, label="baseline trajectory", color="black", ls="--")
             else:
-                if plot_errors:
-                    ax.errorbar(
-                        x_axis,
-                        y_axis,
-                        y_axis_std,
-                        marker=marker,
-                        alpha=alpha,
-                        linestyle="--",
-                        label=strategy["display_name"],
-                    )
-                else:
-                    ax.plot(
-                        x_axis,
-                        y_axis,
-                        marker=marker,
-                        linestyle="-",
-                        label=f"{strategy['display_name']}",
-                        color=color,
-                    )
+                ax.plot(time_range, baseline_curve.get_curve_over_time(time_range, info), label="baseline curve", color="black", ls="--")
 
-        # finalize plot
-        ax.axis([np.min(x_axis), np.max(x_axis), y_min * 0.9, y_max * 1.1])
-        ax.set_xlabel(self.x_metric_displayname["kerneltime"])
-        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max" if subtract_baseline else "objective"])
-        ax.set_ylim(bottom=y_min, top=1)
+        # plot each strategy
+        for strategy_index, strategy in enumerate(self.strategies):
+            if "hide" in strategy.keys() and strategy["hide"]:
+                continue
+
+            # get the data
+            color = colors[strategy_index]
+            strategy_curve = strategies_curves[strategy_index]
+
+            # obtain the curves
+            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_time(time_range, dist=sorted_times, confidence_level=confidence_level)
+            if relative_to_baseline:
+                # sanity check: see if the calculated random curve is equal to itself
+                # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))
+                curve = baseline_curve.get_standardised_curve_over_time(time_range, curve, absolute_optimum, info)
+                curve_lower_err = baseline_curve.get_standardised_curve_over_time(time_range, curve_lower_err, absolute_optimum, info)
+                curve_upper_err = baseline_curve.get_standardised_curve_over_time(time_range, curve_upper_err, absolute_optimum, info)
+
+            # visualize
+            if plot_errors:
+                ax.fill_between(time_range, curve_lower_err, curve_upper_err, alpha=0.2, antialiased=True, color=color)
+            ax.plot(time_range, curve, label=f"{strategy['display_name']}", color=color)
+
+        # # plot cutoff point
+        # def plot_cutoff_point(cutoff_percentile):
+        #     cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, info)
+        #     print("")
+        #     # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
+        #     # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
+        #     # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
+        #     ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
+
+        # if baseline_curve is not None:
+        #     plot_cutoff_point(0.980)
+
+        ax.set_xlim(tuple([time_range[0], time_range[-1]]))
+        ax.set_xlabel(self.x_metric_displayname["total_time"])
+        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
-        if plot_errors is False:
-            ax.grid(axis="y", zorder=0, alpha=0.7)
 
-    def plot_aggregated_curves(self, ax: plt.Axes, strategies_aggregated: list):
+    def plot_aggregated_curves(self, ax: plt.Axes, aggregation_data: list[tuple[RandomSearchBaseline, list[Curve], dict, np.ndarray]]):
+        # plot the random baseline and absolute optimum
         ax.axhline(0, label="Random search", c='black', ls=':')
         ax.axhline(1, label="Absolute optimum", c='black', ls='-.')
-        overall_ymin = min(min(y_axis) for y_axis in strategies_aggregated)
-        for strategy_index, y_axis in enumerate(strategies_aggregated):
-            ax.plot(y_axis, label=self.strategies[strategy_index]["display_name"])
 
-        ax.set_xlabel(self.x_metric_displayname["aggregate_time"])
-        ax.set_ylabel(self.y_metric_displayname["aggregate_objective_max"])
+        # get the relative performance for each strategy
+        strategies_performance = [list() for _ in aggregation_data[0][1]]
+        for random_baseline, strategies_curves, info, time_range in aggregation_data:
+            absolute_optimum: float = info["absolute_optimum"]
+            sorted_times = np.sort(info['sorted_times'])
+            for strategy_index, strategy_curve in enumerate(strategies_curves):
+                curve, _, _ = strategy_curve.get_curve_over_time(time_range, sorted_times)
+                relative_performance = random_baseline.get_standardised_curve_over_time(time_range, curve, absolute_optimum, info)
+                strategies_performance[strategy_index].append(relative_performance)
+
+        # plot each strategy
+        for strategy_index, strategy_performances in enumerate(strategies_performance):
+            strategy_performances = np.array([p for p in strategy_performances])
+            strategy_performance: np.ndarray = np.mean(strategy_performances, axis=0)
+            ax.plot(strategy_performance, label=self.strategies[strategy_index]["display_name"])
+
+        # set the axis
+        y_axis_size = strategy_performance.size
+        cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
+        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
+        ax.set_xlabel(f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)")
+        ax.set_ylabel(self.y_metric_displayname["aggregate_objective"])
         num_ticks = 11
         ax.set_xticks(
-            np.linspace(0, y_axis.size, num_ticks),
+            np.linspace(0, y_axis_size, num_ticks),
             np.round(np.linspace(0, 1, num_ticks), 2),
         )
-        ax.set_ylim(bottom=overall_ymin, top=1.0)
-        ax.set_xlim((0, y_axis.size))
+        ax.set_ylim(top=1.0)
+        ax.set_xlim((0, y_axis_size))
         ax.legend()
 
 
