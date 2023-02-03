@@ -7,10 +7,15 @@ import time as python_time
 import warnings
 import yappi
 from caching import ResultsDescription
+from kernel_tuner.util import InvalidConfig
 
 
 def is_invalid_objective_value(objective_value: float, error_value) -> bool:
     """ Returns whether an objective value is invalid by checking against NaN and the error value """
+    if isinstance(objective_value, InvalidConfig):
+        return True
+    if not isinstance(objective_value, (float)):
+        raise ValueError(f"Objective value should be of type float, but is of type {type(objective_value)} with value {objective_value}")
     return np.isnan(objective_value) or objective_value == error_value
 
 
@@ -135,11 +140,11 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         objective_value_best = np.nan
         for evaluation_index, evaluation in enumerate(repeat):
             objective_value = evaluation[objective_value_key]
-            cumulative_total_time += evaluation['strategy_time'] / 1000    # TODO the miliseconds to seconds conversion is specific to Kernel Tuner
             if not is_invalid_objective_value(objective_value, error_value):
                 # extract the objectives and time spent
+                cumulative_total_time += evaluation['strategy_time'] / 1000    # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
                 if not np.isnan(cumulative_total_time):
-                    cumulative_total_time += sum(evaluation['times']) / 1000    # TODO the miliseconds to seconds conversion is specific to Kernel Tuner
+                    cumulative_total_time += sum(evaluation['times']) / 1000    # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
                 if not np.isnan(cumulative_objective_time):
                     cumulative_objective_time += sum(sum(evaluation[time_key]) for time_key in objective_time_keys) / 1000
                 objective_value_best = opt_func([objective_value, objective_value_best])

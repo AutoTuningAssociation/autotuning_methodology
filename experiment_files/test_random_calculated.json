@@ -11,12 +11,12 @@
   "minimization": true,
   "resolution": 1e3,
   "cutoff_percentile": 0.99,
-  "cutoff_percentile_start": 0.7,
+  "cutoff_percentile_start": 0.01,
   "cutoff_type": "fevals",
   "plot": {
-    "plot_relative_to_baseline": true,
+    "plot_relative_to_baseline": false,
     "plot_fevals": true,
-    "plot_time": false,
+    "plot_time": true,
     "plot_aggregated": false,
     "confidence_level": 0.95
   },
