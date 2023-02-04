@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from experiments import median_time_per_feval
+from curves import Curve
 
 
 class Baseline(ABC):
     """ Class to use as a baseline for Curves in plots """
 
-    def __init__(self, minimization: bool) -> None:
-        self.minimization = minimization
+    def __init__(self) -> None:
         super().__init__()
 
     @abstractmethod
@@ -31,8 +31,29 @@ class Baseline(ABC):
         return strategy_curve
 
 
+class StochasticCurveBasedBaseline(Baseline):
+    """ Baseline object using a stochastic curve as input """
+
+    def __init__(self, curve: Curve) -> None:
+        self.curve = curve
+        self.minimization = curve.minimization
+        super().__init__()
+
+    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
+        return self.curve.get_curve_over_fevals(fevals_range)
+
+    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
+        return self.curve.get_curve_over_time(time_range)
+
+    def get_standardised_curve_over_fevals(self, strategy_curve: np.ndarray) -> np.ndarray:
+        raise NotImplementedError
+
+    def get_standardised_curve_over_time(self, strategy_curve: np.ndarray) -> np.ndarray:
+        raise NotImplementedError
+
+
 class RandomSearchBaseline(Baseline):
-    """ Baseline class using calculated random search without replacement """
+    """ Baseline object using calculated random search without replacement """
 
     def __init__(self, minimization: bool, sorted_times: np.ndarray) -> None:
         self.minimization = minimization
@@ -42,7 +63,7 @@ class RandomSearchBaseline(Baseline):
         assert np.all(self.dist_ascending[:-1] <= self.dist_ascending[1:])
         assert np.all(self.dist_descending[:-1] >= self.dist_descending[1:])
         self._redwhite_index_dist = self.dist_descending if minimization else self.dist_descending
-        super().__init__(minimization)
+        super().__init__()
 
     def time_to_fevals(self, time_range: np.ndarray, stats_info: dict) -> np.ndarray:
         """ Convert a time range to a number of function evaluations range """

@@ -8,7 +8,7 @@ from sklearn.metrics import auc
 
 from experiments import execute_experiment, get_searchspaces_info_stats, calc_cutoff_point_fevals_time
 from curves import Curve, StochasticOptimizationAlgorithm
-from baseline import Baseline, RandomSearchBaseline
+from baseline import Baseline, RandomSearchBaseline, StochasticCurveBasedBaseline
 
 import sys
 
@@ -106,7 +106,7 @@ class Visualize:
             raise ValueError(f"At least one of 'plot_fevals' and 'plot_time' must be True")
 
         # visualize
-        aggregation_data: list[tuple[RandomSearchBaseline, list[Curve], dict, np.ndarray]] = list()
+        aggregation_data: list[tuple[Baseline, list[Curve], dict, np.ndarray]] = list()
         for gpu_name in self.experiment["GPUs"]:
             for kernel_name in self.experiment["kernels"]:
                 print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
@@ -295,7 +295,7 @@ class Visualize:
         ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
         ax.legend()
 
-    def plot_aggregated_curves(self, ax: plt.Axes, aggregation_data: list[tuple[RandomSearchBaseline, list[Curve], dict, np.ndarray]]):
+    def plot_aggregated_curves(self, ax: plt.Axes, aggregation_data: list[tuple[Baseline, list[Curve], dict, np.ndarray]]):
         # plot the random baseline and absolute optimum
         ax.axhline(0, label="Random search", c='black', ls=':')
         ax.axhline(1, label="Absolute optimum", c='black', ls='-.')
