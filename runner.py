@@ -141,6 +141,8 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         for evaluation_index, evaluation in enumerate(repeat):
             objective_value = evaluation[objective_value_key]
             if not is_invalid_objective_value(objective_value, error_value):
+                print(evaluation)
+                exit(0)
                 # extract the objectives and time spent
                 cumulative_total_time += evaluation['strategy_time'] / 1000    # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
                 if not np.isnan(cumulative_total_time):

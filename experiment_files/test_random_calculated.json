@@ -6,7 +6,7 @@
     "pnpoly"
   ],
   "GPUs": [
-    "RTX_2070_SUPER"
+    "RTX_2080_Ti"
   ],
   "minimization": true,
   "resolution": 1e3,
