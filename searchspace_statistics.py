@@ -1,4 +1,6 @@
 from pathlib import Path
+from typing import Tuple
+from math import ceil
 import json
 import numpy as np
 
@@ -17,20 +19,50 @@ class SearchspaceStatistics():
     objective_times_total_sorted: np.ndarray
     objective_performances_total_sorted: np.ndarray
 
-    def __init__(self, kernel_name: str, device_name: str, objective_performance_keys=['time'],
+    def __init__(self, kernel_name: str, device_name: str, minimization=True, objective_performance_keys=['time'],
                  objective_time_keys=['times', 'compile_time', 'verification_time', 'benchmark_time', 'strategy_time', 'framework_time']) -> None:
         self.loaded = False
-        self.error_value = 1e20
+        self.error_values = [1e20, 'RuntimeFailedConfig', 'CompilationFailedConfig']
         self.kernel_name = kernel_name
         self.device_name = device_name
+        self.minimization = minimization
         self.objective_performance_keys: list[str] = objective_performance_keys
         self.objective_time_keys: list[str] = objective_time_keys
 
         # load the data into the arrays
         self.loaded = self._load()
 
-        print(f"{self.total_time_mean()=}")
-        print(f"{self.total_performance_mean()=}")
+    def total_time_median_time_per_feval(self) -> float:
+        """ Median time in seconds per function evaluation """
+        return self.total_time_median() * self.repeats
+
+    def total_performances_absolute_optimum(self) -> float:
+        """ Absolute optimum of the total performances """
+        return self.total_performance_minimum() if self.minimization else self.total_performance_maximum()
+
+    def cutoff_point(self, cutoff_percentile: float) -> Tuple[float, int]:
+        """ Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point) """
+        absolute_optimum = self.total_performances_absolute_optimum()
+        median = self.total_time_median()
+        inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
+
+        objective_value_at_cutoff_point = absolute_optimum + ((median - absolute_optimum) * (1 - cutoff_percentile))
+        # fevals_to_cutoff_point = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
+
+        # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] > cutoff_percentile * arr[-1])
+        i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_value_at_cutoff_point)
+        # In case of x <= (1+p) * f_opt
+        # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= (1 + (1 - cutoff_percentile)) * arr[-1])
+        # In case of p*x <= f_opt
+        # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if cutoff_percentile * x[1] <= arr[-1])
+        fevals_to_cutoff_point = ceil(i / (self.size + 1 - i))
+        return objective_value_at_cutoff_point, fevals_to_cutoff_point
+
+    def cutoff_point_fevals_time(self, cutoff_percentile: float) -> Tuple[float, int, float]:
+        """ Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point) """
+        cutoff_point_value, cutoff_point_fevals = self.cutoff_point(cutoff_percentile)
+        cutoff_point_time = cutoff_point_fevals * self.total_time_median_time_per_feval()
+        return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
 
     def _get_filepath(self) -> Path:
         """ Returns the filepath """
@@ -50,7 +82,7 @@ class SearchspaceStatistics():
         """ Checks if a cache value is an array or is not invalid """
         if isinstance(value, (list, tuple, np.ndarray)):
             return True
-        return value != self.error_value and not value == 'RuntimeFailedConfig' and not np.isnan(value)
+        return all(value != error_value for error_value in self.error_values) and not np.isnan(value)
 
     def _to_valid_array(self, cache_values: list[dict], key: str) -> np.ndarray:
         """ Convert valid cache values to a numpy array, sum if the input is a list of arrays """
@@ -89,6 +121,7 @@ class SearchspaceStatistics():
             self.objective_times = dict()
             for key in self.objective_time_keys:
                 self.objective_times[key] = self._to_valid_array(cache_values, key)
+                self.objective_times[key] = self.objective_times[key] / 1000    # TODO Kernel Tuner specific miliseconds to seconds conversion
                 assert self.objective_times[key].ndim == 1, f"Should have one dimension, has {self.objective_times[key].ndim}"
                 assert self.objective_times[key].shape[0] == len(
                     cache_values), f"Should have the same size as cache_values ({self.size}), has {self.objective_times[key].shape[0]}"
@@ -145,7 +178,7 @@ class SearchspaceStatistics():
         """ Get the standard deviation of total time """
         return np.std(self.objective_times_total_sorted)
 
-    def total_time_quartiles(self) -> tuple[float, float]:
+    def total_time_quartiles(self) -> Tuple[float, float]:
         """ Get the quartiles (25th and 75th percentiles) of total time """
         q25, q75 = np.percentile(self.objective_times_total_sorted, [25, 75])
         return tuple([q25, q75])
@@ -186,5 +219,26 @@ class SearchspaceStatistics():
         return q75 - q25
 
 
+def test():
+    """ Test the SearchspaceStatistics object class"""
+    ss_stats = SearchspaceStatistics('gemm', 'RTX_2080_Ti')
+
+    print(f"{ss_stats.total_time_minimum()=}")
+    print(f"{ss_stats.total_time_maximum()=}")
+    print(f"{ss_stats.total_time_mean()=}")
+    print(f"{ss_stats.total_time_median()=}")
+    print(f"{ss_stats.total_time_std()=}")
+    print(f"{ss_stats.total_time_quartiles()=}")
+    print(f"{ss_stats.total_time_interquartile_range()=}")
+
+    print(f"{ss_stats.total_performance_minimum()=}")
+    print(f"{ss_stats.total_performance_maximum()=}")
+    print(f"{ss_stats.total_performance_mean()=}")
+    print(f"{ss_stats.total_performance_median()=}")
+    print(f"{ss_stats.total_performance_std()=}")
+    print(f"{ss_stats.total_performance_quartiles()=}")
+    print(f"{ss_stats.total_performance_interquartile_range()=}")
+
+
 if __name__ == "__main__":
-    SearchspaceStatistics('pnpoly', 'RTX_2080_Ti')
+    test()

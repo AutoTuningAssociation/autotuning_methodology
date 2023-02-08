@@ -6,20 +6,14 @@ import json
 from jsonschema import validate
 import os
 import sys
-from typing import Tuple, Any
+from typing import Tuple
 import pathvalidate
 import numpy as np
 from math import ceil
 
 from runner import collect_results
 from caching import ResultsDescription
-
-
-def get_searchspaces_info_stats() -> dict[str, Any]:
-    """ read the searchspaces info statistics dictionary from file """
-    with open("../cached_data_used/kernel_info.json") as file:
-        kernels_device_info_data = file.read()
-    return json.loads(kernels_device_info_data)
+from searchspace_statistics import SearchspaceStatistics
 
 
 def change_directory(path: str):
@@ -69,43 +63,7 @@ def get_strategies(experiment: dict) -> dict:
     return strategies
 
 
-def median_time_per_feval(stats_info: dict) -> float:
-    """ Median time in seconds per function evaluation """
-    median: float = stats_info['median']
-    repeats: int = stats_info['repeats']
-    median_feval_time = (median * repeats) / 1000    # in seconds # TODO change this to the new specified output format in kernel_info_generator
-    return median_feval_time
-
-
-def calc_cutoff_point(cutoff_percentile: float, stats_info: dict) -> Tuple[float, int]:
-    """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point) """
-    absolute_optimum: float = stats_info["absolute_optimum"]
-    median: float = stats_info['median']
-    inverted_sorted_times_arr = np.array(stats_info['sorted_times'])
-    inverted_sorted_times_arr = inverted_sorted_times_arr[::-1]
-    N = inverted_sorted_times_arr.shape[0]
-
-    objective_value_at_cutoff_point = absolute_optimum + ((median - absolute_optimum) * (1 - cutoff_percentile))
-    # fevals_to_cutoff_point = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
-
-    # i = next(x[0] for x in enumerate(inverted_sorted_times_arr) if x[1] > cutoff_percentile * arr[-1])
-    i = next(x[0] for x in enumerate(inverted_sorted_times_arr) if x[1] <= objective_value_at_cutoff_point)
-    # In case of x <= (1+p) * f_opt
-    # i = next(x[0] for x in enumerate(inverted_sorted_times_arr) if x[1] <= (1 + (1 - cutoff_percentile)) * arr[-1])
-    # In case of p*x <= f_opt
-    # i = next(x[0] for x in enumerate(inverted_sorted_times_arr) if cutoff_percentile * x[1] <= arr[-1])
-    fevals_to_cutoff_point = ceil(i / (N + 1 - i))
-    return objective_value_at_cutoff_point, fevals_to_cutoff_point
-
-
-def calc_cutoff_point_fevals_time(cutoff_percentile: float, stats_info: dict) -> Tuple[float, int, float]:
-    """ Calculate the cutoff point (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point) """
-    cutoff_point_value, cutoff_point_fevals = calc_cutoff_point(cutoff_percentile, stats_info)
-    cutoff_point_time = cutoff_point_fevals * median_time_per_feval(stats_info)
-    return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
-
-
-def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: dict) -> Tuple[dict, dict, dict]:
+def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict]:
     """ Executes the experiment by retrieving it from the cache or running it """
     experiment = get_experiment(filepath)
     print(f"Starting experiment \'{experiment['name']}\'")
@@ -135,10 +93,10 @@ def execute_experiment(filepath: str, profiling: bool, searchspaces_info_stats: 
         results_descriptions[gpu_name] = dict()
         for index, kernel in enumerate(kernels):
             kernel_name = kernel_names[index]
-            stats_info = searchspaces_info_stats[gpu_name]['kernels'][kernel_name]
+            searchspace_stats = SearchspaceStatistics(gpu_name, kernel_name, minimization)    # TODO add objective_performance_keys and objective_times_keys
 
             # set cutoff point
-            _, cutoff_point_fevals, cutoff_point_time = calc_cutoff_point_fevals_time(cutoff_percentile, stats_info)
+            _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(cutoff_percentile)
 
             print(f" | - optimizing kernel '{kernel_name}'")
             results_descriptions[gpu_name][kernel_name] = dict()
@@ -181,4 +139,4 @@ if __name__ == "__main__":
     if experiment_filepath is None:
         raise ValueError("Invalid '-experiment' option. Run 'experiments.py -h' to read more about the options.")
 
-    execute_experiment(experiment_filepath, profiling=False, searchspaces_info_stats=get_searchspaces_info_stats())
+    execute_experiment(experiment_filepath, profiling=False)
