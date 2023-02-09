@@ -3,6 +3,7 @@ from typing import Tuple
 from math import ceil
 import json
 import numpy as np
+from runner import is_invalid_objective_time, is_invalid_objective_performance
 
 
 class SearchspaceStatistics():
@@ -19,15 +20,14 @@ class SearchspaceStatistics():
     objective_times_total_sorted: np.ndarray
     objective_performances_total_sorted: np.ndarray
 
-    def __init__(self, kernel_name: str, device_name: str, minimization=True, objective_performance_keys=['time'],
-                 objective_time_keys=['times', 'compile_time', 'verification_time', 'benchmark_time', 'strategy_time', 'framework_time']) -> None:
+    def __init__(self, kernel_name: str, device_name: str, minimization: bool, objective_time_keys: list[str], objective_performance_keys: list[str]) -> None:
         self.loaded = False
         self.error_values = [1e20, 'RuntimeFailedConfig', 'CompilationFailedConfig']
         self.kernel_name = kernel_name
         self.device_name = device_name
         self.minimization = minimization
-        self.objective_performance_keys: list[str] = objective_performance_keys
-        self.objective_time_keys: list[str] = objective_time_keys
+        self.objective_time_keys = objective_time_keys
+        self.objective_performance_keys = objective_performance_keys
 
         # load the data into the arrays
         self.loaded = self._load()
@@ -46,17 +46,17 @@ class SearchspaceStatistics():
         median = self.total_time_median()
         inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
 
-        objective_value_at_cutoff_point = absolute_optimum + ((median - absolute_optimum) * (1 - cutoff_percentile))
+        objective_performance_at_cutoff_point = absolute_optimum + ((median - absolute_optimum) * (1 - cutoff_percentile))
         # fevals_to_cutoff_point = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
 
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] > cutoff_percentile * arr[-1])
-        i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_value_at_cutoff_point)
+        i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_performance_at_cutoff_point)
         # In case of x <= (1+p) * f_opt
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= (1 + (1 - cutoff_percentile)) * arr[-1])
         # In case of p*x <= f_opt
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if cutoff_percentile * x[1] <= arr[-1])
         fevals_to_cutoff_point = ceil(i / (self.size + 1 - i))
-        return objective_value_at_cutoff_point, fevals_to_cutoff_point
+        return objective_performance_at_cutoff_point, fevals_to_cutoff_point
 
     def cutoff_point_fevals_time(self, cutoff_percentile: float) -> Tuple[float, int, float]:
         """ Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point) """
@@ -78,23 +78,24 @@ class SearchspaceStatistics():
             raise FileNotFoundError(f"{filepath} does not exist")
         return filepath
 
-    def _is_not_invalid_value(self, value) -> bool:
-        """ Checks if a cache value is an array or is not invalid """
+    def _is_not_invalid_value(self, value, performance: bool) -> bool:
+        """ Checks if a cache performance or time value is an array or is not invalid """
         if isinstance(value, (list, tuple, np.ndarray)):
             return True
-        return all(value != error_value for error_value in self.error_values) and not np.isnan(value)
+        invalid_check_function = is_invalid_objective_performance if performance else is_invalid_objective_time
+        return not invalid_check_function(value)
 
-    def _to_valid_array(self, cache_values: list[dict], key: str) -> np.ndarray:
-        """ Convert valid cache values to a numpy array, sum if the input is a list of arrays """
+    def _to_valid_array(self, cache_values: list[dict], key: str, performance: bool) -> np.ndarray:
+        """ Convert valid cache performance or time values to a numpy array, sum if the input is a list of arrays """
         # make a list of all valid values
-        values = list(v[key] if key in v and self._is_not_invalid_value(v[key]) else np.nan for v in cache_values)
+        values = list(v[key] if key in v and self._is_not_invalid_value(v[key], performance) else np.nan for v in cache_values)
         # check if there are values that are arrays
         for value_index, value in enumerate(values):
             if isinstance(value, (list, tuple, np.ndarray)):
                 # if the cache value is an array, sum the valid values
                 array = value
-                summed_value = sum(list(v for v in array if self._is_not_invalid_value(v)))
-                values[value_index] = summed_value if summed_value != 0 and self._is_not_invalid_value(summed_value) else np.nan
+                summed_value = sum(list(v for v in array if self._is_not_invalid_value(v, performance)))
+                values[value_index] = summed_value if summed_value != 0 and self._is_not_invalid_value(summed_value, performance) else np.nan
         return np.array(values)
 
     def _load(self) -> bool:
@@ -120,14 +121,14 @@ class SearchspaceStatistics():
             self.size = len(cache_values)
             self.objective_times = dict()
             for key in self.objective_time_keys:
-                self.objective_times[key] = self._to_valid_array(cache_values, key)
+                self.objective_times[key] = self._to_valid_array(cache_values, key, performance=False)
                 self.objective_times[key] = self.objective_times[key] / 1000    # TODO Kernel Tuner specific miliseconds to seconds conversion
                 assert self.objective_times[key].ndim == 1, f"Should have one dimension, has {self.objective_times[key].ndim}"
                 assert self.objective_times[key].shape[0] == len(
                     cache_values), f"Should have the same size as cache_values ({self.size}), has {self.objective_times[key].shape[0]}"
             self.objective_performances = dict()
             for key in self.objective_performance_keys:
-                self.objective_performances[key] = self._to_valid_array(cache_values, key)
+                self.objective_performances[key] = self._to_valid_array(cache_values, key, performance=True)
                 assert self.objective_performances[key].ndim == 1, f"Should have one dimension, has {self.objective_performances[key].ndim}"
                 assert self.objective_performances[key].shape[0] == len(
                     cache_values), f"Should have the same size as cache_values ({self.size}), has {self.objective_performances[key].shape[0]}"

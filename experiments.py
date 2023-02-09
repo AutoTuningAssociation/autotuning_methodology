@@ -8,13 +8,13 @@ from jsonschema import validate
 import os
 import sys
 from typing import Tuple
-import pathvalidate
 import numpy as np
 from math import ceil
 
 from runner import collect_results
 from caching import ResultsDescription
 from searchspace_statistics import SearchspaceStatistics
+from pathlib import Path
 
 
 def change_directory(path: str):
@@ -25,16 +25,20 @@ def change_directory(path: str):
 
 def get_experiment(filename: str) -> dict:
     """ Validates and gets the experiment from the .json file """
-    folder = 'experiment_files/'
+    folder_name = 'experiment_files'
+    folder = Path(folder_name)
     extension = '.json'
     if not filename.endswith(extension):
         filename = filename + extension
     path = filename
-    if not filename.startswith(folder):
-        path = folder + filename
-    safe_path = pathvalidate.sanitize_filepath(path)
-    schemafilepath = folder + 'schema.json'
-    with open(safe_path) as file, open(schemafilepath) as schemafile:
+    if not filename.startswith(folder_name + '/'):
+        path = folder / filename
+    else:
+        path = Path(path)
+    assert path.exists()
+    schemafilepath = folder / 'schema.json'
+    assert schemafilepath.exists()
+    with open(path) as file, open(schemafilepath) as schemafile:
         schema = json.load(schemafile)
         experiment = json.load(file)
         validate(instance=experiment, schema=schema)
@@ -87,9 +91,8 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
     # change_directory("cached_data_used" + kernel_path)
 
     # variables for comparison
-    objective_time_keys = ['times']
-    objective_value_key = 'time'
-    objective_values_key = 'times'
+    objective_time_keys = experiment.get('objective_time_keys')
+    objective_performance_keys = experiment.get('objective_performance_keys')
 
     # execute each strategy in the experiment per GPU and kernel
     results_descriptions: dict[str, dict[str, dict[str, ResultsDescription]]] = dict()
@@ -99,8 +102,8 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
         results_descriptions[gpu_name] = dict()
         for index, kernel in enumerate(kernels):
             kernel_name = kernel_names[index]
-            searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name,
-                                                      minimization=minimization)    # TODO add objective_performance_keys and objective_times_keys
+            searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name, minimization=minimization,
+                                                      objective_time_keys=objective_time_keys, objective_performance_keys=objective_performance_keys)
 
             # set cutoff point
             _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(cutoff_percentile)
@@ -124,7 +127,8 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
                 # else:
                 strategy['options']['max_fevals'] = int(ceil(cutoff_point_fevals * cutoff_margin))
                 results_description = ResultsDescription(experiment_folder_id, kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic,
-                                                         objective_time_keys, objective_value_key, objective_values_key, minimization)
+                                                         objective_time_keys=objective_time_keys, objective_performance_keys=objective_performance_keys,
+                                                         minimization=minimization)
 
                 # if the strategy is in the cache, use cached data
                 if 'ignore_cache' not in strategy and results_description.has_results():

@@ -2,21 +2,42 @@
 from cProfile import label
 import numpy as np
 import progressbar
-from typing import Any, Tuple, Dict
+from typing import Tuple
 import time as python_time
 import warnings
 import yappi
 from caching import ResultsDescription
-from kernel_tuner.util import InvalidConfig
+from kernel_tuner.util import InvalidConfig, CompilationFailedConfig, RuntimeFailedConfig
+
+kernel_tuner_error_types = tuple([InvalidConfig, CompilationFailedConfig, RuntimeFailedConfig])
+kernel_tuner_error_types_strings = ['InvalidConfig', 'CompilationFailedConfig', 'RuntimeFailedConfig']
+kernel_tuner_error_value = 1e20
 
 
-def is_invalid_objective_value(objective_value: float, error_value) -> bool:
+def is_invalid_objective_performance(objective_performance: float) -> bool:
     """ Returns whether an objective value is invalid by checking against NaN and the error value """
-    if isinstance(objective_value, InvalidConfig):
+    if isinstance(objective_performance, kernel_tuner_error_types):
         return True
-    if not isinstance(objective_value, (float)):
-        raise ValueError(f"Objective value should be of type float, but is of type {type(objective_value)} with value {objective_value}")
-    return np.isnan(objective_value) or objective_value == error_value
+    if any(str(objective_performance) == error_type_string for error_type_string in kernel_tuner_error_types_strings):
+        return True
+    if not isinstance(objective_performance, (int, float)):
+        raise ValueError(f"Objective value should be of type float, but is of type {type(objective_performance)} with value {objective_performance}")
+    return np.isnan(objective_performance) or objective_performance == kernel_tuner_error_value
+
+
+def is_invalid_objective_time(objective_time: float) -> bool:
+    """ Returns whether an objective time is invalid """
+    return np.isnan(objective_time)
+
+
+def sum_inner_iterables(objective_value, performance: bool):
+    """ Recursive function to sum all contained non-invalid iterables """
+    if isinstance(objective_value, (list, tuple, np.ndarray)):
+        objective_value = sum(filter(None, list(sum_inner_iterables(value, performance) for value in objective_value)))
+    invalid_check_function = is_invalid_objective_performance if performance else is_invalid_objective_time
+    if not invalid_check_function(objective_value):
+        return objective_value
+    return None
 
 
 def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool) -> Tuple[list, int]:
@@ -88,10 +109,8 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
             # TODO continue here with confidence interval
             len_res: int = len(res)
             # check if there are only invalid configs in the first min_num_evals, if so, try again
-            temp_res_time = list(r['time'] for r in res[:min_num_evals])
-            invalid_config_errors = ['InvalidConfig', 'CompilationFailedConfig', 'RuntimeFailedConfig']
-            temp_res_filtered_invalids = list(t for t in temp_res_time if all(str(t) != error_value for error_value in invalid_config_errors))
-            only_invalid = len(temp_res_filtered_invalids) < 1 or min(temp_res_filtered_invalids) == error_value
+            temp_res_filtered = list(t for t in res[:min_num_evals] if not is_invalid_objective_performance(t['time']))
+            only_invalid = len(temp_res_filtered) < 1
             attempt += 1
         # register the results
         repeated_results.append(res)
@@ -116,8 +135,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
 
     # get the objective value and time keys
     objective_time_keys = results_description.objective_time_keys
-    objective_value_key = results_description.objective_value_key
-    objective_values_key = results_description.objective_values_key
+    objective_performance_keys = results_description.objective_performance_keys
 
     # find the maximum number of function evaluations
     max_num_evals = max(len(repeat) for repeat in repeated_results)
@@ -128,56 +146,49 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
 
     # set the arrays to write to
     fevals_results = get_nan_array()
-    time_results = get_nan_array()
     objective_time_results = get_nan_array()
-    objective_value_results = get_nan_array()
-    objective_value_best_results = get_nan_array()
-    objective_value_stds = get_nan_array()
+    objective_performance_results = get_nan_array()
+    objective_performance_best_results = get_nan_array()
+    objective_performance_stds = get_nan_array()
 
     # combine the results
     opt_func = np.nanmin if results_description.minimization is True else np.nanmax
 
     for repeat_index, repeat in enumerate(repeated_results):
-        cumulative_total_time = 0
         cumulative_objective_time = 0
-        objective_value_best = np.nan
+        objective_performance_best = np.nan
         for evaluation_index, evaluation in enumerate(repeat):
-            objective_value = evaluation[objective_value_key]
-            if not is_invalid_objective_value(objective_value, error_value):
-                print(evaluation)
-                exit(0)
-                # extract the objectives and time spent
-                cumulative_total_time += evaluation['strategy_time'] / 1000    # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
-                if not np.isnan(cumulative_total_time):
-                    cumulative_total_time += sum(evaluation['times']) / 1000    # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
-                if not np.isnan(cumulative_objective_time):
-                    cumulative_objective_time += sum(sum(evaluation[time_key]) for time_key in objective_time_keys) / 1000
-                objective_value_best = opt_func([objective_value, objective_value_best])
-                objective_value_std = np.std(list(e for e in evaluation[objective_values_key] if e is not error_value))
-            else:
-                pass
-                # TODO figure out what to do here - how should we count total time and objective time if there is an invalid value? Cumulating NaN is useless for large number of repeats
-                # # set the values to NaN
-                # cumulative_total_time = np.NaN
-                # cumulative_objective_time = np.NaN
 
-            # write to the arrays
+            # obtain the objective time
+            objective_times = list(filter(None, (sum_inner_iterables(evaluation[key], performance=False) for key in objective_time_keys if key in evaluation)))
+            if len(objective_times) >= 1:
+                objective_time = sum(objective_times)
+                if not is_invalid_objective_time(objective_time):
+                    cumulative_objective_time += (objective_time / 1000)    # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
+                    objective_time_results[evaluation_index, repeat_index] = cumulative_objective_time
+
+            # obtain the objective performance
+            objective_performances = list(
+                filter(None, (sum_inner_iterables(evaluation[key], performance=True) for key in objective_performance_keys if key in evaluation)))
+            if len(objective_performances) >= 1:
+                objective_performance = sum(objective_performances)
+                if not is_invalid_objective_performance(objective_performance):
+                    objective_performance_results[evaluation_index, repeat_index] = objective_performance
+                    objective_performance_best = opt_func([objective_performance, objective_performance_best])
+
+            # set the best objective performance
+            if not is_invalid_objective_performance(objective_performance_best):
+                objective_performance_best_results[evaluation_index, repeat_index] = objective_performance_best
+
+            # set the number of function evaluations
             fevals_results[evaluation_index, repeat_index] = evaluation_index + 1    # number of function evaluations are counted from 1 instead of 0
-            time_results[evaluation_index, repeat_index] = cumulative_total_time
-            objective_time_results[evaluation_index, repeat_index] = cumulative_objective_time
-            if not is_invalid_objective_value(objective_value, error_value):    # if it is an error value, it must stay NaN
-                objective_value_results[evaluation_index, repeat_index] = objective_value
-                objective_value_stds[evaluation_index, repeat_index] = objective_value_std
-            if not np.isnan(objective_value_best):
-                objective_value_best_results[evaluation_index, repeat_index] = objective_value_best
 
     # write to file
     numpy_arrays = {
         'fevals_results': fevals_results,
-        'time_results': time_results,
         'objective_time_results': objective_time_results,
-        'objective_value_results': objective_value_results,
-        'objective_value_best_results': objective_value_best_results,
-        'objective_value_stds': objective_value_stds
+        'objective_performance_results': objective_performance_results,
+        'objective_performance_best_results': objective_performance_best_results,
+        'objective_performance_stds': objective_performance_stds
     }
     return results_description.set_results(numpy_arrays)

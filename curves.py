@@ -22,8 +22,8 @@ class Curve(ABC):
         # result data
         results = results_description.get_results()
         self._x_fevals = results.fevals_results    # the time per objective value in number of function evaluations since start (1d if deterministic, 2d if stochastic)
-        self._x_time = results.time_results    # the time per objective value in seconds since start the raw x-axis (1d if deterministic, 2d if stochastic)
-        self._y = results.objective_value_best_results    # the objective values (1d if deterministic, 2d if stochastic)
+        self._x_time = results.objective_time_results    # the time per objective value in seconds since start the raw x-axis (1d if deterministic, 2d if stochastic)
+        self._y = results.objective_performance_best_results    # the objective performances (1d if deterministic, 2d if stochastic)
 
         # complete initialisation
         self.check_attributes()

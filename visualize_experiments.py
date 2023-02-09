@@ -89,6 +89,8 @@ class Visualize:
         if int(time_resolution) != time_resolution:
             raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
         time_resolution = int(time_resolution)
+        objective_time_keys = self.experiment.get('objective_time_keys')
+        objective_performance_keys = self.experiment.get('objective_performance_keys')
 
         # plot settings
         plot_settings: dict = self.experiment.get("plot")
@@ -114,7 +116,8 @@ class Visualize:
                 fig.suptitle(title)
 
                 # get the statistics
-                searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name, minimization=minimization)
+                searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name, minimization=minimization,
+                                                          objective_time_keys=objective_time_keys, objective_performance_keys=objective_performance_keys)
 
                 # get the cached strategy results as curves
                 strategies_curves: list[Curve] = list()
@@ -214,7 +217,7 @@ class Visualize:
         #     print("")
         #     # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
         #     # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
-        #     # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
+        #     # print(f"objective_performance_at_cutoff_point: {objective_performance_at_cutoff_point}")
         #     ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
 
         # if baseline_curve is not None:
@@ -275,7 +278,7 @@ class Visualize:
         #     print("")
         #     # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
         #     # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
-        #     # print(f"objective_value_at_cutoff_point: {objective_value_at_cutoff_point}")
+        #     # print(f"objective_performance_at_cutoff_point: {objective_performance_at_cutoff_point}")
         #     ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
 
         # if baseline_curve is not None:
