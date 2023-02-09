@@ -5,6 +5,7 @@
   "kernels": [
     "pnpoly"
   ],
+  "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
     "RTX_2080_Ti"
   ],

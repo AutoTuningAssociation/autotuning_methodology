@@ -2,6 +2,7 @@
 
 import argparse
 from importlib import import_module
+from pathlib import Path
 import json
 from jsonschema import validate
 import os
@@ -68,17 +69,22 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
     experiment = get_experiment(filepath)
     print(f"Starting experiment \'{experiment['name']}\'")
     experiment_folder_id = experiment.get('folder_id')
-    kernel_path: str = experiment.get('kernel_path', "")
     minimization: bool = experiment.get('minimization', True)
     cutoff_percentile: float = experiment.get('cutoff_percentile', 1)
     cutoff_type: str = experiment.get('cutoff_type', "fevals")
     assert cutoff_type == 'fevals' or cutoff_type == 'time'
     curve_segment_factor: float = experiment.get('curve_segment_factor', 0.05)
     assert isinstance(curve_segment_factor, float)
-    change_directory("../cached_data_used" + kernel_path)
     strategies = get_strategies(experiment)
+    # add the kernel directory to path to import the module
+    kernel_path = Path(experiment.get('kernel_path', ""))
+    if not kernel_path.exists():
+        raise FileNotFoundError(f"No such path {kernel_path}")
+    sys.path.append(str(kernel_path))
     kernel_names = experiment['kernels']
     kernels = list(import_module(kernel_name) for kernel_name in kernel_names)
+    # cachefiles_path = kernel_path + '../cachefiles'
+    # change_directory("cached_data_used" + kernel_path)
 
     # variables for comparison
     objective_time_keys = ['times']
@@ -93,7 +99,8 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
         results_descriptions[gpu_name] = dict()
         for index, kernel in enumerate(kernels):
             kernel_name = kernel_names[index]
-            searchspace_stats = SearchspaceStatistics(gpu_name, kernel_name, minimization)    # TODO add objective_performance_keys and objective_times_keys
+            searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name,
+                                                      minimization=minimization)    # TODO add objective_performance_keys and objective_times_keys
 
             # set cutoff point
             _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(cutoff_percentile)

@@ -114,7 +114,7 @@ class Visualize:
                 fig.suptitle(title)
 
                 # get the statistics
-                searchspace_stats = SearchspaceStatistics(kernel_name, gpu_name, minimization)
+                searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name, minimization=minimization)
 
                 # get the cached strategy results as curves
                 strategies_curves: list[Curve] = list()

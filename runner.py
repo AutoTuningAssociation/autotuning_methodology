@@ -88,7 +88,10 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
             # TODO continue here with confidence interval
             len_res: int = len(res)
             # check if there are only invalid configs in the first min_num_evals, if so, try again
-            only_invalid = len_res < 1 or min(res[:min_num_evals], key=lambda x: x['time'])['time'] == error_value
+            temp_res_time = list(r['time'] for r in res[:min_num_evals])
+            invalid_config_errors = ['InvalidConfig', 'CompilationFailedConfig', 'RuntimeFailedConfig']
+            temp_res_filtered_invalids = list(t for t in temp_res_time if all(str(t) != error_value for error_value in invalid_config_errors))
+            only_invalid = len(temp_res_filtered_invalids) < 1 or min(temp_res_filtered_invalids) == error_value
             attempt += 1
         # register the results
         repeated_results.append(res)
