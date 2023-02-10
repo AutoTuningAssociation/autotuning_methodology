@@ -11,7 +11,7 @@
   ],
   "minimization": true,
   "resolution": 1e3,
-  "cutoff_percentile": 0.95,
+  "cutoff_percentile": 0.98,
   "cutoff_percentile_start": 0.01,
   "objective_time_keys": [
     "times",
@@ -28,7 +28,7 @@
   "plot": {
     "plot_relative_to_baseline": false,
     "plot_fevals": true,
-    "plot_time": true,
+    "plot_time": false,
     "plot_aggregated": false,
     "confidence_level": 0.95
   },
@@ -43,10 +43,10 @@
   },
   "strategies": [
     {
-      "name": "random_sample",
+      "name": "random_sample_100_iter",
       "strategy": "random_sample",
-      "display_name": "Random sampling 500 iters",
-      "repeats": 500
+      "display_name": "Random sampling 100 iters",
+      "repeats": 100
     },
     {
       "name": "random_sample_250_iter",
@@ -55,10 +55,10 @@
       "repeats": 250
     },
     {
-      "name": "random_sample_100_iter",
+      "name": "random_sample",
       "strategy": "random_sample",
-      "display_name": "Random sampling 100 iters",
-      "repeats": 100
+      "display_name": "Random sampling 500 iters",
+      "repeats": 500
     }
   ]
 }

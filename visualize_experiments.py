@@ -81,7 +81,7 @@ class Visualize:
 
         # settings
         minimization: bool = self.experiment.get("minimization", True)
-        cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
+        cutoff_percentile: float = self.experiment.get("cutoff_percentile")
         cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
         cutoff_type: str = self.experiment.get('cutoff_type', "fevals")
         assert cutoff_type == 'fevals' or cutoff_type == 'time'
@@ -211,17 +211,26 @@ class Visualize:
                 ax.fill_between(fevals_range, curve_lower_err, curve_upper_err, alpha=0.2, antialiased=True, color=color)
             ax.plot(fevals_range, curve, label=f"{strategy['display_name']}", color=color)
 
-        # # plot cutoff point
-        # def plot_cutoff_point(cutoff_percentile):
-        #     cutoff_point_value, cutoff_point_fevals = searchspace_stats.cutoff_point(cutoff_percentile)
-        #     print("")
-        #     # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
-        #     # print(f"cutoff_point_fevals: {cutoff_point_fevals}")
-        #     # print(f"objective_performance_at_cutoff_point: {objective_performance_at_cutoff_point}")
-        #     ax.plot([cutoff_point_fevals], [cutoff_percentile], marker='o', color='red', label=f"cutoff point {cutoff_percentile}")
+        # plot cutoff point
+        def plot_cutoff_point(cutoff_percentile, show_label=True):
+            """ plot the cutoff point """
+            cutoff_point_value, cutoff_point_fevals = searchspace_stats.cutoff_point(cutoff_percentile)
+            y_value = cutoff_percentile if relative_to_baseline else cutoff_point_value
+            # print("")
+            # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
+            print(f"{cutoff_point_fevals=}")
+            print(f"{cutoff_point_value=}")
+            # print(f"objective_performance_at_cutoff_point: {objective_performance_at_cutoff_point}")
+            label = f"cutoff point {round(cutoff_percentile, 3)}" if show_label else None
+            ax.plot([cutoff_point_fevals], [cutoff_point_value], marker='o', color='red', label=label)
 
-        # if baseline_curve is not None:
-        #     plot_cutoff_point(0.980)
+        # test a range of cutoff percentiles to see if they match with random search
+        cutoff_percentile_end = self.experiment.get("cutoff_percentile")
+        cutoff_percentile_start = self.experiment.get("cutoff_percentile_start", 0.01)
+        cutoff_percentiles_low_precision = np.arange(cutoff_percentile_start, 0.925, step=0.05)
+        cutoff_percentiles_high_precision = np.arange(0.925, cutoff_percentile_end, step=0.001)
+        for cutoff_percentile in np.concatenate([cutoff_percentiles_low_precision, cutoff_percentiles_high_precision]):
+            plot_cutoff_point(cutoff_percentile, show_label=False)
 
         ax.set_xlim(tuple([fevals_range[0], fevals_range[-1]]))
         ax.set_xlabel(self.x_metric_displayname["num_evals"])
@@ -324,16 +333,31 @@ class Visualize:
         ax.legend()
 
 
+def is_ran_as_notebook() -> bool:
+    """ Function to determine if this file is ran from an interactive notebook """
+    try:
+        from IPython import get_ipython
+        shell = get_ipython().__class__.__name__
+        if shell == 'ZMQInteractiveShell':
+            return True    # Jupyter notebook or qtconsole
+        elif shell == 'TerminalInteractiveShell':
+            return False    # Terminal running IPython
+        else:
+            return False    # Other type (?)
+    except NameError:
+        return False    # Probably standard Python interpreter
+
+
 if __name__ == "__main__":
-    CLI = argparse.ArgumentParser()
-    CLI.add_argument(
-        "experiment",
-        type=str,
-        help="The experiment.json to execute, see experiments/template.json",
-    )
-    args = CLI.parse_args()
-    filepath = args.experiment
-    if filepath is None:
-        raise ValueError("Invalid '-experiment' option. Run 'visualize_experiments.py -h' to read more about the options.")
+    if is_ran_as_notebook():
+        filepath = 'test_random_calculated'
+        # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
+    else:
+        CLI = argparse.ArgumentParser()
+        CLI.add_argument("experiment", type=str, help="The experiment.json to execute, see experiments/template.json")
+        args = CLI.parse_args()
+        filepath = args.experiment
+        if filepath is None:
+            raise ValueError("Invalid '-experiment' option. Run 'visualize_experiments.py -h' to read more about the options.")
 
     Visualize(filepath)

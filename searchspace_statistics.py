@@ -6,10 +6,12 @@ import numpy as np
 from runner import is_invalid_objective_time, is_invalid_objective_performance
 
 
-def nansumwrapper(array: np.ndarray, axis: int = None) -> np.ndarray:
-    """ Wrapper around np.nansum to ensure portions to sum that are all NaN are returned as NaN instead of 0 """
-    summed = np.nansum(array, axis=axis)
-    return np.where(np.all(np.isnan(array), axis=axis), np.nan, summed)
+def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
+    """ Wrapper around np.nansum to ensure partials to sum that contain only NaN are returned as NaN instead of 0 """
+    where_all_nan = np.isnan(array).all(**kwargs)    # get the locations where all partials are NaN
+    summed_array = np.nansum(array, **kwargs)    # sum as usual
+    summed_array[where_all_nan] = np.nan    # overwrite the sums where necessary
+    return summed_array
 
 
 class SearchspaceStatistics():
