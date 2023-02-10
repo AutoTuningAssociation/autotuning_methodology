@@ -6,6 +6,12 @@ import numpy as np
 from runner import is_invalid_objective_time, is_invalid_objective_performance
 
 
+def nansumwrapper(array: np.ndarray, axis: int = None) -> np.ndarray:
+    """ Wrapper around np.nansum to ensure portions to sum that are all NaN are returned as NaN instead of 0 """
+    summed = np.nansum(array, axis=axis)
+    return np.where(np.all(np.isnan(array), axis=axis), np.nan, summed)
+
+
 class SearchspaceStatistics():
     """ Object for obtaining information from a raw, brute-forced cache file """
 
@@ -22,7 +28,6 @@ class SearchspaceStatistics():
 
     def __init__(self, kernel_name: str, device_name: str, minimization: bool, objective_time_keys: list[str], objective_performance_keys: list[str]) -> None:
         self.loaded = False
-        self.error_values = [1e20, 'RuntimeFailedConfig', 'CompilationFailedConfig']
         self.kernel_name = kernel_name
         self.device_name = device_name
         self.minimization = minimization
@@ -32,21 +37,28 @@ class SearchspaceStatistics():
         # load the data into the arrays
         self.loaded = self._load()
 
-    def total_time_median_time_per_feval(self) -> float:
-        """ Median time in seconds per function evaluation """
-        return self.total_time_median() * self.repeats
-
-    def total_performances_absolute_optimum(self) -> float:
+    def total_performance_absolute_optimum(self) -> float:
         """ Absolute optimum of the total performances """
         return self.total_performance_minimum() if self.minimization else self.total_performance_maximum()
 
-    def cutoff_point(self, cutoff_percentile: float) -> Tuple[float, int]:
-        """ Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point) """
-        absolute_optimum = self.total_performances_absolute_optimum()
-        median = self.total_time_median()
+    def objective_performance_at_cutoff_point(self, cutoff_percentile: float) -> float:
+        """ Calculate the objective performance value at which to stop for a given cutoff percentile """
+        absolute_optimum = self.total_performance_absolute_optimum()
+        median = self.total_performance_median()
+        objective_performance_target = absolute_optimum + ((median - absolute_optimum) * (1 - cutoff_percentile))
+        return objective_performance_target
+
+    def number_of_function_evaluations_to_cutoff_point(self, cutoff_percentile: float) -> int:
+        """ Calculate the number of function evaluations to reach the cutoff point """
+        objective_performance_target = self.cutoff_point_objective_performance(cutoff_percentile)
         inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
 
-        objective_performance_at_cutoff_point = absolute_optimum + ((median - absolute_optimum) * (1 - cutoff_percentile))
+    def cutoff_point(self, cutoff_percentile: float) -> Tuple[float, int]:
+        """ Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point) """
+        objective_performance_at_cutoff_point = self.objective_performance_at_cutoff_point(cutoff_percentile)
+        inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
+        N = inverted_sorted_performance_arr.shape[0]
+
         # fevals_to_cutoff_point = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
 
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] > cutoff_percentile * arr[-1])
@@ -55,13 +67,13 @@ class SearchspaceStatistics():
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= (1 + (1 - cutoff_percentile)) * arr[-1])
         # In case of p*x <= f_opt
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if cutoff_percentile * x[1] <= arr[-1])
-        fevals_to_cutoff_point = ceil(i / (self.size + 1 - i))
+        fevals_to_cutoff_point = ceil(i / (N + 1 - i))
         return objective_performance_at_cutoff_point, fevals_to_cutoff_point
 
     def cutoff_point_fevals_time(self, cutoff_percentile: float) -> Tuple[float, int, float]:
         """ Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point) """
         cutoff_point_value, cutoff_point_fevals = self.cutoff_point(cutoff_percentile)
-        cutoff_point_time = cutoff_point_fevals * self.total_time_median_time_per_feval()
+        cutoff_point_time = cutoff_point_fevals * self.total_time_median()
         return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
 
     def _get_filepath(self) -> Path:
@@ -80,6 +92,8 @@ class SearchspaceStatistics():
 
     def _is_not_invalid_value(self, value, performance: bool) -> bool:
         """ Checks if a cache performance or time value is an array or is not invalid """
+        if isinstance(value, str):
+            return False
         if isinstance(value, (list, tuple, np.ndarray)):
             return True
         invalid_check_function = is_invalid_objective_performance if performance else is_invalid_objective_time
@@ -94,8 +108,9 @@ class SearchspaceStatistics():
             if isinstance(value, (list, tuple, np.ndarray)):
                 # if the cache value is an array, sum the valid values
                 array = value
-                summed_value = sum(list(v for v in array if self._is_not_invalid_value(v, performance)))
-                values[value_index] = summed_value if summed_value != 0 and self._is_not_invalid_value(summed_value, performance) else np.nan
+                list_to_sum = list(v for v in array if self._is_not_invalid_value(v, performance))
+                values[value_index] = sum(list_to_sum) if len(list_to_sum) > 0 and self._is_not_invalid_value(sum(list_to_sum), performance) else np.nan
+        assert all(isinstance(v, (int, float)) for v in values)
         return np.array(values)
 
     def _load(self) -> bool:
@@ -146,10 +161,10 @@ class SearchspaceStatistics():
             assert self.objective_performances_array.shape == tuple([len(self.objective_performance_keys), self.size])
 
             # get the totals
-            self.objective_times_total = np.nansum(self.objective_times_array, axis=0)
+            self.objective_times_total = nansumwrapper(self.objective_times_array, axis=0)
             assert self.objective_times_total.shape == tuple([self.size])
             assert np.sum(self.objective_times_array[:, 0]) == self.objective_times_total[0]    # more of a test
-            self.objective_performances_total = np.nansum(self.objective_performances_array, axis=0)
+            self.objective_performances_total = nansumwrapper(self.objective_performances_array, axis=0)
             assert self.objective_performances_total.shape == tuple([self.size])
             assert np.sum(self.objective_performances_array[:, 0]) == self.objective_performances_total[0]    # more of a test
 

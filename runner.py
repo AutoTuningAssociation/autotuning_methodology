@@ -7,17 +7,13 @@ import time as python_time
 import warnings
 import yappi
 from caching import ResultsDescription
-from kernel_tuner.util import InvalidConfig, CompilationFailedConfig, RuntimeFailedConfig
 
-kernel_tuner_error_types = tuple([InvalidConfig, CompilationFailedConfig, RuntimeFailedConfig])
 kernel_tuner_error_types_strings = ['InvalidConfig', 'CompilationFailedConfig', 'RuntimeFailedConfig']
 kernel_tuner_error_value = 1e20
 
 
 def is_invalid_objective_performance(objective_performance: float) -> bool:
     """ Returns whether an objective value is invalid by checking against NaN and the error value """
-    if isinstance(objective_performance, kernel_tuner_error_types):
-        return True
     if any(str(objective_performance) == error_type_string for error_type_string in kernel_tuner_error_types_strings):
         return True
     if not isinstance(objective_performance, (int, float)):

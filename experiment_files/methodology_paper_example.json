@@ -13,7 +13,7 @@
   "minimization": true,
   "resolution": 1e3,
   "curve_segment_factor": 0.05,
-  "cutoff_percentile": 0.95,
+  "cutoff_percentile": 0.99,
   "cutoff_percentile_start": 0.01,
   "cutoff_type": "fevals",
   "plot": {

@@ -67,7 +67,7 @@ class RandomSearchBaseline(Baseline):
     def time_to_fevals(self, time_range: np.ndarray) -> np.ndarray:
         """ Convert a time range to a number of function evaluations range """
         # TODO more accurate mapping from fevals to time, using interpolated indices, preferably without median_time_per_feval
-        median_feval_time = self.searchspace_stats.total_time_median_time_per_feval()
+        median_feval_time = self.searchspace_stats.total_time_median()
         # assert all(a <= b for a, b in zip(time_range, time_range[1:])), "Time range is not monotonically non-decreasing"
         fevals_range = np.maximum(time_range / median_feval_time, 0)
         # assert all(a <= b for a, b in zip(fevals_range, fevals_range[1:])), "Fevals range is not monotonically non-decreasing"
@@ -156,7 +156,7 @@ class RandomSearchBaseline(Baseline):
 
     def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
         random_curve = self.get_curve_over_fevals(fevals_range)
-        absolute_optimum = self.searchspace_stats.total_performances_absolute_optimum()
+        absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
         assert strategy_curve.shape == random_curve.shape
         if not self.searchspace_stats.minimization:
             raise NotImplementedError()    # make sure this works when maximizing
@@ -164,7 +164,7 @@ class RandomSearchBaseline(Baseline):
         return standardised_curve
 
     def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        absolute_optimum = self.searchspace_stats.total_performances_absolute_optimum()
+        absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
         random_curve = self.get_curve_over_time(time_range)
         assert strategy_curve.shape == random_curve.shape
         if not self.searchspace_stats.minimization:

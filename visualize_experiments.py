@@ -52,10 +52,10 @@ class Visualize:
 
     x_metric_displayname = dict({
         "num_evals": "Number of function evaluations used",
-        "strategy_time": "Average time taken by strategy in miliseconds",
+        "strategy_time": "Average time taken by strategy in seconds",
         "compile_time": "Average compile time in miliseconds",
-        "execution_time": "Evaluation execution time taken in miliseconds",
-        "total_time": "Average total time taken in miliseconds",
+        "execution_time": "Evaluation execution time taken in seconds",
+        "total_time": "Average total time taken in seconds",
         "kerneltime": "Total kernel compilation and runtime in seconds",
         "aggregate_time": "Relative time to cutoff point",
     })
@@ -173,7 +173,7 @@ class Visualize:
         relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        absolute_optimum = searchspace_stats.total_performances_absolute_optimum()
+        absolute_optimum = searchspace_stats.total_performance_absolute_optimum()
         median: float = searchspace_stats.total_performance_median()
 
         # plot the absolute optimum
@@ -202,9 +202,9 @@ class Visualize:
             if relative_to_baseline:
                 # sanity check: see if the calculated random curve is equal to itself
                 # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))
-                curve = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve, absolute_optimum)
-                curve_lower_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_lower_err, absolute_optimum)
-                curve_upper_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_upper_err, absolute_optimum)
+                curve = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve)
+                curve_lower_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_lower_err)
+                curve_upper_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_upper_err)
 
             # visualize
             if plot_errors:
@@ -234,7 +234,7 @@ class Visualize:
         relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        absolute_optimum = searchspace_stats.total_performances_absolute_optimum()
+        absolute_optimum = searchspace_stats.total_performance_absolute_optimum()
         median: float = searchspace_stats.total_performance_median()
 
         # plot the absolute optimum
