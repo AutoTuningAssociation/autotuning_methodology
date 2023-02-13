@@ -61,7 +61,7 @@ class RandomSearchBaseline(Baseline):
         self.dist_descending = self.dist_ascending[::-1]
         assert np.all(self.dist_ascending[:-1] <= self.dist_ascending[1:])
         assert np.all(self.dist_descending[:-1] >= self.dist_descending[1:])
-        self._redwhite_index_dist = self.dist_descending if searchspace_stats.minimization else self.dist_descending
+        self._redwhite_index_dist = self.dist_descending if searchspace_stats.minimization else self.dist_ascending
         super().__init__()
 
     def time_to_fevals(self, time_range: np.ndarray) -> np.ndarray:
@@ -114,11 +114,11 @@ class RandomSearchBaseline(Baseline):
         return indices_found
 
     def _redwhite_index(self, M: int) -> float:
-        """ Get the expected value in the distribution for a single budget """
-        N = self.searchspace_stats.size
-        index = M * (N + 1) / (M + 1)
-        index = round(index)
+        """ Get the expected value in the distribution for a budget in number of function evaluations """
+        # N = self.searchspace_stats.size
         dist = self._redwhite_index_dist
+        N = dist.shape[0]
+        index = round(M * (N + 1) / (M + 1))
         index = min(dist.shape[0] - 1, index)
         return dist[index]
 
@@ -148,8 +148,7 @@ class RandomSearchBaseline(Baseline):
         return val_results_index_mean
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
-        curve = self._get_random_curve(fevals_range)
-        return super().get_curve_over_fevals(curve)
+        return self._get_random_curve(fevals_range)
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         return self._get_random_curve(self.time_to_fevals(time_range))

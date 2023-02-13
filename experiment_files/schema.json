@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/schemas/experiments/v0.1.0.schema.json",
-  "version": "0.1.0",
+  "$id": "https://example.com/schemas/experiments/v0.1.1.schema.json",
+  "version": "0.1.1",
   "title": "Experiment",
   "description": "An experiment configuration file",
   "type": "object",
@@ -69,21 +69,33 @@
     "plot": {
       "type": "object",
       "properties": {
-        "plot_relative_to_baseline": {
-          "type": "boolean",
-          "default": true
+        "plot_x_value_types": {
+          "description": "Types of value on the x-axis",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "fevals",
+              "time",
+              "aggregated"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
         },
-        "plot_fevals": {
-          "type": "boolean",
-          "default": true
-        },
-        "plot_time": {
-          "type": "boolean",
-          "default": true
-        },
-        "plot_aggregated": {
-          "type": "boolean",
-          "default": true
+        "plot_y_value_types": {
+          "description": "Types of value on the y-axis (absolute values, median-absolute normalized, improvement over baseline)",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "absolute",
+              "normalized",
+              "baseline"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
         },
         "confidence_level": {
           "type": [

@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
@@ -11,8 +11,8 @@
   ],
   "minimization": true,
   "resolution": 1e3,
-  "cutoff_percentile": 0.98,
-  "cutoff_percentile_start": 0.01,
+  "cutoff_percentile": 0.95,
+  "cutoff_percentile_start": 0.05,
   "objective_time_keys": [
     "times",
     "compile_time",
@@ -26,10 +26,14 @@
   ],
   "cutoff_type": "fevals",
   "plot": {
-    "plot_relative_to_baseline": false,
-    "plot_fevals": true,
-    "plot_time": false,
-    "plot_aggregated": false,
+    "plot_x_value_types": [
+      "fevals"
+    ],
+    "plot_y_value_types": [
+      "absolute",
+      "normalized",
+      "baseline"
+    ],
     "confidence_level": 0.95
   },
   "strategy_defaults": {
@@ -59,6 +63,16 @@
       "strategy": "random_sample",
       "display_name": "Random sampling 500 iters",
       "repeats": 500
+    },
+    {
+      "name": "genetic_algorithm",
+      "strategy": "genetic_algorithm",
+      "display_name": "Genetic Algorithm"
+    },
+    {
+      "name": "differential_evolution",
+      "strategy": "diff_evo",
+      "display_name": "Differential Evolution"
     }
   ]
 }

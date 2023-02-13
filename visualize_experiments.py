@@ -61,15 +61,19 @@ class Visualize:
     })
 
     y_metric_displayname = dict({
-        "objective": "Best found objective function value",
+        "objective_absolute": "Best found objective value",
         "objective_relative_median": "Fraction of absolute optimum relative to median",
-        "objective_baseline": "Best found objective function value relative to baseline",
+        "objective_normalized": "Objective value normalized \n from median to absolute optimum",
+        "objective_baseline": "Best found objective value \n relative to baseline",
         "objective_baseline_max": "Improvement over random sampling",
         "aggregate_objective": "Aggregate best found objective function value relative to baseline",
         "aggregate_objective_max": "Aggregate improvement over random sampling",
         "time": "Best found kernel time in miliseconds",
         "GFLOP/s": "GFLOP/s",
     })
+
+    plot_x_value_types = ["fevals", "time", "aggregated"]    # number of function evaluations, time, aggregation
+    plot_y_value_types = ["absolute", "normalized", "baseline"]    # absolute values, median-absolute normalized, improvement over baseline
 
     def __init__(self, experiment_filename: str) -> None:
         # silently execute the experiment
@@ -94,26 +98,14 @@ class Visualize:
 
         # plot settings
         plot_settings: dict = self.experiment.get("plot")
-        plot_fevals: bool = plot_settings.get("plot_fevals", True)
-        plot_time: bool = plot_settings.get("plot_time", True)
-        plot_aggregated: bool = plot_settings.get("plot_aggregated")
-        num_cols: int = 2 if plot_fevals and plot_time else 1
-        if not plot_fevals and not plot_time:
-            raise ValueError(f"At least one of 'plot_fevals' and 'plot_time' must be True")
+        plot_x_value_types: list = plot_settings.get("plot_x_value_types")
+        plot_y_value_types: list = plot_settings.get("plot_y_value_types")
 
         # visualize
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]] = list()
         for gpu_name in self.experiment["GPUs"]:
             for kernel_name in self.experiment["kernels"]:
                 print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
-
-                # create the figure and plots
-                fig, axs = plt.subplots(nrows=1, ncols=num_cols, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-                if not hasattr(axs, "__len__"):
-                    axs = [axs]
-                title = f"{kernel_name} on {gpu_name}"
-                fig.canvas.manager.set_window_title(title)
-                fig.suptitle(title)
 
                 # get the statistics
                 searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name, minimization=minimization,
@@ -139,22 +131,37 @@ class Visualize:
                 random_baseline = RandomSearchBaseline(searchspace_stats)
 
                 # collect aggregatable data
-                if plot_aggregated:
-                    aggregation_data.append(tuple([random_baseline, strategies_curves, searchspace_stats, time_range]))
+                aggregation_data.append(tuple([random_baseline, strategies_curves, searchspace_stats, time_range]))
 
                 # visualize the results
-                if plot_time:
-                    self.plot_strategies_curves(axs[0], searchspace_stats, strategies_curves, time_range, plot_settings, random_baseline)
-                if plot_fevals:
-                    self.plot_strategies_fevals(axs[-1], searchspace_stats, strategies_curves, fevals_range, plot_settings, random_baseline)
+                for x_type in plot_x_value_types:
+                    if x_type == 'aggregated':
+                        continue
 
-                # finalize the figure and display it
-                if plot_time or plot_fevals:
+                    # create the figure and plots
+                    fig, axs = plt.subplots(nrows=len(plot_y_value_types), ncols=1, figsize=(9, 3 * len(plot_y_value_types)), sharex=True)
+                    if not hasattr(axs, "__len__"):    # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
+                        axs = [axs]
+                    title = f"{kernel_name} on {gpu_name}"
+                    fig.canvas.manager.set_window_title(title)
+                    fig.suptitle(title)
+
+                    # plot the individual searchspaces
+                    if x_type == 'fevals':
+                        for index, y_type in enumerate(plot_y_value_types):
+                            self.plot_strategies_fevals(y_type, axs[index], searchspace_stats, strategies_curves, fevals_range, plot_settings, random_baseline)
+                            if index == 0:
+                                axs[index].legend()
+                        fig.supxlabel(self.x_metric_displayname["num_evals"])
+                    elif x_type == 'time':
+                        self.plot_strategies_curves(axs[0], searchspace_stats, strategies_curves, time_range, plot_settings, random_baseline)
+
+                    # finalize the figure and display it
                     fig.tight_layout()
                     plt.show()
 
         # plot the aggregated data
-        if plot_aggregated:
+        if 'aggregated' in plot_x_value_types:
             fig, axs = plt.subplots(ncols=1, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
             if not hasattr(axs, "__len__"):
                 axs = [axs]
@@ -167,28 +174,36 @@ class Visualize:
             fig.tight_layout()
             plt.show()
 
-    def plot_strategies_fevals(self, ax: plt.Axes, searchspace_stats: SearchspaceStatistics, strategies_curves: list[Curve], fevals_range: np.ndarray,
-                               plot_settings: dict, baseline_curve: Baseline = None, plot_errors=True):
+    def plot_strategies_fevals(self, y_type: str, ax: list[plt.Axes], searchspace_stats: SearchspaceStatistics, strategies_curves: list[Curve],
+                               fevals_range: np.ndarray, plot_settings: dict, baseline_curve: Baseline = None, plot_errors=True):
         """ Plots all optimization strategies with number of function evaluations on the x-axis """
-        relative_to_baseline: bool = plot_settings.get("plot_relative_to_baseline", True)
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         absolute_optimum = searchspace_stats.total_performance_absolute_optimum()
-        median: float = searchspace_stats.total_performance_median()
+        median = searchspace_stats.total_performance_median()
+        optimum_median_difference = absolute_optimum - median
 
         # plot the absolute optimum
-        absolute_optimum_y_value = 1 if relative_to_baseline else absolute_optimum
+        absolute_optimum_y_value = absolute_optimum if y_type == 'absolute' else 1
         ax.axhline(absolute_optimum_y_value, c='black', ls='-.', label='Absolute optimum {}'.format(round(absolute_optimum, 3)))
 
+        def normalize(curve):
+            """ Min-max normalization with median as min and absolute optimum as max """
+            return (curve - median) / optimum_median_difference
+
         # plot baseline
-        sorted_times = searchspace_stats.objective_performances_total_sorted
         if baseline_curve is not None:
-            if relative_to_baseline is True:
+            if y_type == 'baseline':
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
             else:
-                ax.plot(fevals_range, baseline_curve.get_curve_over_fevals(fevals_range), label="baseline curve", color="black", ls="--")
+                baseline = baseline_curve.get_curve_over_fevals(fevals_range)
+                if y_type == 'normalized':
+                    baseline = normalize(baseline)
+                ax.plot(fevals_range, baseline, label="baseline curve", color="black", ls="--")
 
         # plot each strategy
+        sorted_times = searchspace_stats.objective_performances_total_sorted
+        random_curve = baseline_curve.get_curve_over_fevals(fevals_range)
         for strategy_index, strategy in enumerate(self.strategies):
             if "hide" in strategy.keys() and strategy["hide"]:
                 continue
@@ -196,46 +211,55 @@ class Visualize:
             # get the data
             color = colors[strategy_index]
             strategy_curve = strategies_curves[strategy_index]
-
-            # obtain the curves
             curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve_over_fevals(fevals_range, dist=sorted_times, confidence_level=confidence_level)
-            if relative_to_baseline:
+
+            # transform the curves as necessary
+            if y_type == 'baseline':
                 # sanity check: see if the calculated random curve is equal to itself
                 # assert np.allclose(baseline_curve.get_curve_over_fevals(fevals_range), baseline_curve.get_curve_over_fevals(fevals_range))
                 curve = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve)
                 curve_lower_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_lower_err)
                 curve_upper_err = baseline_curve.get_standardised_curve_over_fevals(fevals_range, curve_upper_err)
+            elif y_type == 'normalized':
+                curve, curve_lower_err, curve_upper_err = normalize(curve), normalize(curve_lower_err), normalize(curve_upper_err)
 
             # visualize
             if plot_errors:
-                ax.fill_between(fevals_range, curve_lower_err, curve_upper_err, alpha=0.2, antialiased=True, color=color)
+                ax.fill_between(fevals_range, curve_lower_err, curve_upper_err, alpha=0.15, antialiased=True, color=color)
             ax.plot(fevals_range, curve, label=f"{strategy['display_name']}", color=color)
 
-        # plot cutoff point
-        def plot_cutoff_point(cutoff_percentile, show_label=True):
-            """ plot the cutoff point """
-            cutoff_point_value, cutoff_point_fevals = searchspace_stats.cutoff_point(cutoff_percentile)
-            y_value = cutoff_percentile if relative_to_baseline else cutoff_point_value
-            # print("")
-            # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
-            print(f"{cutoff_point_fevals=}")
-            print(f"{cutoff_point_value=}")
-            # print(f"objective_performance_at_cutoff_point: {objective_performance_at_cutoff_point}")
-            label = f"cutoff point {round(cutoff_percentile, 3)}" if show_label else None
-            ax.plot([cutoff_point_fevals], [cutoff_point_value], marker='o', color='red', label=label)
+        # # plot cutoff point
+        # def plot_cutoff_point(cutoff_percentiles: np.ndarray, show_label=True):
+        #     """ plot the cutoff point """
+        #     cutoff_point_values = list()
+        #     cutoff_point_fevals = list()
+        #     for cutoff_percentile in cutoff_percentiles:
+        #         cutoff_point_value, cutoff_point_feval = searchspace_stats.cutoff_point(cutoff_percentile)
+        #         cutoff_point_values.append(cutoff_point_value)
+        #         cutoff_point_fevals.append(cutoff_point_feval)
 
-        # test a range of cutoff percentiles to see if they match with random search
-        cutoff_percentile_end = self.experiment.get("cutoff_percentile")
-        cutoff_percentile_start = self.experiment.get("cutoff_percentile_start", 0.01)
-        cutoff_percentiles_low_precision = np.arange(cutoff_percentile_start, 0.925, step=0.05)
-        cutoff_percentiles_high_precision = np.arange(0.925, cutoff_percentile_end, step=0.001)
-        for cutoff_percentile in np.concatenate([cutoff_percentiles_low_precision, cutoff_percentiles_high_precision]):
-            plot_cutoff_point(cutoff_percentile, show_label=False)
+        #     # get the correct value depending on the plot type
+        #     if y_type == 'absolute':
+        #         y_values = cutoff_point_values
+        #     elif y_type == 'normalized':
+        #         y_values = normalize(cutoff_point_values)
+        #     elif y_type == 'baseline':
+        #         y_values = baseline_curve.get_standardised_curve_over_fevals(fevals_range, cutoff_percentiles)
 
+        #     # plot
+        #     label = f"cutoff point" if show_label else None
+        #     ax.plot(cutoff_point_fevals, y_values, marker='o', color='red', label=label)
+
+        # # test a range of cutoff percentiles to see if they match with random search
+        # if y_type == 'absolute' or y_type == 'normalized':
+        #     cutoff_percentile_start = self.experiment.get("cutoff_percentile_start", 0.01)
+        #     cutoff_percentile_end = self.experiment.get("cutoff_percentile")
+        #     cutoff_percentiles_low_precision = np.arange(cutoff_percentile_start, 0.925, step=0.05)
+        #     cutoff_percentiles_high_precision = np.arange(0.925, cutoff_percentile_end, step=0.001)
+        #     plot_cutoff_point(np.concatenate([cutoff_percentiles_low_precision, cutoff_percentiles_high_precision]))
+
+        ax.set_ylabel(self.y_metric_displayname[f"objective_{y_type}"])
         ax.set_xlim(tuple([fevals_range[0], fevals_range[-1]]))
-        ax.set_xlabel(self.x_metric_displayname["num_evals"])
-        ax.set_ylabel(self.y_metric_displayname["objective_baseline_max"] if relative_to_baseline else self.y_metric_displayname["objective"])
-        ax.legend()
 
     def plot_strategies_curves(self, ax: plt.Axes, searchspace_stats: SearchspaceStatistics, strategies_curves: list[Curve], time_range: np.ndarray,
                                plot_settings: dict, baseline_curve: Baseline = None, plot_errors=False):
@@ -292,6 +316,25 @@ class Visualize:
 
         # if baseline_curve is not None:
         #     plot_cutoff_point(0.980)
+
+        # # plot cutoff point
+        # def plot_cutoff_point(cutoff_percentile, show_label=True):
+        #     """ plot the cutoff point """
+        #     cutoff_point_value, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(cutoff_percentile)
+        #     y_value = cutoff_percentile if relative_to_baseline else cutoff_point_value
+        #     # print("")
+        #     # print(f"percentage of searchspace to get to {cutoff_percentile*100}%: {round((cutoff_point_fevals/len(sorted_times))*100, 3)}%")
+        #     # print(f"{cutoff_point_fevals=}, {cutoff_point_value=}")
+        #     label = f"cutoff point {round(cutoff_percentile, 3)}" if show_label else None
+        #     ax.plot([cutoff_point_time], [y_value], marker='o', color='red', label=label)
+
+        # # test a range of cutoff percentiles to see if they match with random search
+        # cutoff_percentile_end = self.experiment.get("cutoff_percentile")
+        # cutoff_percentile_start = self.experiment.get("cutoff_percentile_start", 0.01)
+        # cutoff_percentiles_low_precision = np.arange(cutoff_percentile_start, 0.925, step=0.05)
+        # cutoff_percentiles_high_precision = np.arange(0.925, cutoff_percentile_end, step=0.001)
+        # for cutoff_percentile in np.concatenate([cutoff_percentiles_low_precision, cutoff_percentiles_high_precision]):
+        #     plot_cutoff_point(cutoff_percentile, show_label=False)
 
         ax.set_xlim(tuple([time_range[0], time_range[-1]]))
         ax.set_xlabel(self.x_metric_displayname["total_time"])
