@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 from caching import ResultsDescription
 from math import floor, ceil, sqrt
+import warnings
 
 
 class Curve(ABC):
@@ -164,8 +165,8 @@ class StochasticOptimizationAlgorithm(Curve):
         indices_found = np.array(indices_found)
         return indices_found
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
-                              confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None,
+                              drop_unmatched_fraction: float = 0.1) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         assert fevals_range.ndim == 1
         assert np.all(np.isfinite(fevals_range))
         if dist is not None:
@@ -176,9 +177,27 @@ class StochasticOptimizationAlgorithm(Curve):
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
         masked_values = np.where(matching_indices_mask, self._y, np.nan)    # apply the mask to the values, filling NaN for False
         masked_fevals = np.where(matching_indices_mask, self._x_fevals, np.nan).transpose()    # apply the mask to the fevals, filling NaN for False
-        # check that the filtered fevals are consistent
+        # make sure that the filtered fevals are consistent (every repeat has the same array of fevals)
         if not np.allclose(masked_fevals, masked_fevals[0], equal_nan=True):
-            raise ValueError("The array of function evaluations differs per repeat")
+            indices = np.nanargmax(masked_fevals, axis=1)    # get the index of the last non-nan value of each repeat
+            index = max(fevals_range[-1] - 1, floor(
+                np.percentile(indices, drop_unmatched_fraction *
+                              100)))    # get the lowest index within the percentile (drop_unmatched_fraction = 0.1 means drop at most 10% of the data)
+
+            # drop the data which ends before the index
+            keep_data = np.where(indices >= index)
+            warnings.warn(
+                f"Dropped {len(indices) - np.count_nonzero(keep_data)} repeats of {self.display_name} that ended before the end of fevals_range, perhaps increase the allotted auto-tuning time for this optimization algorithm",
+                UserWarning)
+            masked_fevals = masked_fevals[keep_data]
+            masked_values = masked_values.transpose()
+            masked_values = masked_values[keep_data]
+
+            # set all values beyond the greatest common non-NaN index to NaN
+            masked_values[:, index + 1:] = np.nan
+            masked_values = masked_values.transpose()    # transpose back to original shape
+            masked_fevals[:, index + 1:] = np.nan
+        assert np.allclose(masked_fevals, masked_fevals[0], equal_nan=True), "Every repeat must have the same array of function evaluations"
         fevals = masked_fevals[0]    # safe to use as every repeat has the same array of fevals
         masked_fevals = masked_fevals.transpose()    # transpose back to original shape
         # remove fevals where every repeat has NaN
@@ -186,7 +205,9 @@ class StochasticOptimizationAlgorithm(Curve):
         nan_mask = ~np.isnan(masked_values).all(axis=1)
         masked_fevals = masked_fevals[nan_mask].reshape(-1, num_repeats)
         masked_values = masked_values[nan_mask].reshape(-1, num_repeats)
-        assert fevals_range.shape[0] == masked_values.shape[0] == masked_fevals.shape[0]
+        assert fevals_range.shape[0] == masked_values.shape[0] == masked_fevals.shape[
+            0], f"The masked fevals and values should have the same first dimension as fevals_range, but {fevals_range.shape[0]=}, {masked_fevals.shape[0]=}, {masked_values.shape[0]=}"
+
         # if a distribution is included
         if dist is not None:
             # for each value, get the index in the distribution
