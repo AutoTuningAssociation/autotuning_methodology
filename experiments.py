@@ -119,7 +119,7 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
                 # setup the results description
                 if not 'options' in strategy:
                     strategy['options'] = dict()
-                cutoff_margin = 2.0    # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
+                cutoff_margin = 1.2    # +20% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
 
                 # TODO make sure this works correctly (but how could it?)
                 # if cutoff_type == 'time':

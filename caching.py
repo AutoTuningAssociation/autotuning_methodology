@@ -62,11 +62,11 @@ class ResultsDescription():
         return True
 
     def __get_cache_filename(self) -> str:
-        return f"{self.kernel_name}_{self.device_name}_{self.strategy_name}.npz"
+        return f"{self.device_name}_{self.strategy_name}.npz"
 
     def __get_cache_filepath(self) -> Path:
         """ Get the filepath to this experiment """
-        return Path("../cached_data_used/visualizations") / self.__folder_id
+        return Path("../cached_data_used/visualizations") / self.__folder_id / self.kernel_name
 
     def __get_cache_full_filepath(self) -> Path:
         """ Get the filepath for this file, including the filename and extension """

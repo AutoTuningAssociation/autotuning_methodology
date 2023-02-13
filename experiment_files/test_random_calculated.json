@@ -3,7 +3,8 @@
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
-    "pnpoly"
+    "pnpoly",
+    "convolution"
   ],
   "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
@@ -68,11 +69,6 @@
       "name": "genetic_algorithm",
       "strategy": "genetic_algorithm",
       "display_name": "Genetic Algorithm"
-    },
-    {
-      "name": "differential_evolution",
-      "strategy": "diff_evo",
-      "display_name": "Differential Evolution"
     }
   ]
 }

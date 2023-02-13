@@ -44,7 +44,9 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
         if profiling:
             yappi.set_clock_type("cpu")
             yappi.start()
-        res, env = kernel.tune(device_name=device_name, strategy=strategy['strategy'], strategy_options=strategy['options'], **tune_options)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            res, env = kernel.tune(device_name=device_name, strategy=strategy['strategy'], strategy_options=strategy['options'], **tune_options)
         if profiling:
             yappi.stop()
         return res, env

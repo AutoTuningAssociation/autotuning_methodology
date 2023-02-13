@@ -76,10 +76,10 @@ class Visualize:
     plot_y_value_types = ["absolute", "normalized", "baseline"]    # absolute values, median-absolute normalized, improvement over baseline
 
     def __init__(self, experiment_filename: str) -> None:
-        # silently execute the experiment
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            self.experiment, self.strategies, self.results_descriptions = execute_experiment(experiment_filename, profiling=False)
+        # # silently execute the experiment
+        # with warnings.catch_warnings():
+        #     warnings.simplefilter("ignore")
+        self.experiment, self.strategies, self.results_descriptions = execute_experiment(experiment_filename, profiling=False)
         print("\n")
         print("Visualizing")
 
@@ -203,7 +203,6 @@ class Visualize:
 
         # plot each strategy
         sorted_times = searchspace_stats.objective_performances_total_sorted
-        random_curve = baseline_curve.get_curve_over_fevals(fevals_range)
         for strategy_index, strategy in enumerate(self.strategies):
             if "hide" in strategy.keys() and strategy["hide"]:
                 continue

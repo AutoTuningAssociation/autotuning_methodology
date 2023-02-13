@@ -165,8 +165,8 @@ class StochasticOptimizationAlgorithm(Curve):
         indices_found = np.array(indices_found)
         return indices_found
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None,
-                              drop_unmatched_fraction: float = 0.1) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
+                              confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         assert fevals_range.ndim == 1
         assert np.all(np.isfinite(fevals_range))
         if dist is not None:
@@ -180,14 +180,15 @@ class StochasticOptimizationAlgorithm(Curve):
         # make sure that the filtered fevals are consistent (every repeat has the same array of fevals)
         if not np.allclose(masked_fevals, masked_fevals[0], equal_nan=True):
             indices = np.nanargmax(masked_fevals, axis=1)    # get the index of the last non-nan value of each repeat
-            index = max(fevals_range[-1] - 1, floor(
-                np.percentile(indices, drop_unmatched_fraction *
-                              100)))    # get the lowest index within the percentile (drop_unmatched_fraction = 0.1 means drop at most 10% of the data)
-
+            index = fevals_range[-1] - 1
             # drop the data which ends before the index
             keep_data = np.where(indices >= index)
+            if np.count_nonzero(keep_data) < len(indices) * 0.5:
+                raise ValueError(
+                    f"For optimization algorithm {self.display_name}, more than 50% of the runs ended before the end of fevals_range ({fevals_range[-1]}), perhaps increase the allotted auto-tuning time for this optimization algorithm"
+                )
             warnings.warn(
-                f"Dropped {len(indices) - np.count_nonzero(keep_data)} repeats of {self.display_name} that ended before the end of fevals_range, perhaps increase the allotted auto-tuning time for this optimization algorithm",
+                f"Dropped {len(indices) - np.count_nonzero(keep_data)} repeats of {self.display_name} runs that ended before the end of fevals_range ({fevals_range[-1]}), perhaps increase the allotted auto-tuning time for this optimization algorithm",
                 UserWarning)
             masked_fevals = masked_fevals[keep_data]
             masked_values = masked_values.transpose()
