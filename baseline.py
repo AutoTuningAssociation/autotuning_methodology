@@ -95,6 +95,7 @@ class RandomSearchBaseline(Baseline):
         # assert all(a <= b for a, b in zip(time_range, time_range[1:])), "Time range is not monotonically non-decreasing"
         fevals_range = np.maximum(time_range / median_feval_time, 0)
         # assert all(a <= b for a, b in zip(fevals_range, fevals_range[1:])), "Fevals range is not monotonically non-decreasing"
+        fevals_range = np.array(np.round(fevals_range), dtype=int)
         return fevals_range
         # curve = self._get_random_curve(fevals_range)
         # indices = self._get_indices(curve)
@@ -200,3 +201,25 @@ class RandomSearchBaseline(Baseline):
             raise NotImplementedError()    # make sure this works when maximizing
         standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
         return standardised_curve
+
+
+class RandomSearchSimulatedBaseline(Baseline):
+    """ Baseline object using simulated random search"""
+
+    def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:
+        return super().get_curve(range, x_type)
+
+    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
+        return super().get_curve_over_fevals(fevals_range)
+
+    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
+        return super().get_curve_over_time(time_range)
+
+    def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
+        return super().get_standardised_curve(range, strategy_curve, x_type)
+
+    def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
+        return super().get_standardised_curve_over_fevals(fevals_range, strategy_curve)
+
+    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
+        return super().get_standardised_curve_over_time(time_range, strategy_curve)
