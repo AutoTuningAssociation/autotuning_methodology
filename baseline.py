@@ -11,24 +11,42 @@ class Baseline(ABC):
         super().__init__()
 
     @abstractmethod
+    def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:
+        """ Get the curve over the specified range of time or function evaluations, returns NaN beyond limits. """
+        if x_type == 'fevals':
+            return self.get_curve_over_fevals(range)
+        elif x_type == 'time':
+            return self.get_curve_over_time(range)
+        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
+
+    @abstractmethod
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
         """ Get the curve over the specified range of function evaluations, returns NaN beyond limits. """
-        return fevals_range
+        raise NotImplementedError
 
     @abstractmethod
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         """ Get the curve at the specified times using isotonic regression, returns NaN beyond limits. """
-        return time_range
+        raise NotImplementedError
 
     @abstractmethod
-    def get_standardised_curve_over_fevals(self, strategy_curve: np.ndarray) -> np.ndarray:
+    def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         """ Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve """
-        return strategy_curve
+        if x_type == 'fevals':
+            return self.get_standardised_curve_over_fevals(range, strategy_curve)
+        elif x_type == 'time':
+            return self.get_standardised_curve_over_time(range, strategy_curve)
+        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     @abstractmethod
-    def get_standardised_curve_over_time(self, strategy_curve: np.ndarray) -> np.ndarray:
+    def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
         """ Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve """
-        return strategy_curve
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
+        """ Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve """
+        raise NotImplementedError
 
 
 class StochasticCurveBasedBaseline(Baseline):
@@ -39,17 +57,23 @@ class StochasticCurveBasedBaseline(Baseline):
         self.minimization = curve.minimization
         super().__init__()
 
+    def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:
+        return super().get_curve(range, x_type)
+
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
         return self.curve.get_curve_over_fevals(fevals_range)
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         return self.curve.get_curve_over_time(time_range)
 
-    def get_standardised_curve_over_fevals(self, strategy_curve: np.ndarray) -> np.ndarray:
-        raise NotImplementedError
+    def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
+        return super().get_standardised_curve(range, strategy_curve, x_type)
 
-    def get_standardised_curve_over_time(self, strategy_curve: np.ndarray) -> np.ndarray:
-        raise NotImplementedError
+    def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
+        return super().get_standardised_curve_over_fevals(fevals_range, strategy_curve)
+
+    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
+        return super().get_standardised_curve_over_fevals(time_range, strategy_curve)
 
 
 class RandomSearchBaseline(Baseline):
@@ -147,11 +171,17 @@ class RandomSearchBaseline(Baseline):
         val_results_index_mean = dist[mean_indices]
         return val_results_index_mean
 
+    def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:
+        return super().get_curve(range, x_type)
+
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
         return self._get_random_curve(fevals_range)
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         return self._get_random_curve(self.time_to_fevals(time_range))
+
+    def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
+        return super().get_standardised_curve(range, strategy_curve, x_type)
 
     def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
         random_curve = self.get_curve_over_fevals(fevals_range)

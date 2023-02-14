@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Tuple, Union
 import numpy as np
 from caching import ResultsDescription
 from math import floor, ceil, sqrt
@@ -57,14 +57,23 @@ class Curve(ABC):
         assert self._x_fevals.shape == self._x_time.shape == self._y.shape
 
     @abstractmethod
-    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
-        """ Get the curve over the specified range of function evaluations, returns NaN beyond limits. """
-        return fevals_range
+    def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """ Get the curve over the specified range of time or function evaluations, returns a tuple of [curve, lower error, upper error] with NaN beyond limits. """
+        if x_type == 'fevals':
+            return self.get_curve_over_fevals(range, dist, confidence_level)
+        elif x_type == 'time':
+            return self.get_curve_over_time(range, dist, confidence_level)
+        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     @abstractmethod
-    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        """ Get the curve at the specified times using isotonic regression, returns NaN beyond limits. """
-        return time_range
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> np.ndarray:
+        """ Get the curve and errors over the specified range of function evaluations """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> np.ndarray:
+        """ Get the curve and errors at the specified times using isotonic regression """
+        raise NotImplementedError
 
     def fevals_find_pad_width(self, array: np.ndarray, target_array: np.ndarray) -> tuple[int, int]:
         """ Find the amount of padding required on both sides of array to match target_array """
@@ -122,13 +131,14 @@ class Curve(ABC):
 
 class DeterministicOptimizationAlgorithm(Curve):
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
-        return super().get_curve_over_fevals(curve)
+    def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return tuple([super().get_curve(range, x_type, dist, confidence_level), None, None])
 
-    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        raise NotImplementedError()
-        return super().get_curve_over_time(time)
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> np.ndarray:
+        return super().get_curve_over_fevals(fevals_range, dist, confidence_level)
+
+    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> np.ndarray:
+        return super().get_curve_over_time(time_range, dist, confidence_level)
 
 
 class StochasticOptimizationAlgorithm(Curve):
@@ -164,6 +174,9 @@ class StochasticOptimizationAlgorithm(Curve):
             raise Exception("Expected draws to be 1D or 2D")
         indices_found = np.array(indices_found)
         return indices_found
+
+    def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return super().get_curve(range, x_type, dist, confidence_level)
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
                               confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:

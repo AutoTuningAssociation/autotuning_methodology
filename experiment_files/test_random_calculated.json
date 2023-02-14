@@ -13,13 +13,12 @@
   "minimization": true,
   "resolution": 1e3,
   "cutoff_percentile": 0.95,
-  "cutoff_percentile_start": 0.05,
+  "cutoff_percentile_start": 0.1,
   "objective_time_keys": [
-    "times",
-    "compile_time",
-    "verification_time",
-    "benchmark_time",
     "strategy_time",
+    "compile_time",
+    "benchmark_time",
+    "verification_time",
     "framework_time"
   ],
   "objective_performance_keys": [
@@ -28,10 +27,10 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
-      "fevals"
+      "fevals",
+      "time"
     ],
     "plot_y_value_types": [
-      "absolute",
       "normalized",
       "baseline"
     ],
