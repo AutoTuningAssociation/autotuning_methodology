@@ -27,8 +27,7 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
-      "fevals",
-      "time"
+      "aggregated"
     ],
     "plot_y_value_types": [
       "normalized",

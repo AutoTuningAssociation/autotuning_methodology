@@ -188,7 +188,7 @@ class Visualize:
             fig.suptitle(title)
 
             # finalize the figure and display it
-            self.plot_strategies_aggregated(axs[0], aggregation_data)
+            self.plot_strategies_aggregated(axs[0], aggregation_data, plot_settings=plot_settings)
             fig.tight_layout()
             plt.show()
 
@@ -223,7 +223,7 @@ class Visualize:
                 ax.plot(x_axis_range, baseline, label="baseline curve", color="black", ls="--")
 
         # plot each strategy
-        sorted_times = searchspace_stats.objective_performances_total_sorted
+        dist = searchspace_stats.objective_performances_total_sorted
         for strategy_index, strategy in enumerate(self.strategies):
             if "hide" in strategy.keys() and strategy["hide"]:
                 continue
@@ -231,7 +231,7 @@ class Visualize:
             # get the data
             color = colors[strategy_index]
             strategy_curve = strategies_curves[strategy_index]
-            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve(x_axis_range, x_type, dist=sorted_times, confidence_level=confidence_level)
+            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve(x_axis_range, x_type, dist=dist, confidence_level=confidence_level)
 
             # transform the curves as necessary
             if y_type == 'baseline':
@@ -282,17 +282,20 @@ class Visualize:
         ax.set_ylabel(self.y_metric_displayname[f"objective_{y_type}"])
         ax.set_xlim(tuple([x_axis_range[0], x_axis_range[-1]]))
 
-    def plot_strategies_aggregated(self, ax: plt.Axes, aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]]):
+    def plot_strategies_aggregated(self, ax: plt.Axes, aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
+                                   plot_settings: dict):
         """ Plots all optimization strategies combined accross search spaces """
         # plot the random baseline and absolute optimum
         ax.axhline(0, label="Random search", c='black', ls=':')
         ax.axhline(1, label="Absolute optimum", c='black', ls='-.')
 
         # get the relative performance for each strategy
+        confidence_level: float = plot_settings.get("confidence_level", 0.95)
         strategies_performance = [list() for _ in aggregation_data[0][1]]
         for random_baseline, strategies_curves, searchspace_stats, time_range in aggregation_data:
+            dist = searchspace_stats.objective_performances_total_sorted
             for strategy_index, strategy_curve in enumerate(strategies_curves):
-                curve, _, _ = strategy_curve.get_curve_over_time(time_range)
+                curve, _, _ = strategy_curve.get_curve_over_time(time_range, dist=dist, confidence_level=confidence_level)
                 relative_performance = random_baseline.get_standardised_curve_over_time(time_range, curve)
                 strategies_performance[strategy_index].append(relative_performance)
 
