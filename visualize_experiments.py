@@ -8,7 +8,7 @@ from sklearn.metrics import auc
 
 from experiments import execute_experiment
 from curves import Curve, StochasticOptimizationAlgorithm
-from baseline import Baseline, RandomSearchBaseline, StochasticCurveBasedBaseline
+from baseline import Baseline, RandomSearchCalculatedBaseline, RandomSearchSimulatedBaseline
 from searchspace_statistics import SearchspaceStatistics
 
 import sys
@@ -133,7 +133,8 @@ class Visualize:
                 # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
 
                 # get the random baseline
-                random_baseline = RandomSearchBaseline(searchspace_stats)
+                # random_baseline = RandomSearchCalculatedBaseline(searchspace_stats)
+                random_baseline = RandomSearchSimulatedBaseline(searchspace_stats, repeats=500)
 
                 # collect aggregatable data
                 aggregation_data.append(tuple([random_baseline, strategies_curves, searchspace_stats, time_range]))

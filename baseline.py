@@ -32,21 +32,13 @@ class Baseline(ABC):
     @abstractmethod
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         """ Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve """
-        if x_type == 'fevals':
-            return self.get_standardised_curve_over_fevals(range, strategy_curve)
-        elif x_type == 'time':
-            return self.get_standardised_curve_over_time(range, strategy_curve)
-        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
-
-    @abstractmethod
-    def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        """ Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        """ Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve """
-        raise NotImplementedError
+        absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
+        random_curve = self.get_curve(range, x_type)
+        assert strategy_curve.shape == random_curve.shape
+        if not self.searchspace_stats.minimization:
+            raise NotImplementedError()    # make sure this works when maximizing
+        standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
+        return standardised_curve
 
 
 class StochasticCurveBasedBaseline(Baseline):
@@ -69,14 +61,8 @@ class StochasticCurveBasedBaseline(Baseline):
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
 
-    def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        return super().get_standardised_curve_over_fevals(fevals_range, strategy_curve)
 
-    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        return super().get_standardised_curve_over_fevals(time_range, strategy_curve)
-
-
-class RandomSearchBaseline(Baseline):
+class RandomSearchCalculatedBaseline(Baseline):
     """ Baseline object using calculated random search without replacement """
 
     def __init__(self, searchspace_stats: SearchspaceStatistics) -> None:
@@ -184,42 +170,49 @@ class RandomSearchBaseline(Baseline):
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
 
-    def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        random_curve = self.get_curve_over_fevals(fevals_range)
-        absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
-        assert strategy_curve.shape == random_curve.shape
-        if not self.searchspace_stats.minimization:
-            raise NotImplementedError()    # make sure this works when maximizing
-        standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
-        return standardised_curve
-
-    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
-        random_curve = self.get_curve_over_time(time_range)
-        assert strategy_curve.shape == random_curve.shape
-        if not self.searchspace_stats.minimization:
-            raise NotImplementedError()    # make sure this works when maximizing
-        standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
-        return standardised_curve
-
 
 class RandomSearchSimulatedBaseline(Baseline):
     """ Baseline object using simulated random search"""
+
+    def __init__(self, searchspace_stats: SearchspaceStatistics, repeats: int = 500) -> None:
+        self.searchspace_stats = searchspace_stats
+        self._simulate(repeats=repeats)
+
+    def _simulate(self, repeats: int, limit_fevals: int = None):
+        """ Simulate running random search over the entire search space or limit_fevals [repeats] times """
+        opt_func = np.fmin if self.searchspace_stats.minimization else np.fmax
+        time_array = self.searchspace_stats.objective_times_total
+        performance_array = self.searchspace_stats.objective_performances_total
+        size = min(time_array.shape[0], limit_fevals) if limit_fevals is not None else time_array.shape[0]
+        times_at_feval = np.empty((repeats, size))
+        performances_at_feval = np.empty((repeats, size))
+        indices_chosen = np.arange(size)
+        for repeat_index in range(repeats):
+            if limit_fevals is None:
+                np.random.shuffle(indices_chosen)
+            else:
+                indices_chosen = np.random.choice(indices_chosen, size=size, replace=False)
+
+            times_at_feval[repeat_index] = np.nancumsum(time_array[indices_chosen])
+            performances_at_feval[repeat_index] = opt_func.accumulate(performance_array[indices_chosen])
+        assert times_at_feval.shape == (repeats, size)
+        self.time_at_feval: np.ndarray = np.nanmean(times_at_feval, axis=0)
+        self.performance_at_feval: np.ndarray = np.nanmean(performances_at_feval, axis=0)
+
+        # prepare isotonic regression
+        from sklearn.isotonic import IsotonicRegression
+        increasing = not self.searchspace_stats.minimization
+        self._ir = IsotonicRegression(increasing=increasing, out_of_bounds='clip')
+        self._ir.fit(self.time_at_feval, self.performance_at_feval)
 
     def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_curve(range, x_type)
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
-        return super().get_curve_over_fevals(fevals_range)
+        return self.performance_at_feval[fevals_range]
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        return super().get_curve_over_time(time_range)
+        return self._ir.predict(time_range)
 
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
-
-    def get_standardised_curve_over_fevals(self, fevals_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        return super().get_standardised_curve_over_fevals(fevals_range, strategy_curve)
-
-    def get_standardised_curve_over_time(self, time_range: np.ndarray, strategy_curve: np.ndarray) -> np.ndarray:
-        return super().get_standardised_curve_over_time(time_range, strategy_curve)

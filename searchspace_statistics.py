@@ -165,10 +165,12 @@ class SearchspaceStatistics():
             # get the totals
             self.objective_times_total = nansumwrapper(self.objective_times_array, axis=0)
             assert self.objective_times_total.shape == tuple([self.size])
-            assert np.sum(self.objective_times_array[:, 0]) == self.objective_times_total[0]    # more of a test
+            assert np.sum(self.objective_times_array[:, 0]) == self.objective_times_total[
+                0], f"Sums of objective performances do not match: {np.sum(self.objective_times_array[:, 0])} vs. {self.objective_times_total[0]}"    # more of a test
             self.objective_performances_total = nansumwrapper(self.objective_performances_array, axis=0)
             assert self.objective_performances_total.shape == tuple([self.size])
-            assert np.sum(self.objective_performances_array[:, 0]) == self.objective_performances_total[0]    # more of a test
+            assert np.sum(self.objective_performances_array[:, 0]) == self.objective_performances_total[
+                0], f"Sums of objective performances do not match: {np.sum(self.objective_performances_array[:, 0])} vs. {self.objective_performances_total[0]}"    # more of a test
 
             # sort
             self.objective_times_total_sorted = np.sort(self.objective_times_total[~np.isnan(self.objective_times_total)])
