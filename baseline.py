@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from math import ceil
 import numpy as np
 from curves import Curve
 from searchspace_statistics import SearchspaceStatistics
@@ -174,30 +175,27 @@ class RandomSearchCalculatedBaseline(Baseline):
 class RandomSearchSimulatedBaseline(Baseline):
     """ Baseline object using simulated random search"""
 
-    def __init__(self, searchspace_stats: SearchspaceStatistics, repeats: int = 500) -> None:
+    def __init__(self, searchspace_stats: SearchspaceStatistics, repeats: int = 500, limit_fevals: int = None) -> None:
         self.searchspace_stats = searchspace_stats
-        self._simulate(repeats=repeats)
+        self._simulate(repeats=repeats, limit_fevals=limit_fevals)
 
     def _simulate(self, repeats: int, limit_fevals: int = None):
-        """ Simulate running random search over the entire search space or limit_fevals [repeats] times """
+        """ Simulate running random search over half of the search space or limit_fevals [repeats] times """
         opt_func = np.fmin if self.searchspace_stats.minimization else np.fmax
         time_array = self.searchspace_stats.objective_times_total
         performance_array = self.searchspace_stats.objective_performances_total
-        size = min(time_array.shape[0], limit_fevals) if limit_fevals is not None else time_array.shape[0]
+        size = min(time_array.shape[0], limit_fevals) if limit_fevals is not None else ceil(time_array.shape[0] / 2)
         times_at_feval = np.empty((repeats, size))
         performances_at_feval = np.empty((repeats, size))
-        indices_chosen = np.arange(size)
+        indices = np.arange(size)
         for repeat_index in range(repeats):
-            if limit_fevals is None:
-                np.random.shuffle(indices_chosen)
-            else:
-                indices_chosen = np.random.choice(indices_chosen, size=size, replace=False)
-
+            indices_chosen = np.random.choice(indices, size=size, replace=False)
             times_at_feval[repeat_index] = np.nancumsum(time_array[indices_chosen])
             performances_at_feval[repeat_index] = opt_func.accumulate(performance_array[indices_chosen])
-        assert times_at_feval.shape == (repeats, size)
+        assert times_at_feval.shape == performances_at_feval.shape == (repeats, size)
         self.time_at_feval: np.ndarray = np.nanmean(times_at_feval, axis=0)
         self.performance_at_feval: np.ndarray = np.nanmean(performances_at_feval, axis=0)
+        assert self.time_at_feval.shape == self.performance_at_feval.shape == (size, )
 
         # prepare isotonic regression
         from sklearn.isotonic import IsotonicRegression
