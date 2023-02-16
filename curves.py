@@ -93,6 +93,13 @@ class Curve(ABC):
         padding = (padding_start, padding_end)
         return padding
 
+    def get_scatter_data(self, x_type: str) -> Tuple[np.ndarray, np.ndarray]:
+        if x_type == 'fevals':
+            return self._x_fevals, self._y
+        elif x_type == 'time':
+            return self._x_time, self._y
+        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
+
     def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package='isotonic', npoints=1000, power=2, ymin=None,
                            ymax=None) -> np.ndarray:
         """ Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic' """

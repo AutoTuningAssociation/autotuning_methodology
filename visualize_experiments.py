@@ -67,6 +67,7 @@ class Visualize:
 
     y_metric_displayname = dict({
         "objective_absolute": "Best found objective value",
+        "objective_scatter": "Best found objective value",
         "objective_relative_median": "Fraction of absolute optimum relative to median",
         "objective_normalized": "Best found objective value normalized \n from median to absolute optimum",
         "objective_baseline": "Best found objective value \n relative to baseline",
@@ -78,7 +79,8 @@ class Visualize:
     })
 
     plot_x_value_types = ["fevals", "time", "aggregated"]    # number of function evaluations, time, aggregation
-    plot_y_value_types = ["absolute", "normalized", "baseline"]    # absolute values, median-absolute normalized, improvement over baseline
+    plot_y_value_types = ["absolute", "scatter", "normalized",
+                          "baseline"]    # absolute values, scatterplot, median-absolute normalized, improvement over baseline
 
     def __init__(self, experiment_filename: str) -> None:
         # # silently execute the experiment
@@ -133,8 +135,8 @@ class Visualize:
                 # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
 
                 # get the random baseline
-                # random_baseline = RandomSearchCalculatedBaseline(searchspace_stats)
-                random_baseline = RandomSearchSimulatedBaseline(searchspace_stats, repeats=500)
+                random_baseline = RandomSearchCalculatedBaseline(searchspace_stats)
+                # random_baseline = RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000)
 
                 # collect aggregatable data
                 aggregation_data.append(tuple([random_baseline, strategies_curves, searchspace_stats, time_range]))
@@ -209,7 +211,7 @@ class Visualize:
             return (curve - median) / optimum_median_difference
 
         # plot the absolute optimum
-        absolute_optimum_y_value = absolute_optimum if y_type == 'absolute' else 1
+        absolute_optimum_y_value = absolute_optimum if y_type == 'absolute' or y_type == 'scatter' else 1
         absolute_optimum_label = 'Absolute optimum ({})'.format(round(absolute_optimum, 3)) if y_type == 'absolute' else 'Absolute optimum'
         ax.axhline(absolute_optimum_y_value, c='black', ls='-.', label=absolute_optimum_label)
 
@@ -217,7 +219,7 @@ class Visualize:
         if baseline_curve is not None:
             if y_type == 'baseline':
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
-            else:
+            elif y_type == 'normalized' or y_type == 'baseline':
                 baseline = baseline_curve.get_curve(x_axis_range, x_type)
                 if y_type == 'normalized':
                     baseline = normalize(baseline)
@@ -231,8 +233,16 @@ class Visualize:
 
             # get the data
             color = colors[strategy_index]
+            label = f"{strategy['display_name']}"
             strategy_curve = strategies_curves[strategy_index]
-            curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve(x_axis_range, x_type, dist=dist, confidence_level=confidence_level)
+
+            # get the plot data
+            if y_type == 'scatter':
+                x_axis, y_axis = strategy_curve.get_scatter_data(x_type)
+                ax.scatter(x_axis, y_axis, label=label, color=color)
+                continue
+            else:
+                curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve(x_axis_range, x_type, dist=dist, confidence_level=confidence_level)
 
             # transform the curves as necessary
             if y_type == 'baseline':
@@ -248,7 +258,7 @@ class Visualize:
             # visualize
             if plot_errors and x_type != 'time':
                 ax.fill_between(x_axis_range, curve_lower_err, curve_upper_err, alpha=0.15, antialiased=True, color=color)
-            ax.plot(x_axis_range, curve, label=f"{strategy['display_name']}", color=color)
+            ax.plot(x_axis_range, curve, label=label, color=color)
 
         # # plot cutoff point
         # def plot_cutoff_point(cutoff_percentiles: np.ndarray, show_label=True):

@@ -90,6 +90,7 @@
             "type": "string",
             "enum": [
               "absolute",
+              "scatter",
               "normalized",
               "baseline"
             ]
