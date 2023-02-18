@@ -3,8 +3,7 @@
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
-    "pnpoly",
-    "convolution"
+    "pnpoly"
   ],
   "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
@@ -27,14 +26,14 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
-      "fevals",
       "time"
     ],
     "plot_y_value_types": [
       "normalized",
       "baseline"
     ],
-    "confidence_level": 0.95
+    "confidence_level": 0.95,
+    "compare_baselines": true
   },
   "strategy_defaults": {
     "repeats": 100,

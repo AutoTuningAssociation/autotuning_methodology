@@ -107,11 +107,13 @@ class Visualize:
         plot_settings: dict = self.experiment.get("plot")
         plot_x_value_types: list = plot_settings.get("plot_x_value_types")
         plot_y_value_types: list = plot_settings.get("plot_y_value_types")
+        compare_baselines: bool = plot_settings.get("compare_baselines", False)
 
         # visualize
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]] = list()
         for gpu_name in self.experiment["GPUs"]:
             for kernel_name in self.experiment["kernels"]:
+                title = f"{kernel_name} on {gpu_name}"
                 print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
 
                 # get the statistics
@@ -134,6 +136,11 @@ class Visualize:
                 # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
                 # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
 
+                # compare baselines
+                if compare_baselines is True:
+                    self.plot_baselines_comparison(time_range, searchspace_stats, objective_time_keys, title=title,
+                                                   strategies_curves=[strategies_curves[2], strategies_curves[1]])
+
                 # get the random baseline
                 random_baseline = RandomSearchCalculatedBaseline(searchspace_stats)
                 # random_baseline = RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000)
@@ -149,12 +156,13 @@ class Visualize:
                         x_axis_range = fevals_range
                     elif x_type == 'time':
                         x_axis_range = time_range
+                    else:
+                        raise ValueError(f"Invalid {x_type=}")
 
                     # create the figure and plots
                     fig, axs = plt.subplots(nrows=len(plot_y_value_types), ncols=1, figsize=(9, 3 * len(plot_y_value_types)), sharex=True)
                     if not hasattr(axs, "__len__"):    # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
                         axs = [axs]
-                    title = f"{kernel_name} on {gpu_name}"
                     fig.canvas.manager.set_window_title(title)
                     fig.suptitle(title)
 
@@ -164,20 +172,8 @@ class Visualize:
                         if index == 0:
                             axs[index].legend()
 
-                    # set the x-axis label
-                    if x_type == 'fevals':
-                        x_label = self.x_metric_displayname[x_type]
-                    elif x_type == 'time' and len(objective_time_keys) == len(objective_time_keys_values):
-                        x_label = self.x_metric_displayname["time_total"]
-                    else:
-                        partials = list(f"{self.x_metric_displayname[f'time_partial_{key}']}" for key in objective_time_keys)
-                        concatenated = ", ".join(partials)
-                        if len(objective_time_keys) > 2:
-                            concatenated = f"\n{concatenated}"
-                        x_label = f"Cumulative time in seconds of {concatenated}"
-                    fig.supxlabel(x_label)
-
                     # finalize the figure and display it
+                    fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
                     fig.tight_layout()
                     plt.show()
 
@@ -194,6 +190,42 @@ class Visualize:
             self.plot_strategies_aggregated(axs[0], aggregation_data, plot_settings=plot_settings)
             fig.tight_layout()
             plt.show()
+
+    def plot_baselines_comparison(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics, objective_time_keys: list, title: str = None,
+                                  strategies_curves: list[Curve] = list()):
+        """ Plot a comparison of baselines on a time range, optionally also compares against strategies listed in strategies_curves """
+        dist = searchspace_stats.objective_performances_total_sorted
+
+        # list the baselines to test
+        baselines: list[Baseline] = list()
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median'))
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='mean'))    # best
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median_nan'))
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_nan'))
+        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median'))
+        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='mean'))
+        baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=True, flatten=True))
+        baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=True, flatten=False))
+        baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=False, flatten=True))
+        baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=False, flatten=False))
+
+        # plot random baseline implementations
+        for baseline in baselines:
+            plt.plot(time_range, baseline.get_curve_over_time(time_range), label=baseline.label)
+
+        # plot normal strategies
+        for strategy_curve in strategies_curves:
+            strategy_data, _, _ = strategy_curve.get_curve_over_time(time_range, dist=dist)
+            plt.plot(time_range, strategy_data, label=strategy_curve.display_name)
+
+        # finalize the plot
+        if title is not None:
+            plt.title(title)
+        plt.xlabel(self.get_x_axis_label('time', objective_time_keys))
+        plt.ylabel(self.y_metric_displayname["objective_absolute"])
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
 
     def plot_strategies(self, x_type: str, y_type: str, ax: plt.Axes, searchspace_stats: SearchspaceStatistics, strategies_curves: list[Curve],
                         x_axis_range: np.ndarray, plot_settings: dict, baseline_curve: Baseline = None, plot_errors=True, plot_cutoffs=False):
@@ -307,7 +339,7 @@ class Visualize:
             dist = searchspace_stats.objective_performances_total_sorted
             for strategy_index, strategy_curve in enumerate(strategies_curves):
                 curve, _, _ = strategy_curve.get_curve_over_time(time_range, dist=dist, confidence_level=confidence_level)
-                relative_performance = random_baseline.get_standardised_curve_over_time(time_range, curve)
+                relative_performance = random_baseline.get_standardised_curve(time_range, curve, x_type='time')
                 strategies_performance[strategy_index].append(relative_performance)
 
         # plot each strategy
@@ -330,6 +362,22 @@ class Visualize:
         ax.set_ylim(top=1.0)
         ax.set_xlim((0, y_axis_size))
         ax.legend()
+
+    def get_x_axis_label(self, x_type: str, objective_time_keys: list):
+        """ Formatter to get the appropriate x-axis label depending on the x-axis type """
+        if x_type == 'fevals':
+            x_label = self.x_metric_displayname[x_type]
+        elif x_type == 'time' and len(objective_time_keys) == len(objective_time_keys_values):
+            x_label = self.x_metric_displayname["time_total"]
+        elif x_type == 'time':
+            partials = list(f"{self.x_metric_displayname[f'time_partial_{key}']}" for key in objective_time_keys)
+            concatenated = ", ".join(partials)
+            if len(objective_time_keys) > 2:
+                concatenated = f"\n{concatenated}"
+            x_label = f"Cumulative time in seconds of {concatenated}"
+        else:
+            raise ValueError(f"Invalid {x_type=}")
+        return x_label
 
 
 def is_ran_as_notebook() -> bool:

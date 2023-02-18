@@ -3,7 +3,8 @@
   "name": "Example comparison for presentation",
   "folder_id": "presentation_comparison",
   "kernels": [
-    "pnpoly"
+    "pnpoly",
+    "convolution"
   ],
   "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
@@ -26,12 +27,10 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
-      "fevals",
-      "time"
+      "time",
+      "aggregated"
     ],
     "plot_y_value_types": [
-      "absolute",
-      "normalized",
       "baseline"
     ],
     "confidence_level": 0.95

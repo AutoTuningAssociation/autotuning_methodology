@@ -105,9 +105,17 @@
           ],
           "exclusiveMinimum": 0,
           "maximum": 1
+        },
+        "compare_baselines": {
+          "type": "boolean",
+          "default": false
         }
       },
-      "required": []
+      "required": [
+        "plot_x_value_types",
+        "plot_y_value_types",
+        "confidence_level"
+      ]
     }
   },
   "required": [
@@ -120,6 +128,7 @@
     "resolution",
     "cutoff_percentile",
     "cutoff_percentile_start",
-    "cutoff_type"
+    "cutoff_type",
+    "plot"
   ]
 }

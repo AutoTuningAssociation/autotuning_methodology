@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Tuple
-from math import ceil
+from math import floor, ceil
 import json
 import numpy as np
 from runner import is_invalid_objective_time, is_invalid_objective_performance
@@ -27,6 +27,7 @@ class SearchspaceStatistics():
     objective_performances_total: np.ndarray
     objective_times_total_sorted: np.ndarray
     objective_performances_total_sorted: np.ndarray
+    objective_performances_total_sorted_nan: np.ndarray
 
     def __init__(self, kernel_name: str, device_name: str, minimization: bool, objective_time_keys: list[str], objective_performance_keys: list[str]) -> None:
         self.loaded = False
@@ -175,6 +176,10 @@ class SearchspaceStatistics():
             # sort
             self.objective_times_total_sorted = np.sort(self.objective_times_total[~np.isnan(self.objective_times_total)])
             self.objective_performances_total_sorted = np.sort(self.objective_performances_total[~np.isnan(self.objective_performances_total)])
+            # make sure the best values are at the start, because NaNs are appended to the end
+            sorted_best_first = self.objective_performances_total_sorted if self.minimization else self.objective_performances_total_sorted[::-1]
+            self.objective_performances_total_sorted_nan = np.concatenate(
+                (sorted_best_first, [np.nan] * np.count_nonzero(np.isnan(self.objective_performances_total))))
 
         return True
 
@@ -193,6 +198,17 @@ class SearchspaceStatistics():
     def total_time_median(self) -> float:
         """ Get the median of total time """
         return np.median(self.objective_times_total_sorted)
+
+    def total_time_median_nan(self) -> float:
+        """ Get the median of total time, including NaN """
+        sorted = np.sort(self.objective_times_total)
+        size = sorted.shape[0]
+        median_index = (size - 1) / 2
+        if size % 2 == 0:
+            median = np.mean(sorted[floor(median_index):ceil(median_index)])
+        else:
+            median = sorted[int(median_index)]
+        return median
 
     def total_time_std(self) -> float:
         """ Get the standard deviation of total time """
