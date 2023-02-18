@@ -3,10 +3,13 @@
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
-    "pnpoly"
+    "pnpoly",
+    "convolution",
+    "gemm"
   ],
   "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
+    "RTX_3090",
     "RTX_2080_Ti"
   ],
   "minimization": true,
@@ -45,12 +48,6 @@
     ]
   },
   "strategies": [
-    {
-      "name": "random_sample_100_iter",
-      "strategy": "random_sample",
-      "display_name": "Random sampling 100 iters",
-      "repeats": 100
-    },
     {
       "name": "random_sample_250_iter",
       "strategy": "random_sample",

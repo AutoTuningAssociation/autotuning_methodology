@@ -210,6 +210,26 @@ class SearchspaceStatistics():
             median = sorted[int(median_index)]
         return median
 
+    def total_time_mean_per_feval(self) -> float:
+        """ Get the true mean per function evaluation by adding the chance of an invalid """
+        invalid_mask = np.isnan(self.objective_performances_total)
+        if all(~invalid_mask):    # if there are no invalid values, this is the same as the normal mean
+            return self.total_time_mean()
+        mean_time_per_invalid_feval = np.mean(self.objective_times_total[invalid_mask])
+        mean_time_per_valid_feval = np.mean(self.objective_times_total[~invalid_mask])
+        fraction_invalid = np.count_nonzero(invalid_mask) / self.size
+        return mean_time_per_valid_feval + (fraction_invalid * mean_time_per_invalid_feval)
+
+    def total_time_median_per_feval(self) -> float:
+        """ Get the true median per function evaluation by adding the chance of an invalid """
+        invalid_mask = np.isnan(self.objective_performances_total)
+        if all(~invalid_mask):    # if there are no invalid values, this is the same as the normal median
+            return self.total_time_median()
+        mean_time_per_invalid_feval = np.median(self.objective_times_total[invalid_mask])
+        mean_time_per_valid_feval = np.median(self.objective_times_total[~invalid_mask])
+        fraction_invalid = np.count_nonzero(invalid_mask) / self.size
+        return mean_time_per_valid_feval + (fraction_invalid * mean_time_per_invalid_feval)
+
     def total_time_std(self) -> float:
         """ Get the standard deviation of total time """
         return np.std(self.objective_times_total_sorted)

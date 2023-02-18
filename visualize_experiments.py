@@ -139,7 +139,8 @@ class Visualize:
                 # compare baselines
                 if compare_baselines is True:
                     self.plot_baselines_comparison(time_range, searchspace_stats, objective_time_keys, title=title,
-                                                   strategies_curves=[strategies_curves[2], strategies_curves[1]])
+                                                   strategies_curves=[strategies_curves[0], strategies_curves[1]])
+                    continue
 
                 # get the random baseline
                 random_baseline = RandomSearchCalculatedBaseline(searchspace_stats)
@@ -198,16 +199,16 @@ class Visualize:
 
         # list the baselines to test
         baselines: list[Baseline] = list()
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median'))
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='mean'))    # best
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median_nan'))
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_nan'))
-        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median'))
-        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='mean'))
-        baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=True, flatten=True))
-        baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=True, flatten=False))
-        baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=False, flatten=True))
-        baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=False, flatten=False))
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median'))    # +3: 3
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='mean'))    # +1: 2, 4
+        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median_nan'))
+        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_nan'))
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_per_feval'))    # +3: 1, 2, 4
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median_per_feval'))    # +1: 1, 3
+        # baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=True, flatten=True))
+        # baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=True, flatten=False))
+        # baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=False, flatten=True))
+        # baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=False, flatten=False))
 
         # plot random baseline implementations
         for baseline in baselines:
@@ -216,13 +217,14 @@ class Visualize:
         # plot normal strategies
         for strategy_curve in strategies_curves:
             strategy_data, _, _ = strategy_curve.get_curve_over_time(time_range, dist=dist)
-            plt.plot(time_range, strategy_data, label=strategy_curve.display_name)
+            plt.plot(time_range, strategy_data, label=strategy_curve.display_name, linestyle='dashed')
 
         # finalize the plot
         if title is not None:
             plt.title(title)
         plt.xlabel(self.get_x_axis_label('time', objective_time_keys))
         plt.ylabel(self.y_metric_displayname["objective_absolute"])
+        plt.xlim(time_range[0], time_range[-1])
         plt.legend()
         plt.tight_layout()
         plt.show()

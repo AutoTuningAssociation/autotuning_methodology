@@ -66,7 +66,7 @@ class StochasticCurveBasedBaseline(Baseline):
 class RandomSearchCalculatedBaseline(Baseline):
     """ Baseline object using calculated random search without replacement """
 
-    def __init__(self, searchspace_stats: SearchspaceStatistics, include_nan: bool = True, time_per_feval_operator: str = 'mean') -> None:
+    def __init__(self, searchspace_stats: SearchspaceStatistics, include_nan: bool = True, time_per_feval_operator: str = 'median_per_feval') -> None:
         self.searchspace_stats = searchspace_stats
         self.time_per_feval_operator = time_per_feval_operator
         self.label = f'Calculated baseline, {include_nan=}, {time_per_feval_operator=}'
@@ -90,6 +90,10 @@ class RandomSearchCalculatedBaseline(Baseline):
             time_per_feval = self.searchspace_stats.total_time_median()
         elif self.time_per_feval_operator == 'median_nan':
             time_per_feval = self.searchspace_stats.total_time_median_nan()
+        elif self.time_per_feval_operator == 'mean_per_feval':
+            time_per_feval = self.searchspace_stats.total_time_mean_per_feval()
+        elif self.time_per_feval_operator == 'median_per_feval':
+            time_per_feval = self.searchspace_stats.total_time_median_per_feval()
         else:
             raise ValueError(f"Invalid {self.time_per_feval_operator=}")
         assert not np.isnan(time_per_feval) and time_per_feval > 0, f"Invalid {time_per_feval=}"
