@@ -193,7 +193,7 @@ class Visualize:
             plt.show()
 
     def plot_baselines_comparison(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics, objective_time_keys: list, title: str = None,
-                                  strategies_curves: list[Curve] = list()):
+                                  strategies_curves: list[Curve] = list(), compare_split_times=True):
         """ Plot a comparison of baselines on a time range, optionally also compares against strategies listed in strategies_curves """
         dist = searchspace_stats.objective_performances_total_sorted
 
@@ -228,6 +228,10 @@ class Visualize:
         plt.legend()
         plt.tight_layout()
         plt.show()
+
+    def plot_split_times_comparison(self, fevals_range: np.ndarray):
+        pass
+        get_split_times_at_feval
 
     def plot_strategies(self, x_type: str, y_type: str, ax: plt.Axes, searchspace_stats: SearchspaceStatistics, strategies_curves: list[Curve],
                         x_axis_range: np.ndarray, plot_settings: dict, baseline_curve: Baseline = None, plot_errors=True, plot_cutoffs=False):

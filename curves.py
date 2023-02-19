@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Union
 import numpy as np
 from caching import ResultsDescription
+from searchspace_statistics import SearchspaceStatistics
 from math import floor, ceil, sqrt
 import warnings
 
@@ -185,12 +186,10 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         return super().get_curve(range, x_type, dist, confidence_level)
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
-                              confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _get_curve_over_fevals_values_in_range(self, fevals_range: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """ Get the valid fevals and values that are in the given range """
         assert fevals_range.ndim == 1
         assert np.all(np.isfinite(fevals_range))
-        if dist is not None:
-            assert dist.ndim == 1
 
         # first filter to only get the fevals range
         matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
@@ -229,8 +228,29 @@ class StochasticOptimizationAlgorithm(Curve):
         assert fevals_range.shape[0] == masked_values.shape[0] == masked_fevals.shape[
             0], f"The masked fevals and values should have the same first dimension as fevals_range, but {fevals_range.shape[0]=}, {masked_fevals.shape[0]=}, {masked_values.shape[0]=}"
 
+        return fevals, masked_values
+
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """ Get the times at each function eval in the range split into objective_time_keys """
+        fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
+        indices = self._get_indices(masked_values, searchspace_stats.objective_performances_total)
+        average_index_at_feval = np.array(np.round(np.nanmedian(indices, axis=1)), dtype=int)
+
+        # for each key, obtain the time at a feval
+        objective_time_keys = searchspace_stats.objective_time_keys
+        split_time_per_feval = np.empty((len(objective_time_keys), average_index_at_feval.shape[0]))
+        for key_index, key in enumerate(objective_time_keys):
+            split_time_per_feval[key_index] = searchspace_stats.objective_times_array[key, average_index_at_feval]
+
+        return split_time_per_feval
+
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
+                              confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
+
         # if a distribution is included
         if dist is not None:
+            assert dist.ndim == 1
             # for each value, get the index in the distribution
             indices = self._get_indices(masked_values, dist)
             # get the mean index per feval
