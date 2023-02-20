@@ -140,6 +140,8 @@ class Visualize:
                 if compare_baselines is True:
                     self.plot_baselines_comparison(time_range, searchspace_stats, objective_time_keys, title=title,
                                                    strategies_curves=[strategies_curves[0], strategies_curves[1]])
+                    self.plot_split_times_comparison(fevals_range, searchspace_stats, objective_time_keys, title=title,
+                                                     strategies_curves=[strategies_curves[1]])
                     continue
 
                 # get the random baseline
@@ -193,8 +195,8 @@ class Visualize:
             plt.show()
 
     def plot_baselines_comparison(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics, objective_time_keys: list, title: str = None,
-                                  strategies_curves: list[Curve] = list(), compare_split_times=True):
-        """ Plot a comparison of baselines on a time range, optionally also compares against strategies listed in strategies_curves """
+                                  strategies_curves: list[Curve] = list()):
+        """ Plots a comparison of baselines on a time range, optionally also compares against strategies listed in strategies_curves """
         dist = searchspace_stats.objective_performances_total_sorted
 
         # list the baselines to test
@@ -229,9 +231,47 @@ class Visualize:
         plt.tight_layout()
         plt.show()
 
-    def plot_split_times_comparison(self, fevals_range: np.ndarray):
-        pass
-        get_split_times_at_feval
+    def plot_split_times_comparison(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics, objective_time_keys: list, title: str = None,
+                                    strategies_curves: list[Curve] = list()):
+        """ Plots a comparison of split times for strategies and baselines """
+        # list the baselines to test
+        baselines: list[Baseline] = list()
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_per_feval'))
+        lines = strategies_curves + baselines
+
+        # setup the subplots
+        num_rows = len(lines)
+        fig, axs = plt.subplots(nrows=num_rows, ncols=1, figsize=(9, 3 * num_rows), sharex=True)
+        if not hasattr(axs, "__len__"):    # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
+            axs = [axs]
+        if title is not None:
+            fig.canvas.manager.set_window_title(title)
+            fig.suptitle(title)
+        labels = list(key for key in objective_time_keys)
+
+        # plot the baselines and strategies
+        for ax_index, line in enumerate(lines):
+            ax = axs[ax_index]
+            if isinstance(line, Curve):
+                title = line.display_name
+                split_times = line.get_split_times_at_feval(fevals_range, searchspace_stats)
+            elif isinstance(line, Baseline):
+                title = line.label
+                split_times = line.get_split_times_at_feval(fevals_range, searchspace_stats)
+            ax.set_title(title)
+            ax.stackplot(fevals_range, split_times, labels=labels)
+            ax.set_ylabel(self.get_x_axis_label('time', objective_time_keys))
+            ax.set_xlim(fevals_range[0], fevals_range[-1])
+            # plot the mean
+            mean = np.mean(np.sum(split_times, axis=0))
+            ax.axhline(y=mean, label=f"Mean sum")
+
+        # finalize the plot
+        handles, labels = ax.get_legend_handles_labels()
+        fig.legend(handles, labels)
+        fig.supxlabel(self.get_x_axis_label('fevals', objective_time_keys))
+        fig.tight_layout()
+        plt.show()
 
     def plot_strategies(self, x_type: str, y_type: str, ax: plt.Axes, searchspace_stats: SearchspaceStatistics, strategies_curves: list[Curve],
                         x_axis_range: np.ndarray, plot_settings: dict, baseline_curve: Baseline = None, plot_errors=True, plot_cutoffs=False):

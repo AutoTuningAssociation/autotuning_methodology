@@ -76,6 +76,11 @@ class Curve(ABC):
         """ Get the curve and errors at the specified times using isotonic regression """
         raise NotImplementedError
 
+    @abstractmethod
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """ Get the times at each function eval in the range split into objective_time_keys """
+        raise NotImplementedError()
+
     def fevals_find_pad_width(self, array: np.ndarray, target_array: np.ndarray) -> tuple[int, int]:
         """ Find the amount of padding required on both sides of array to match target_array """
         if array.ndim != 1 or target_array.ndim != 1:
@@ -147,6 +152,9 @@ class DeterministicOptimizationAlgorithm(Curve):
 
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> np.ndarray:
         return super().get_curve_over_time(time_range, dist, confidence_level)
+
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times_at_feval(fevals_range, searchspace_stats)
 
 
 class StochasticOptimizationAlgorithm(Curve):
@@ -229,20 +237,6 @@ class StochasticOptimizationAlgorithm(Curve):
             0], f"The masked fevals and values should have the same first dimension as fevals_range, but {fevals_range.shape[0]=}, {masked_fevals.shape[0]=}, {masked_values.shape[0]=}"
 
         return fevals, masked_values
-
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """ Get the times at each function eval in the range split into objective_time_keys """
-        fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
-        indices = self._get_indices(masked_values, searchspace_stats.objective_performances_total)
-        average_index_at_feval = np.array(np.round(np.nanmedian(indices, axis=1)), dtype=int)
-
-        # for each key, obtain the time at a feval
-        objective_time_keys = searchspace_stats.objective_time_keys
-        split_time_per_feval = np.empty((len(objective_time_keys), average_index_at_feval.shape[0]))
-        for key_index, key in enumerate(objective_time_keys):
-            split_time_per_feval[key_index] = searchspace_stats.objective_times_array[key, average_index_at_feval]
-
-        return split_time_per_feval
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,
                               confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -384,6 +378,19 @@ class StochasticOptimizationAlgorithm(Curve):
         # pad with NaN where outside the range, yielding an array.shape == fevals.shape
         assert curve.shape == time_range.shape
         return curve, curve_lower_err, curve_upper_err
+
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
+        indices = self._get_indices(masked_values, searchspace_stats.objective_performances_total)
+        average_index_at_feval = np.array(np.round(np.nanmedian(indices, axis=1)), dtype=int)
+
+        # for each key, obtain the time at a feval
+        objective_time_keys = searchspace_stats.objective_time_keys
+        split_time_per_feval = np.empty((len(objective_time_keys), average_index_at_feval.shape[0]))
+        for key_index, key in enumerate(objective_time_keys):
+            split_time_per_feval[key_index] = searchspace_stats.objective_times_array[key_index, average_index_at_feval]
+
+        return split_time_per_feval
 
     def get_confidence_interval(self, values: np.ndarray, confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
         """ Calculates the non-parametric confidence interval for repeated function evaluations, assumed to be IID """

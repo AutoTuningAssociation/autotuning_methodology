@@ -41,6 +41,11 @@ class Baseline(ABC):
         standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
         return standardised_curve
 
+    @abstractmethod
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """ Get the times at each function eval in the range split into objective_time_keys """
+        raise NotImplementedError()
+
 
 class StochasticCurveBasedBaseline(Baseline):
     """ Baseline object using a stochastic curve as input """
@@ -61,6 +66,9 @@ class StochasticCurveBasedBaseline(Baseline):
 
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
+
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times_at_feval(fevals_range, searchspace_stats)
 
 
 class RandomSearchCalculatedBaseline(Baseline):
@@ -113,9 +121,10 @@ class RandomSearchCalculatedBaseline(Baseline):
         """ Monte Carlo simulation over cache """
         return np.random.choice(xs, size=k, replace=False)
 
-    def _get_indices(self, draws: np.ndarray) -> np.ndarray:
+    def _get_indices(self, draws: np.ndarray, dist: np.ndarray = None) -> np.ndarray:
         """ For each draw, get the index (position) in the distribution """
-        dist = self.dist_descending
+        if dist is None:
+            dist = self.dist_descending
         indices_found = list()
         if draws.ndim == 1:
             for x in draws:
@@ -145,19 +154,22 @@ class RandomSearchCalculatedBaseline(Baseline):
         return indices_found
 
     def _redwhite_index(self, M: int) -> float:
-        """ Get the expected value in the distribution for a budget in number of function evaluations M """
+        """ Get the expected index in the distribution for a budget in number of function evaluations M """
         assert M >= 0, f"M must be >= 0, is {M}"
         # N = self.searchspace_stats.size
-        dist = self._redwhite_index_dist
-        N = dist.shape[0]
+        N = self._redwhite_index_dist.shape[0]
         index = round(M * (N + 1) / (M + 1))
-        index = min(dist.shape[0] - 1, index)
-        return dist[index]
+        index = min(N - 1, index)
+        return index
+
+    def _redwhite_index_value(self, M: int) -> float:
+        """ Get the expected value in the distribution for a budget in number of function evaluations M """
+        return self._redwhite_index_dist[self._redwhite_index(M)]
 
     def _get_random_curve(self, fevals_range: np.ndarray) -> np.ndarray:
-        """ Returns the drawn values of the random curve at each number of function evaluation """
+        """ Returns the drawn values of the random curve at each number of function evaluations """
         ks = fevals_range - 1    # because ranges of number of function evaluations start at 1, we need to subtract 1 to use the index version
-        draws = np.array([self._redwhite_index(k) for k in ks])
+        draws = np.array([self._redwhite_index_value(k) for k in ks])
         return draws
 
     def _draw_random(self, xs: np.ndarray, k: int):
@@ -190,6 +202,18 @@ class RandomSearchCalculatedBaseline(Baseline):
 
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
+
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        random_curve = self.get_curve_over_fevals(fevals_range)
+        index_at_feval = self._get_indices(random_curve, searchspace_stats.objective_performances_total)
+
+        # for each key, obtain the time at a feval
+        objective_time_keys = searchspace_stats.objective_time_keys
+        split_time_per_feval = np.empty((len(objective_time_keys), index_at_feval.shape[0]))
+        for key_index, key in enumerate(objective_time_keys):
+            split_time_per_feval[key_index] = searchspace_stats.objective_times_array[key_index, index_at_feval]
+
+        return split_time_per_feval
 
 
 class RandomSearchSimulatedBaseline(Baseline):
@@ -258,3 +282,6 @@ class RandomSearchSimulatedBaseline(Baseline):
 
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
+
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times_at_feval(fevals_range, searchspace_stats)
