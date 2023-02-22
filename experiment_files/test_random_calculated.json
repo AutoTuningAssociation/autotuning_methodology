@@ -3,18 +3,15 @@
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
-    "pnpoly",
-    "convolution",
     "gemm"
   ],
   "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
-    "RTX_3090",
     "RTX_2080_Ti"
   ],
   "minimization": true,
   "resolution": 1e3,
-  "cutoff_percentile": 0.95,
+  "cutoff_percentile": 0.995,
   "cutoff_percentile_start": 0.1,
   "objective_time_keys": [
     "strategy_time",
@@ -29,6 +26,7 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
+      "fevals",
       "time"
     ],
     "plot_y_value_types": [
@@ -36,7 +34,7 @@
       "baseline"
     ],
     "confidence_level": 0.95,
-    "compare_baselines": true
+    "compare_baselines": false
   },
   "strategy_defaults": {
     "repeats": 100,
@@ -49,21 +47,10 @@
   },
   "strategies": [
     {
-      "name": "random_sample_250_iter",
+      "name": "random_sample_20_iter",
       "strategy": "random_sample",
-      "display_name": "Random sampling 250 iters",
-      "repeats": 250
-    },
-    {
-      "name": "random_sample",
-      "strategy": "random_sample",
-      "display_name": "Random sampling 500 iters",
-      "repeats": 500
-    },
-    {
-      "name": "genetic_algorithm",
-      "strategy": "genetic_algorithm",
-      "display_name": "Genetic Algorithm"
+      "display_name": "Random sampling 20 iters",
+      "repeats": 20
     }
   ]
 }

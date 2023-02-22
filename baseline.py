@@ -92,19 +92,7 @@ class RandomSearchCalculatedBaseline(Baseline):
     def time_to_fevals(self, time_range: np.ndarray) -> np.ndarray:
         """ Convert a time range to a number of function evaluations range """
         # TODO more accurate mapping from fevals to time, using interpolated indices, preferably without median_time_per_feval
-        if self.time_per_feval_operator == 'mean':
-            time_per_feval = self.searchspace_stats.total_time_mean()
-        elif self.time_per_feval_operator == 'median':
-            time_per_feval = self.searchspace_stats.total_time_median()
-        elif self.time_per_feval_operator == 'median_nan':
-            time_per_feval = self.searchspace_stats.total_time_median_nan()
-        elif self.time_per_feval_operator == 'mean_per_feval':
-            time_per_feval = self.searchspace_stats.total_time_mean_per_feval()
-        elif self.time_per_feval_operator == 'median_per_feval':
-            time_per_feval = self.searchspace_stats.total_time_median_per_feval()
-        else:
-            raise ValueError(f"Invalid {self.time_per_feval_operator=}")
-        assert not np.isnan(time_per_feval) and time_per_feval > 0, f"Invalid {time_per_feval=}"
+        time_per_feval = self.searchspace_stats.get_time_per_feval(self.time_per_feval_operator)
         # assert all(a <= b for a, b in zip(time_range, time_range[1:])), "Time range is not monotonically non-decreasing"
         fevals_range = np.maximum(time_range / time_per_feval, 1)
         # assert all(a <= b for a, b in zip(fevals_range, fevals_range[1:])), "Fevals range is not monotonically non-decreasing"

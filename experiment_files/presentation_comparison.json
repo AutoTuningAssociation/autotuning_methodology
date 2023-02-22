@@ -2,11 +2,11 @@
   "version": "0.1.1",
   "name": "Example comparison for presentation",
   "folder_id": "presentation_comparison",
+  "kernel_path": "../cached_data_used/kernels",
   "kernels": [
     "pnpoly",
     "convolution"
   ],
-  "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
     "RTX_2080_Ti"
   ],
@@ -14,6 +14,7 @@
   "resolution": 1e3,
   "cutoff_percentile": 0.95,
   "cutoff_percentile_start": 0.1,
+  "cutoff_type": "fevals",
   "objective_time_keys": [
     "strategy_time",
     "compile_time",
@@ -24,7 +25,6 @@
   "objective_performance_keys": [
     "time"
   ],
-  "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
       "time",

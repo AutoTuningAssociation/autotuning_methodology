@@ -1,23 +1,33 @@
 """ Main experiments code """
 
-import argparse
-from importlib import import_module
-from pathlib import Path
+from typing import Tuple
+from math import ceil
 import json
 from jsonschema import validate
+from importlib import import_module
+from pathlib import Path
 import os
 import sys
-from typing import Tuple
-import numpy as np
-from math import ceil
 
 from runner import collect_results
 from caching import ResultsDescription
 from searchspace_statistics import SearchspaceStatistics
-from pathlib import Path
+
+
+def get_args_from_cli() -> str:
+    """ Set the Command Line Interface arguments and return the argument values """
+    import argparse
+    CLI = argparse.ArgumentParser()
+    CLI.add_argument("experiment", type=str, help="The experiment.json to execute, see experiments/template.json")
+    args = CLI.parse_args()
+    filepath: str = args.experiment
+    if filepath is None:
+        raise ValueError("Invalid '-experiment' option. Run 'visualize_experiments.py -h' to read more about the options.")
+    return filepath
 
 
 def change_directory(path: str):
+    """ Change the current working directory to the given path """
     absolute_path = os.path.abspath(path)
     os.chdir(absolute_path)
     sys.path.append(absolute_path)
@@ -143,11 +153,5 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
 
 
 if __name__ == "__main__":
-    CLI = argparse.ArgumentParser()
-    CLI.add_argument("experiment", type=str, help="The experiment.json to execute, see experiments/template.json")
-    args = CLI.parse_args()
-    experiment_filepath = args.experiment
-    if experiment_filepath is None:
-        raise ValueError("Invalid '-experiment' option. Run 'experiments.py -h' to read more about the options.")
-
+    experiment_filepath = get_args_from_cli()
     execute_experiment(experiment_filepath, profiling=False)

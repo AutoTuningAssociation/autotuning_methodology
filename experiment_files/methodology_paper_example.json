@@ -1,26 +1,41 @@
 {
-  "version": "0.1.0",
-  "name": "Test new methodology",
-  "folder_id": "test_new_methodology",
+  "version": "0.1.1",
+  "name": "Methodology paper evaluation",
+  "folder_id": "methodology_paper_evaluation",
+  "kernel_path": "../cached_data_used/kernels",
   "kernels": [
     "pnpoly",
-    "convolution",
-    "GEMM"
+    "convolution"
   ],
   "GPUs": [
-    "RTX_2070_SUPER"
+    "RTX_2080_Ti",
+    "RTX_3090"
   ],
   "minimization": true,
   "resolution": 1e3,
-  "curve_segment_factor": 0.05,
-  "cutoff_percentile": 0.99,
-  "cutoff_percentile_start": 0.01,
+  "cutoff_percentile": 0.95,
+  "cutoff_percentile_start": 0.1,
   "cutoff_type": "fevals",
+  "objective_time_keys": [
+    "strategy_time",
+    "compile_time",
+    "benchmark_time",
+    "verification_time",
+    "framework_time"
+  ],
+  "objective_performance_keys": [
+    "time"
+  ],
   "plot": {
-    "plot_relative_to_baseline": true,
-    "plot_fevals": false,
-    "plot_time": true,
-    "plot_aggregated": true,
+    "plot_x_value_types": [
+      "fevals",
+      "time"
+    ],
+    "plot_y_value_types": [
+      "absolute",
+      "normalized",
+      "baseline"
+    ],
     "confidence_level": 0.95
   },
   "strategy_defaults": {
@@ -47,6 +62,11 @@
       "name": "particle_swarm_optimization",
       "strategy": "pso",
       "display_name": "PSO"
+    },
+    {
+      "name": "firefly",
+      "strategy": "firefly",
+      "display_name": "Firefly"
     }
   ]
 }

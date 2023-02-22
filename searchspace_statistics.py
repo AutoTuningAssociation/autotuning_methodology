@@ -175,13 +175,32 @@ class SearchspaceStatistics():
 
             # sort
             self.objective_times_total_sorted = np.sort(self.objective_times_total[~np.isnan(self.objective_times_total)])
-            self.objective_performances_total_sorted = np.sort(self.objective_performances_total[~np.isnan(self.objective_performances_total)])
+            self.objective_times_number_of_nan = self.objective_times_total.shape[0] - self.objective_times_total_sorted.shape[0]
+            objective_performances_nan_mask = np.isnan(self.objective_performances_total)
+            self.objective_performances_number_of_nan = np.count_nonzero(objective_performances_nan_mask)
+            self.objective_performances_total_sorted = np.sort(self.objective_performances_total[~objective_performances_nan_mask])
             # make sure the best values are at the start, because NaNs are appended to the end
             sorted_best_first = self.objective_performances_total_sorted if self.minimization else self.objective_performances_total_sorted[::-1]
-            self.objective_performances_total_sorted_nan = np.concatenate(
-                (sorted_best_first, [np.nan] * np.count_nonzero(np.isnan(self.objective_performances_total))))
+            self.objective_performances_total_sorted_nan = np.concatenate((sorted_best_first, [np.nan] * self.objective_performances_number_of_nan))
 
         return True
+
+    def get_time_per_feval(self, time_per_feval_operator: str) -> float:
+        """ Get the average time per function evaluation, several methods available """
+        if time_per_feval_operator == 'mean':
+            time_per_feval = self.total_time_mean()
+        elif time_per_feval_operator == 'median':
+            time_per_feval = self.total_time_median()
+        elif time_per_feval_operator == 'median_nan':
+            time_per_feval = self.total_time_median_nan()
+        elif time_per_feval_operator == 'mean_per_feval':
+            time_per_feval = self.total_time_mean_per_feval()
+        elif time_per_feval_operator == 'median_per_feval':
+            time_per_feval = self.total_time_median_per_feval()
+        else:
+            raise ValueError(f"Invalid {time_per_feval_operator=}")
+        assert not np.isnan(time_per_feval) and time_per_feval > 0, f"Invalid {time_per_feval=}"
+        return time_per_feval
 
     def total_time_minimum(self) -> float:
         """ Get the minimum value of total time """

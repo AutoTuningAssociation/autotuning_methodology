@@ -1,12 +1,10 @@
 """ Visualize the results of the experiments """
-import argparse
+from typing import Tuple
 import numpy as np
-from typing import Tuple, Any
-import matplotlib.pyplot as plt
 import warnings
-from sklearn.metrics import auc
+import matplotlib.pyplot as plt
 
-from experiments import execute_experiment
+from experiments import execute_experiment, get_args_from_cli
 from curves import Curve, StochasticOptimizationAlgorithm
 from baseline import Baseline, RandomSearchCalculatedBaseline, RandomSearchSimulatedBaseline
 from searchspace_statistics import SearchspaceStatistics
@@ -247,6 +245,7 @@ class Visualize:
         if title is not None:
             fig.canvas.manager.set_window_title(title)
             fig.suptitle(title)
+            print(title)
         labels = list(key for key in objective_time_keys)
 
         # plot the baselines and strategies
@@ -265,6 +264,12 @@ class Visualize:
             # plot the mean
             mean = np.mean(np.sum(split_times, axis=0))
             ax.axhline(y=mean, label=f"Mean sum")
+            if isinstance(line, Baseline):
+                average_time_per_feval_used = searchspace_stats.get_time_per_feval(line.time_per_feval_operator)
+                ax.axhline(y=average_time_per_feval_used, label=f"Average used")
+                print(f"{title} mean: {round(mean, 3)}, average used: {round(average_time_per_feval_used, 3)}")
+            else:
+                print(f"{title} mean: {round(mean, 3)}")
 
         # finalize the plot
         handles, labels = ax.get_legend_handles_labels()
@@ -443,14 +448,9 @@ def is_ran_as_notebook() -> bool:
 
 if __name__ == "__main__":
     if is_ran_as_notebook():
-        filepath = 'test_random_calculated'
+        experiment_filepath = 'test_random_calculated'
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
-        CLI = argparse.ArgumentParser()
-        CLI.add_argument("experiment", type=str, help="The experiment.json to execute, see experiments/template.json")
-        args = CLI.parse_args()
-        filepath = args.experiment
-        if filepath is None:
-            raise ValueError("Invalid '-experiment' option. Run 'visualize_experiments.py -h' to read more about the options.")
+        experiment_filepath = get_args_from_cli()
 
-    Visualize(filepath)
+    Visualize(experiment_filepath)
