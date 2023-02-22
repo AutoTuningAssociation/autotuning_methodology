@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/macos,linux,visualstudiocode,python
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,linux,visualstudiocode,python
 
+# ignore genated plots
+generated_plots/*
+
 # ignore mypy
 mypy.ini
 

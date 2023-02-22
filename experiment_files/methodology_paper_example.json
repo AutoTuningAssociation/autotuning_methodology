@@ -13,8 +13,8 @@
   ],
   "minimization": true,
   "resolution": 1e3,
-  "cutoff_percentile": 0.95,
-  "cutoff_percentile_start": 0.1,
+  "cutoff_percentile": 0.96,
+  "cutoff_percentile_start": 0.5,
   "cutoff_type": "fevals",
   "objective_time_keys": [
     "strategy_time",
@@ -29,10 +29,10 @@
   "plot": {
     "plot_x_value_types": [
       "fevals",
-      "time"
+      "time",
+      "aggregated"
     ],
     "plot_y_value_types": [
-      "absolute",
       "normalized",
       "baseline"
     ],
@@ -49,11 +49,6 @@
   },
   "strategies": [
     {
-      "name": "differential_evolution",
-      "strategy": "diff_evo",
-      "display_name": "Differential Evolution"
-    },
-    {
       "name": "genetic_algorithm",
       "strategy": "genetic_algorithm",
       "display_name": "Genetic Algorithm"
@@ -65,7 +60,7 @@
     },
     {
       "name": "firefly",
-      "strategy": "firefly",
+      "strategy": "firefly_algorithm",
       "display_name": "Firefly"
     }
   ]

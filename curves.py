@@ -198,36 +198,47 @@ class StochasticOptimizationAlgorithm(Curve):
         """ Get the valid fevals and values that are in the given range """
         assert fevals_range.ndim == 1
         assert np.all(np.isfinite(fevals_range))
+        target_index = fevals_range[-1] - 1
 
-        # first filter to only get the fevals range
+        # filter to only get data in the fevals range
         matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
         masked_values = np.where(matching_indices_mask, self._y, np.nan)    # apply the mask to the values, filling NaN for False
         masked_fevals = np.where(matching_indices_mask, self._x_fevals, np.nan).transpose()    # apply the mask to the fevals, filling NaN for False
+
         # make sure that the filtered fevals are consistent (every repeat has the same array of fevals)
         if not np.allclose(masked_fevals, masked_fevals[0], equal_nan=True):
             indices = np.nanargmax(masked_fevals, axis=1)    # get the index of the last non-nan value of each repeat
-            index = fevals_range[-1] - 1
             # drop the data which ends before the index
-            keep_data = np.where(indices >= index)
+            keep_data = np.where(indices >= target_index)
             if np.count_nonzero(keep_data) < len(indices) * 0.5:
                 raise ValueError(
-                    f"For optimization algorithm {self.display_name}, more than 50% of the runs ended before the end of fevals_range ({fevals_range[-1]}), perhaps increase the allotted auto-tuning time for this optimization algorithm"
+                    f"For optimization algorithm {self.display_name}, more than 50% of the runs ended before the end of fevals_range ({target_index + 1}), perhaps increase the allotted auto-tuning time for this optimization algorithm"
                 )
             warnings.warn(
-                f"Dropped {len(indices) - np.count_nonzero(keep_data)} repeats of {self.display_name} runs that ended before the end of fevals_range ({fevals_range[-1]}), perhaps increase the allotted auto-tuning time for this optimization algorithm",
+                f"Dropped {len(indices) - np.count_nonzero(keep_data)} repeats of {self.display_name} runs that ended before the end of fevals_range ({target_index + 1}), perhaps increase the allotted auto-tuning time for this optimization algorithm",
                 UserWarning)
             masked_fevals = masked_fevals[keep_data]
             masked_values = masked_values.transpose()
             masked_values = masked_values[keep_data]
 
             # set all values beyond the greatest common non-NaN index to NaN
-            masked_values[:, index + 1:] = np.nan
+            masked_values[:, target_index + 1:] = np.nan
             masked_values = masked_values.transpose()    # transpose back to original shape
-            masked_fevals[:, index + 1:] = np.nan
-        assert np.allclose(masked_fevals, masked_fevals[0], equal_nan=True), "Every repeat must have the same array of function evaluations"
-        fevals = masked_fevals[0]    # safe to use as every repeat has the same array of fevals
+            masked_fevals[:, target_index + 1:] = np.nan
+
+            # check that the filtered fevals are consistent
+            assert np.allclose(masked_fevals, masked_fevals[0], equal_nan=True), "Every repeat must have the same array of function evaluations"
+
+        # as every repeat has the same array of fevals, check whether they match the range
+        fevals = masked_fevals[0]    # safe to assume as every repeat has the same array of fevals, set it before removing NaN to pad the curve
+        highest_index = np.nanargmax(fevals)
+        if highest_index < target_index:
+            raise ValueError(
+                f"For optimization algorithm {self.display_name}, all runs end at {highest_index + 1}, which is before the target number of function evals of {target_index + 1}"
+            )
         masked_fevals = masked_fevals.transpose()    # transpose back to original shape
+
         # remove fevals where every repeat has NaN
         num_repeats = masked_values.shape[1]
         nan_mask = ~np.isnan(masked_values).all(axis=1)
@@ -235,7 +246,6 @@ class StochasticOptimizationAlgorithm(Curve):
         masked_values = masked_values[nan_mask].reshape(-1, num_repeats)
         assert fevals_range.shape[0] == masked_values.shape[0] == masked_fevals.shape[
             0], f"The masked fevals and values should have the same first dimension as fevals_range, but {fevals_range.shape[0]=}, {masked_fevals.shape[0]=}, {masked_values.shape[0]=}"
-
         return fevals, masked_values
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None,

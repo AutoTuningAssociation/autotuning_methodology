@@ -49,6 +49,10 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
             res, env = kernel.tune(device_name=device_name, strategy=strategy['strategy'], strategy_options=strategy['options'], **tune_options)
         if profiling:
             yappi.stop()
+        if 'max_fevals' in strategy['options']:
+            max_fevals = strategy['options']['max_fevals']
+            if len(res) < max_fevals * 0.7:
+                raise ValueError(f"Much fewer configurations were returned ({len(res)}) than the requested {max_fevals}")
         return res, env
 
     total_start_time = python_time.perf_counter()

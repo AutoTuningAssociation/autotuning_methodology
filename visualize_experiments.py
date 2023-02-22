@@ -80,7 +80,9 @@ class Visualize:
     plot_y_value_types = ["absolute", "scatter", "normalized",
                           "baseline"]    # absolute values, scatterplot, median-absolute normalized, improvement over baseline
 
-    def __init__(self, experiment_filename: str) -> None:
+    plot_filename_prefix = "generated_plots/"
+
+    def __init__(self, experiment_filename: str, save_figs: True) -> None:
         # # silently execute the experiment
         # with warnings.catch_warnings():
         #     warnings.simplefilter("ignore")
@@ -173,10 +175,16 @@ class Visualize:
                         if index == 0:
                             axs[index].legend()
 
-                    # finalize the figure and display it
+                    # finalize the figure and save or display it
                     fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
                     fig.tight_layout()
-                    plt.show()
+                    if save_figs:
+                        filename = f"{self.plot_filename_prefix}{title}_{x_type}"
+                        filename = filename.replace(' ', '_')
+                        fig.savefig(filename, dpi=300)
+                    else:
+                        plt.show()
+                    exit(0)
 
         # plot the aggregated searchspaces
         if 'aggregated' in plot_x_value_types:
@@ -187,10 +195,15 @@ class Visualize:
             fig.canvas.manager.set_window_title(title)
             fig.suptitle(title)
 
-            # finalize the figure and display it
+            # finalize the figure and save or display it
             self.plot_strategies_aggregated(axs[0], aggregation_data, plot_settings=plot_settings)
             fig.tight_layout()
-            plt.show()
+            if save_figs:
+                filename = f"{self.plot_filename_prefix}aggregated"
+                filename = filename.replace(' ', '_')
+                fig.savefig(filename, dpi=300)
+            else:
+                plt.show()
 
     def plot_baselines_comparison(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics, objective_time_keys: list, title: str = None,
                                   strategies_curves: list[Curve] = list()):
@@ -447,10 +460,11 @@ def is_ran_as_notebook() -> bool:
 
 
 if __name__ == "__main__":
-    if is_ran_as_notebook():
+    is_notebook = is_ran_as_notebook()
+    if is_notebook:
         experiment_filepath = 'test_random_calculated'
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
         experiment_filepath = get_args_from_cli()
 
-    Visualize(experiment_filepath)
+    Visualize(experiment_filepath, save_figs=not is_notebook)
