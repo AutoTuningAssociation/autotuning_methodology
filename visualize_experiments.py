@@ -113,8 +113,9 @@ class Visualize:
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]] = list()
         for gpu_name in self.experiment["GPUs"]:
             for kernel_name in self.experiment["kernels"]:
-                title = f"{kernel_name} on {gpu_name}"
                 print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
+                title = f"{kernel_name} on {gpu_name}"
+                title = title.replace('_', ' ')
 
                 # get the statistics
                 searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name, minimization=minimization,
@@ -167,7 +168,8 @@ class Visualize:
                     if not hasattr(axs, "__len__"):    # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
                         axs = [axs]
                     fig.canvas.manager.set_window_title(title)
-                    fig.suptitle(title)
+                    if not save_figs:
+                        fig.suptitle(title)
 
                     # plot the subplots of individual searchspaces
                     for index, y_type in enumerate(plot_y_value_types):
@@ -184,7 +186,6 @@ class Visualize:
                         fig.savefig(filename, dpi=300)
                     else:
                         plt.show()
-                    exit(0)
 
         # plot the aggregated searchspaces
         if 'aggregated' in plot_x_value_types:
@@ -193,7 +194,8 @@ class Visualize:
                 axs = [axs]
             title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
             fig.canvas.manager.set_window_title(title)
-            fig.suptitle(title)
+            if not save_figs:
+                fig.suptitle(title)
 
             # finalize the figure and save or display it
             self.plot_strategies_aggregated(axs[0], aggregation_data, plot_settings=plot_settings)
@@ -338,7 +340,8 @@ class Visualize:
                 ax.scatter(x_axis, y_axis, label=label, color=color)
                 continue
             else:
-                curve, curve_lower_err, curve_upper_err = strategy_curve.get_curve(x_axis_range, x_type, dist=dist, confidence_level=confidence_level)
+                curve, curve_lower_err, curve_upper_err, data_up_to_index = strategy_curve.get_curve(x_axis_range, x_type, dist=dist,
+                                                                                                     confidence_level=confidence_level)
 
             # transform the curves as necessary
             if y_type == 'baseline':
@@ -351,10 +354,31 @@ class Visualize:
             elif y_type == 'normalized':
                 curve, curve_lower_err, curve_upper_err = normalize(curve), normalize(curve_lower_err), normalize(curve_upper_err)
 
+            # select the parts of the data that are real
+            x_axis_range_real = x_axis_range[:data_up_to_index]
+            curve_real = curve[:data_up_to_index]
+            curve_lower_err_real = curve_lower_err[:data_up_to_index]
+            curve_upper_err_real = curve_upper_err[:data_up_to_index]
+
             # visualize
+            assert x_axis_range_real.shape == curve_real.shape == curve_lower_err_real.shape == curve_upper_err_real.shape, f"Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=}, {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"
             if plot_errors and x_type != 'time':
-                ax.fill_between(x_axis_range, curve_lower_err, curve_upper_err, alpha=0.15, antialiased=True, color=color)
-            ax.plot(x_axis_range, curve, label=label, color=color)
+                ax.fill_between(x_axis_range_real, curve_lower_err_real, curve_upper_err_real, alpha=0.15, antialiased=True, color=color)
+            ax.plot(x_axis_range_real, curve_real, label=label, color=color)
+
+            # select the parts of the data that are fictional
+            if data_up_to_index < x_axis_range.shape[0] - 1:
+                x_axis_range_fictional = x_axis_range[data_up_to_index + 1:]
+                curve_fictional = curve[data_up_to_index + 1:]
+                curve_lower_err_fictional = curve_lower_err[data_up_to_index + 1:]
+                curve_upper_err_fictional = curve_upper_err[data_up_to_index + 1:]
+
+                # visualize fictional part
+                assert x_axis_range_fictional.shape == curve_fictional.shape == curve_lower_err_fictional.shape == curve_upper_err_fictional.shape, f"Shapes must be equal: {x_axis_range_fictional.shape=}, {curve_fictional.shape=}, {curve_lower_err_fictional.shape=} {curve_upper_err_fictional.shape=}"
+                if plot_errors and x_type != 'time':
+                    ax.fill_between(x_axis_range_fictional, curve_lower_err_fictional, curve_upper_err_fictional, alpha=0.15, antialiased=True, color=color,
+                                    ls='dashed')
+                ax.plot(x_axis_range_fictional, curve_fictional, color=color, ls='dashed')
 
         # # plot cutoff point
         # def plot_cutoff_point(cutoff_percentiles: np.ndarray, show_label=True):
@@ -423,7 +447,7 @@ class Visualize:
             np.linspace(0, y_axis_size, num_ticks),
             np.round(np.linspace(0, 1, num_ticks), 2),
         )
-        ax.set_ylim(top=1.0)
+        ax.set_ylim(top=1.02)
         ax.set_xlim((0, y_axis_size))
         ax.legend()
 

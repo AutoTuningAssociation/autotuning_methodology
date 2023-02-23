@@ -28,9 +28,7 @@
   ],
   "plot": {
     "plot_x_value_types": [
-      "fevals",
-      "time",
-      "aggregated"
+      "fevals"
     ],
     "plot_y_value_types": [
       "normalized",
@@ -62,6 +60,11 @@
       "name": "firefly",
       "strategy": "firefly_algorithm",
       "display_name": "Firefly"
+    },
+    {
+      "name": "differential_evolution",
+      "strategy": "diff_evo",
+      "display_name": "Differential Evolution"
     }
   ]
 }
