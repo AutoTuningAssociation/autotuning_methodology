@@ -28,7 +28,7 @@
   ],
   "plot": {
     "plot_x_value_types": [
-      "fevals"
+      "time"
     ],
     "plot_y_value_types": [
       "normalized",

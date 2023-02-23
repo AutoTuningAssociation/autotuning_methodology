@@ -344,7 +344,7 @@ class Visualize:
                 ax.scatter(x_axis, y_axis, label=label, color=color)
                 continue
             else:
-                early_stop, x_axis_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = strategy_curve.get_curve(
+                real_stopping_point, x_axis_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = strategy_curve.get_curve(
                     x_axis_range, x_type, dist=dist, confidence_level=confidence_level)
 
             # transform the curves as necessary
@@ -365,7 +365,7 @@ class Visualize:
             ax.plot(x_axis_range_real, curve_real, label=label, color=color)
 
             # select the parts of the data that are fictional
-            if early_stop < x_axis_range.shape[-1]:
+            if real_stopping_point < x_axis_range.shape[-1]:
                 # visualize fictional part
                 if plot_errors and x_type != 'time':
                     ax.fill_between(x_axis_range_fictional, curve_lower_err_fictional, curve_upper_err_fictional, alpha=0.15, antialiased=True, color=color,

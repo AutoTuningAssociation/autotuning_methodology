@@ -68,12 +68,12 @@ class Curve(ABC):
 
     @abstractmethod
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """ Get the early stop fevals and the real and fictional curve, errors over the specified range of function evaluations """
+        """ Get the real_stopping_point_fevals and the real and fictional curve, errors over the specified range of function evaluations """
         raise NotImplementedError
 
     @abstractmethod
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """ Get the early stop time and the real and fictional curve, errors at the specified times using isotonic regression """
+        """ Get the real_stopping_point_time and the real and fictional curve, errors at the specified times using isotonic regression """
         raise NotImplementedError
 
     @abstractmethod
@@ -308,8 +308,8 @@ class StochasticOptimizationAlgorithm(Curve):
         # curve_upper_err = curve_upper_err[~np.isnan(curve_upper_err)]
 
         # pad with NaN where outside the range, yielding an array.shape == fevals.shape
-        early_stop_feval = curve.shape[0]
-        early_stop_index = early_stop_feval - 1
+        real_stopping_point_fevals = curve.shape[0]
+        real_stopping_point_index = real_stopping_point_fevals
         if curve.shape != fevals_range.shape:
             pad_width = self.fevals_find_pad_width(fevals, fevals_range)
             curve = np.pad(curve, pad_width=pad_width, constant_values=np.nan)
@@ -319,35 +319,35 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # if necessary, extend the curves up to target_index
         target_index: int = fevals_range[-1] - 1
-        if early_stop_index < target_index:
+        if real_stopping_point_index < target_index:
             # warnings.warn(
-            #     f"For optimization algorithm {self.display_name}, all runs end at {early_stop_index + 1} fevals, which is before the target number of function evals of {target_index + 1}."
+            #     f"For optimization algorithm {self.display_name}, all runs end at {real_stopping_point_index + 1} fevals, which is before the target number of function evals of {target_index + 1}."
             # )
             # take the last non-NaN value and overwrite the curves up to the target index with it
-            curve[early_stop_index:target_index] = curve[early_stop_index]
-            curve_lower_err[early_stop_index:target_index] = curve_lower_err[early_stop_index]
-            curve_upper_err[early_stop_index:target_index] = curve_upper_err[early_stop_index]
+            curve[real_stopping_point_index:target_index] = curve[real_stopping_point_index]
+            curve_lower_err[real_stopping_point_index:target_index] = curve_lower_err[real_stopping_point_index]
+            curve_upper_err[real_stopping_point_index:target_index] = curve_upper_err[real_stopping_point_index]
 
         # select the parts of the data that are real
-        fevals_range_real = fevals_range[:early_stop_index + 1]
-        curve_real = curve[:early_stop_index + 1]
-        curve_lower_err_real = curve_lower_err[:early_stop_index + 1]
-        curve_upper_err_real = curve_upper_err[:early_stop_index + 1]
+        fevals_range_real = fevals_range[:real_stopping_point_index]
+        curve_real = curve[:real_stopping_point_index]
+        curve_lower_err_real = curve_lower_err[:real_stopping_point_index]
+        curve_upper_err_real = curve_upper_err[:real_stopping_point_index]
 
         # select the parts of the data that are fictional
         fevals_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = np.ndarray([]), np.ndarray([]), np.ndarray(
             []), np.ndarray([])
-        if early_stop_index < target_index:
-            fevals_range_fictional = fevals_range[early_stop_index + 1:]
-            curve_fictional = curve[early_stop_index + 1:]
-            curve_lower_err_fictional = curve_lower_err[early_stop_index + 1:]
-            curve_upper_err_fictional = curve_upper_err[early_stop_index + 1:]
+        if real_stopping_point_index < target_index:
+            fevals_range_fictional = fevals_range[real_stopping_point_index:]
+            curve_fictional = curve[real_stopping_point_index:]
+            curve_lower_err_fictional = curve_lower_err[real_stopping_point_index:]
+            curve_upper_err_fictional = curve_upper_err[real_stopping_point_index:]
 
         # check and return
         self.check_curve_real_fictional_consistency(fevals_range, curve, curve_lower_err, curve_upper_err, fevals_range_real, curve_real, curve_lower_err_real,
                                                     curve_upper_err_real, fevals_range_fictional, curve_fictional, curve_lower_err_fictional,
                                                     curve_upper_err_fictional)
-        return early_stop_feval, fevals_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, fevals_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional
+        return real_stopping_point_fevals, fevals_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, fevals_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional
 
     def get_curve_over_time(
             self, time_range: np.ndarray, dist: np.ndarray = None,
@@ -371,7 +371,7 @@ class StochasticOptimizationAlgorithm(Curve):
         times_no_nan[np.isnan(values)] = np.nan    # to count only valid configurations towards highest time
         highest_time_per_repeat = np.nanmax(times_no_nan, axis=0)
         assert highest_time_per_repeat.shape[0] == num_repeats
-        average_early_stop_time = np.nanmedian(highest_time_per_repeat)
+        real_stopping_point_time = np.nanmedian(highest_time_per_repeat)
 
         # filter to get the time range with a margin on both ends for the isotonic regression
         time_range_margin = 0.1
@@ -448,10 +448,38 @@ class StochasticOptimizationAlgorithm(Curve):
         # pad with NaN where outside the range, yielding an array.shape == fevals.shape
         assert curve.shape == time_range.shape
 
-        # from the average_early_stop_time until the end of the time range, clip the values because with fewer than 50% of the repeats, the results can not be trusted
-        # TODO
+        # from the real_stopping_point_time until the end of the time range, clip the values because with fewer than 50% of the repeats, as those the results can not be trusted
+        real_stopping_point_index = time_range.shape[0]
+        if real_stopping_point_time < time_range[-1]:
+            if real_stopping_point_time <= time_range[0]:
+                raise ValueError(f"{real_stopping_point_time=} is before first time in time_range ({time_range[0]})")
+            real_stopping_point_index = min(int(np.nonzero(time_range > real_stopping_point_time)[0][0]),
+                                            real_stopping_point_index)    # look up the index of the stopping point
+            # set everything after the index to the last value
+            curve[real_stopping_point_index:] = curve[real_stopping_point_index]
+            curve_lower_err[real_stopping_point_index:] = curve_lower_err[real_stopping_point_index]
+            curve_upper_err[real_stopping_point_index:] = curve_upper_err[real_stopping_point_index]
 
-        return curve, curve_lower_err, curve_upper_err, average_early_stop_time
+        # select the parts of the data that are real
+        time_range_real = time_range[:real_stopping_point_index]
+        curve_real = curve[:real_stopping_point_index]
+        curve_lower_err_real = curve_lower_err[:real_stopping_point_index]
+        curve_upper_err_real = curve_upper_err[:real_stopping_point_index]
+
+        # select the parts of the data that are fictional
+        time_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = np.ndarray([]), np.ndarray([]), np.ndarray(
+            []), np.ndarray([])
+        if real_stopping_point_time < time_range[-1]:
+            time_range_fictional = time_range[real_stopping_point_index:]
+            curve_fictional = curve[real_stopping_point_index:]
+            curve_lower_err_fictional = curve_lower_err[real_stopping_point_index:]
+            curve_upper_err_fictional = curve_upper_err[real_stopping_point_index:]
+
+        # check and return
+        self.check_curve_real_fictional_consistency(time_range, curve, curve_lower_err, curve_upper_err, time_range_real, curve_real, curve_lower_err_real,
+                                                    curve_upper_err_real, time_range_fictional, curve_fictional, curve_lower_err_fictional,
+                                                    curve_upper_err_fictional)
+        return real_stopping_point_time, time_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, time_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional
 
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
