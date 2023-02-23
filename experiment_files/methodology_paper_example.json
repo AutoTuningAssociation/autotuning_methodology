@@ -28,7 +28,7 @@
   ],
   "plot": {
     "plot_x_value_types": [
-      "aggregated"
+      "fevals"
     ],
     "plot_y_value_types": [
       "normalized",

@@ -308,6 +308,10 @@ class Visualize:
                 return None
             return (curve - median) / optimum_median_difference
 
+        def normalize_multiple(curves: list) -> Tuple:
+            """ Normalize multiple curves at once """
+            return tuple(normalize(curve) for curve in curves)
+
         # plot the absolute optimum
         absolute_optimum_y_value = absolute_optimum if y_type == 'absolute' or y_type == 'scatter' else 1
         absolute_optimum_label = 'Absolute optimum ({})'.format(round(absolute_optimum, 3)) if y_type == 'absolute' else 'Absolute optimum'
@@ -340,41 +344,29 @@ class Visualize:
                 ax.scatter(x_axis, y_axis, label=label, color=color)
                 continue
             else:
-                curve, curve_lower_err, curve_upper_err, data_up_to_index = strategy_curve.get_curve(x_axis_range, x_type, dist=dist,
-                                                                                                     confidence_level=confidence_level)
+                early_stop, x_axis_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = strategy_curve.get_curve(
+                    x_axis_range, x_type, dist=dist, confidence_level=confidence_level)
 
             # transform the curves as necessary
             if y_type == 'baseline':
-                # sanity check: see if the calculated random curve is equal to itself
-                # assert np.allclose(baseline_curve.get_curve(x_axis_range, x_type), baseline_curve.get_curve(x_axis_range, x_type)), "Random baseline is not equal to itself"
-                curve = baseline_curve.get_standardised_curve(x_axis_range, curve, x_type)
-                if curve_lower_err is not None and curve_upper_err is not None:
-                    curve_lower_err = baseline_curve.get_standardised_curve(x_axis_range, curve_lower_err, x_type)
-                    curve_upper_err = baseline_curve.get_standardised_curve(x_axis_range, curve_upper_err, x_type)
+                curve_real, curve_lower_err_real, curve_upper_err_real = baseline_curve.get_standardised_curves(
+                    x_axis_range_real, [curve_real, curve_lower_err_real, curve_upper_err_real], x_type)
+                if x_axis_range_fictional.ndim > 0:
+                    curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = baseline_curve.get_standardised_curves(
+                        x_axis_range_fictional, [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional], x_type)
             elif y_type == 'normalized':
-                curve, curve_lower_err, curve_upper_err = normalize(curve), normalize(curve_lower_err), normalize(curve_upper_err)
-
-            # select the parts of the data that are real
-            x_axis_range_real = x_axis_range[:data_up_to_index]
-            curve_real = curve[:data_up_to_index]
-            curve_lower_err_real = curve_lower_err[:data_up_to_index]
-            curve_upper_err_real = curve_upper_err[:data_up_to_index]
+                curve_real, curve_lower_err_real, curve_upper_err_real = normalize_multiple([curve_real, curve_lower_err_real, curve_upper_err_real])
+                curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = normalize_multiple(
+                    [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional])
 
             # visualize
-            assert x_axis_range_real.shape == curve_real.shape == curve_lower_err_real.shape == curve_upper_err_real.shape, f"Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=}, {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"
             if plot_errors and x_type != 'time':
                 ax.fill_between(x_axis_range_real, curve_lower_err_real, curve_upper_err_real, alpha=0.15, antialiased=True, color=color)
             ax.plot(x_axis_range_real, curve_real, label=label, color=color)
 
             # select the parts of the data that are fictional
-            if data_up_to_index < x_axis_range.shape[0] - 1:
-                x_axis_range_fictional = x_axis_range[data_up_to_index + 1:]
-                curve_fictional = curve[data_up_to_index + 1:]
-                curve_lower_err_fictional = curve_lower_err[data_up_to_index + 1:]
-                curve_upper_err_fictional = curve_upper_err[data_up_to_index + 1:]
-
+            if early_stop < x_axis_range.shape[-1]:
                 # visualize fictional part
-                assert x_axis_range_fictional.shape == curve_fictional.shape == curve_lower_err_fictional.shape == curve_upper_err_fictional.shape, f"Shapes must be equal: {x_axis_range_fictional.shape=}, {curve_fictional.shape=}, {curve_lower_err_fictional.shape=} {curve_upper_err_fictional.shape=}"
                 if plot_errors and x_type != 'time':
                     ax.fill_between(x_axis_range_fictional, curve_lower_err_fictional, curve_upper_err_fictional, alpha=0.15, antialiased=True, color=color,
                                     ls='dashed')
