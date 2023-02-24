@@ -29,7 +29,8 @@
   "plot": {
     "plot_x_value_types": [
       "fevals",
-      "time"
+      "time",
+      "aggregated"
     ],
     "plot_y_value_types": [
       "normalized",
