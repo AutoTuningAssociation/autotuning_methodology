@@ -68,12 +68,12 @@ class Curve(ABC):
 
     @abstractmethod
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """ Get the real_stopping_point_fevals and the real and fictional curve, errors over the specified range of function evaluations """
+        """ Get the real_stopping_point_index and the real and fictional curve, errors over the specified range of function evaluations """
         raise NotImplementedError
 
     @abstractmethod
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """ Get the real_stopping_point_time and the real and fictional curve, errors at the specified times using isotonic regression """
+        """ Get the real_stopping_point_index and the real and fictional curve, errors at the specified times using isotonic regression """
         raise NotImplementedError
 
     @abstractmethod
@@ -191,9 +191,36 @@ class StochasticOptimizationAlgorithm(Curve):
         indices_found = np.array(indices_found)
         return indices_found
 
-    def check_curve_real_fictional_consistency(self, x_axis_range, curve, curve_lower_err, curve_upper_err, x_axis_range_real, curve_real, curve_lower_err_real,
-                                               curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional,
-                                               curve_upper_err_fictional):
+    def _get_curve_split_real_fictional_parts(
+            self, real_stopping_point_index: int, x_axis_range: np.ndarray, curve: np.ndarray, curve_lower_err: np.ndarray,
+            curve_upper_err: np.ndarray) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """ Split the provided curves based on the real_stopping_point_index, return real_stopping_point_index and the real and fictional part for each curve """
+        # select the parts of the data that are real
+        x_axis_range_real = x_axis_range[:real_stopping_point_index]
+        curve_real = curve[:real_stopping_point_index]
+        curve_lower_err_real = curve_lower_err[:real_stopping_point_index]
+        curve_upper_err_real = curve_upper_err[:real_stopping_point_index]
+
+        # select the parts of the data that are fictional
+        x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = np.ndarray([]), np.ndarray([]), np.ndarray(
+            []), np.ndarray([])
+        target_index = x_axis_range.shape[0] - 1
+        if real_stopping_point_index < target_index:
+            x_axis_range_fictional = x_axis_range[real_stopping_point_index:]
+            curve_fictional = curve[real_stopping_point_index:]
+            curve_lower_err_fictional = curve_lower_err[real_stopping_point_index:]
+            curve_upper_err_fictional = curve_upper_err[real_stopping_point_index:]
+
+        # check and return
+        self._check_curve_real_fictional_consistency(x_axis_range, curve, curve_lower_err, curve_upper_err, x_axis_range_real, curve_real, curve_lower_err_real,
+                                                     curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional,
+                                                     curve_upper_err_fictional)
+
+        return real_stopping_point_index, x_axis_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional
+
+    def _check_curve_real_fictional_consistency(self, x_axis_range, curve, curve_lower_err, curve_upper_err, x_axis_range_real, curve_real,
+                                                curve_lower_err_real, curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional,
+                                                curve_upper_err_fictional):
         """ Asserts that the real and fictional results add up correctly """
         assert x_axis_range.shape == curve.shape == curve_lower_err.shape == curve_upper_err.shape, f"Shapes must be equal: {x_axis_range.shape=}, {curve.shape=}, {curve_lower_err.shape=}, {curve_upper_err.shape=}"
         assert x_axis_range_real.shape == curve_real.shape == curve_lower_err_real.shape == curve_upper_err_real.shape, f"Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=}, {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"
@@ -246,7 +273,6 @@ class StochasticOptimizationAlgorithm(Curve):
             masked_values[:, greatest_common_non_NaN_index + 1:] = np.nan
             masked_values = masked_values.transpose()    # transpose back to original shape
             masked_fevals[:, greatest_common_non_NaN_index + 1:] = np.nan
-            print(f"{greatest_common_non_NaN_index=}")
 
             # check that the filtered fevals are consistent
             assert np.allclose(masked_fevals, masked_fevals[0], equal_nan=True), "Every repeat must have the same array of function evaluations"
@@ -265,9 +291,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # assert fevals_range.shape[0] == masked_values.shape[0] == masked_fevals.shape[0], f"The masked fevals and values should have the same first dimension as fevals_range, but {fevals_range.shape[0]=}, {masked_fevals.shape[0]=}, {masked_values.shape[0]=}"
         return fevals, masked_values
 
-    def get_curve_over_fevals(
-            self, fevals_range: np.ndarray, dist: np.ndarray = None,
-            confidence_level: float = None) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
         fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
 
         # if a distribution is included
@@ -318,7 +342,7 @@ class StochasticOptimizationAlgorithm(Curve):
         assert curve.shape == fevals_range.shape
 
         # if necessary, extend the curves up to target_index
-        target_index: int = fevals_range[-1] - 1
+        target_index: int = fevals_range.shape[0] - 1
         if real_stopping_point_index < target_index:
             # warnings.warn(
             #     f"For optimization algorithm {self.display_name}, all runs end at {real_stopping_point_index + 1} fevals, which is before the target number of function evals of {target_index + 1}."
@@ -328,30 +352,9 @@ class StochasticOptimizationAlgorithm(Curve):
             curve_lower_err[real_stopping_point_index:target_index] = curve_lower_err[real_stopping_point_index]
             curve_upper_err[real_stopping_point_index:target_index] = curve_upper_err[real_stopping_point_index]
 
-        # select the parts of the data that are real
-        fevals_range_real = fevals_range[:real_stopping_point_index]
-        curve_real = curve[:real_stopping_point_index]
-        curve_lower_err_real = curve_lower_err[:real_stopping_point_index]
-        curve_upper_err_real = curve_upper_err[:real_stopping_point_index]
+        return self._get_curve_split_real_fictional_parts(real_stopping_point_index, fevals_range, curve, curve_lower_err, curve_upper_err)
 
-        # select the parts of the data that are fictional
-        fevals_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = np.ndarray([]), np.ndarray([]), np.ndarray(
-            []), np.ndarray([])
-        if real_stopping_point_index < target_index:
-            fevals_range_fictional = fevals_range[real_stopping_point_index:]
-            curve_fictional = curve[real_stopping_point_index:]
-            curve_lower_err_fictional = curve_lower_err[real_stopping_point_index:]
-            curve_upper_err_fictional = curve_upper_err[real_stopping_point_index:]
-
-        # check and return
-        self.check_curve_real_fictional_consistency(fevals_range, curve, curve_lower_err, curve_upper_err, fevals_range_real, curve_real, curve_lower_err_real,
-                                                    curve_upper_err_real, fevals_range_fictional, curve_fictional, curve_lower_err_fictional,
-                                                    curve_upper_err_fictional)
-        return real_stopping_point_fevals, fevals_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, fevals_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional
-
-    def get_curve_over_time(
-            self, time_range: np.ndarray, dist: np.ndarray = None,
-            confidence_level: float = None) -> Tuple[float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
         assert time_range.ndim == 1
         assert np.all(np.isfinite(time_range))
         if dist is not None:
@@ -460,26 +463,7 @@ class StochasticOptimizationAlgorithm(Curve):
             curve_lower_err[real_stopping_point_index:] = curve_lower_err[real_stopping_point_index]
             curve_upper_err[real_stopping_point_index:] = curve_upper_err[real_stopping_point_index]
 
-        # select the parts of the data that are real
-        time_range_real = time_range[:real_stopping_point_index]
-        curve_real = curve[:real_stopping_point_index]
-        curve_lower_err_real = curve_lower_err[:real_stopping_point_index]
-        curve_upper_err_real = curve_upper_err[:real_stopping_point_index]
-
-        # select the parts of the data that are fictional
-        time_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = np.ndarray([]), np.ndarray([]), np.ndarray(
-            []), np.ndarray([])
-        if real_stopping_point_time < time_range[-1]:
-            time_range_fictional = time_range[real_stopping_point_index:]
-            curve_fictional = curve[real_stopping_point_index:]
-            curve_lower_err_fictional = curve_lower_err[real_stopping_point_index:]
-            curve_upper_err_fictional = curve_upper_err[real_stopping_point_index:]
-
-        # check and return
-        self.check_curve_real_fictional_consistency(time_range, curve, curve_lower_err, curve_upper_err, time_range_real, curve_real, curve_lower_err_real,
-                                                    curve_upper_err_real, time_range_fictional, curve_fictional, curve_lower_err_fictional,
-                                                    curve_upper_err_fictional)
-        return real_stopping_point_time, time_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, time_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional
+        return self._get_curve_split_real_fictional_parts(real_stopping_point_index, time_range, curve, curve_lower_err, curve_upper_err)
 
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
