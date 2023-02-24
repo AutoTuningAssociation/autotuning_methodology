@@ -177,7 +177,8 @@ class Visualize:
                     for index, y_type in enumerate(plot_y_value_types):
                         self.plot_strategies(x_type, y_type, axs[index], searchspace_stats, strategies_curves, x_axis_range, plot_settings, random_baseline)
                         if index == 0:
-                            axs[index].legend()
+                            loc = 'lower right' if y_type == 'normalized' else 'best'
+                            axs[index].legend(loc=loc)
 
                     # finalize the figure and save or display it
                     fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
@@ -362,6 +363,7 @@ class Visualize:
                 curve_real, curve_lower_err_real, curve_upper_err_real = normalize_multiple([curve_real, curve_lower_err_real, curve_upper_err_real])
                 curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = normalize_multiple(
                     [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional])
+                ax.set_ylim((0.0, 1.02))
 
             # visualize
             if plot_errors and x_type != 'time':
@@ -419,7 +421,7 @@ class Visualize:
         strategies_performance = [list() for _ in aggregation_data[0][1]]
         strategies_performance_lower_err = [list() for _ in aggregation_data[0][1]]
         strategies_performance_upper_err = [list() for _ in aggregation_data[0][1]]
-        strategies_performance_real_stopping_point_index = [-1 for _ in aggregation_data[0][1]]
+        strategies_performance_real_stopping_point_fraction = [-1 for _ in aggregation_data[0][1]]
         for random_baseline, strategies_curves, searchspace_stats, time_range in aggregation_data:
             dist = searchspace_stats.objective_performances_total_sorted
             for strategy_index, strategy_curve in enumerate(strategies_curves):
@@ -439,20 +441,20 @@ class Visualize:
                 strategies_performance[strategy_index].append(curve)
                 strategies_performance_lower_err[strategy_index].append(curve_lower_err)
                 strategies_performance_upper_err[strategy_index].append(curve_upper_err)
-                strategies_performance_real_stopping_point_index[strategy_index] = real_stopping_point_index
+                strategies_performance_real_stopping_point_fraction[strategy_index] = real_stopping_point_index / x_axis_range.shape[0]
 
         # for each strategy, get the mean performance per step in time_range
         strategies_aggregated_performance: list[np.ndarray] = list()
         strategies_aggregated_lower_err: list[np.ndarray] = list()
         strategies_aggregated_upper_err: list[np.ndarray] = list()
-        strategies_aggregated_real_stopping_point_index: list[int] = list()
+        strategies_aggregated_real_stopping_point_fraction: list[int] = list()
         for index in range(len(strategies_performance)):
             strategies_aggregated_performance.append(np.mean(np.array(strategies_performance[index]), axis=0))
             strategies_aggregated_lower_err.append(np.mean(np.array(strategies_performance_lower_err[index]), axis=0))
             strategies_aggregated_upper_err.append(np.mean(np.array(strategies_performance_upper_err[index]), axis=0))
-            strategies_aggregated_real_stopping_point_index.append(round(np.mean(strategies_performance_real_stopping_point_index[index])))
+            strategies_aggregated_real_stopping_point_fraction.append(round(np.mean(strategies_performance_real_stopping_point_fraction[index])))
 
-        return strategies_aggregated_performance, strategies_aggregated_lower_err, strategies_aggregated_upper_err, strategies_aggregated_real_stopping_point_index
+        return strategies_aggregated_performance, strategies_aggregated_lower_err, strategies_aggregated_upper_err, strategies_aggregated_real_stopping_point_fraction
 
     def plot_strategies_aggregated(self, ax: plt.Axes, aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
                                    plot_settings: dict):
@@ -463,7 +465,7 @@ class Visualize:
 
         # get the relative aggregated performance for each strategy
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
-        strategies_performance, strategies_lower_err, strategies_upper_err, strategies_real_stopping_point_index = self.get_strategies_aggregated_performance(
+        strategies_performance, strategies_lower_err, strategies_upper_err, strategies_real_stopping_point_fraction = self.get_strategies_aggregated_performance(
             aggregation_data, confidence_level)
 
         # plot each strategy
@@ -474,7 +476,8 @@ class Visualize:
         for strategy_index, strategy_performance in enumerate(strategies_performance):
             displayname = self.strategies[strategy_index]["display_name"]
             color = self.colors[strategy_index]
-            real_stopping_point_index = strategies_real_stopping_point_index[strategy_index]
+            real_stopping_point_fraction = strategies_real_stopping_point_fraction[strategy_index]
+            real_stopping_point_index = real_stopping_point_fraction * time_range.shape[0]
             ax.plot(time_range[:real_stopping_point_index], strategy_performance[:real_stopping_point_index], color=color, label=displayname)
             ax.plot(time_range[real_stopping_point_index:], strategy_performance[real_stopping_point_index:], color=color, ls='dashed')
             print(f" | performance of {displayname}: {round(np.mean(strategy_performance), 3)}")

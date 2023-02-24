@@ -250,24 +250,26 @@ class StochasticOptimizationAlgorithm(Curve):
                                           for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
         masked_values = np.where(matching_indices_mask, self._y, np.nan)    # apply the mask to the values, filling NaN for False
         masked_fevals = np.where(matching_indices_mask, self._x_fevals, np.nan).transpose()    # apply the mask to the fevals, filling NaN for False
+        if np.all(~matching_indices_mask):
+            raise ValueError(f"No overlap in data and given {fevals_range=}")
 
         # make sure that the filtered fevals are consistent (every repeat has the same array of fevals)
         if not np.allclose(masked_fevals, masked_fevals[0], equal_nan=True):
             indices = np.nanargmax(masked_fevals, axis=1)    # get the index of the last non-nan value of each repeat
-            # drop the data which ends before the index
-            keep_data = np.where(indices >= target_index)
+            num_repeats = len(indices)
+            # find the repeats that end before the index
+            early_ending_repeats = np.where(indices < target_index)
             greatest_common_non_NaN_index = min(floor(np.median(indices)), target_index)
-            if np.count_nonzero(keep_data) < len(indices) * 0.5:
+            if np.count_nonzero(early_ending_repeats) > 0:
                 warnings.warn(
-                    f"For optimization algorithm {self.display_name}, more than 50% of the runs ended before the end of fevals_range ({target_index + 1}). Only data up to {greatest_common_non_NaN_index + 1} fevals will be used. Perhaps increase the allotted auto-tuning time for this optimization algorithm?"
+                    f"For optimization algorithm {self.display_name}, {np.count_nonzero(early_ending_repeats)} of the {num_repeats} runs ended before the end of fevals_range ({target_index + 1}). Only data up to {greatest_common_non_NaN_index + 1} fevals will be used. Perhaps increase the allotted auto-tuning time for this optimization algorithm?"
                 )
-            else:
-                warnings.warn(
-                    f"Dropped {len(indices) - np.count_nonzero(keep_data)} repeats of {self.display_name} runs that ended before the end of fevals_range ({target_index + 1}), perhaps increase the allotted auto-tuning time for this optimization algorithm?",
-                    UserWarning)
-            masked_fevals = masked_fevals[keep_data]
+
+            # drop the repeats where the highest index is less than greatest_common_non_NaN_index
+            keep_repeats = np.where(indices >= greatest_common_non_NaN_index)
+            masked_fevals = masked_fevals[keep_repeats]
             masked_values = masked_values.transpose()
-            masked_values = masked_values[keep_data]
+            masked_values = masked_values[keep_repeats]
 
             # set all values beyond the greatest common non-NaN index to NaN
             masked_values[:, greatest_common_non_NaN_index + 1:] = np.nan
@@ -333,7 +335,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # pad with NaN where outside the range, yielding an array.shape == fevals.shape
         real_stopping_point_fevals = curve.shape[0]
-        real_stopping_point_index = real_stopping_point_fevals
+        real_stopping_point_index = real_stopping_point_fevals - 1
         if curve.shape != fevals_range.shape:
             pad_width = self.fevals_find_pad_width(fevals, fevals_range)
             curve = np.pad(curve, pad_width=pad_width, constant_values=np.nan)
@@ -348,11 +350,18 @@ class StochasticOptimizationAlgorithm(Curve):
             #     f"For optimization algorithm {self.display_name}, all runs end at {real_stopping_point_index + 1} fevals, which is before the target number of function evals of {target_index + 1}."
             # )
             # take the last non-NaN value and overwrite the curves up to the target index with it
-            curve[real_stopping_point_index:target_index] = curve[real_stopping_point_index]
-            curve_lower_err[real_stopping_point_index:target_index] = curve_lower_err[real_stopping_point_index]
-            curve_upper_err[real_stopping_point_index:target_index] = curve_upper_err[real_stopping_point_index]
+            curve[real_stopping_point_index:target_index + 1] = curve[real_stopping_point_index]
+            curve_lower_err[real_stopping_point_index:target_index + 1] = curve_lower_err[real_stopping_point_index]
+            curve_upper_err[real_stopping_point_index:target_index + 1] = curve_upper_err[real_stopping_point_index]
 
-        return self._get_curve_split_real_fictional_parts(real_stopping_point_index, fevals_range, curve, curve_lower_err, curve_upper_err)
+        # check whether there are no NaNs left
+        assert curve.shape == fevals_range.shape
+        assert np.all(~np.isnan(curve)), f"NaNs at {np.nonzero(np.isnan(curve))[0]}"
+        assert np.all(~np.isnan(curve_lower_err)), f"NaNs at {np.nonzero(np.isnan(curve_lower_err))[0]}"
+        assert np.all(~np.isnan(curve_upper_err)), f"NaNs at {np.nonzero(np.isnan(curve_upper_err))[0]}"
+
+        # return the curves split in real and fictional
+        return self._get_curve_split_real_fictional_parts(real_stopping_point_index + 1, fevals_range, curve, curve_lower_err, curve_upper_err)
 
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
         assert time_range.ndim == 1
