@@ -7,11 +7,12 @@
   ],
   "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
-    "RTX_2080_Ti"
+    "RTX_2080_Ti",
+    "RTX_3090"
   ],
   "minimization": true,
   "resolution": 1e3,
-  "cutoff_percentile": 0.995,
+  "cutoff_percentile": 0.99,
   "cutoff_percentile_start": 0.1,
   "objective_time_keys": [
     "strategy_time",
@@ -30,6 +31,7 @@
       "time"
     ],
     "plot_y_value_types": [
+      "absolute",
       "normalized",
       "baseline"
     ],
@@ -47,10 +49,22 @@
   },
   "strategies": [
     {
-      "name": "random_sample_20_iter",
+      "name": "random_sample_100_iter",
       "strategy": "random_sample",
-      "display_name": "Random sampling 20 iters",
-      "repeats": 20
+      "display_name": "Random sampling 100 iters",
+      "repeats": 100
+    },
+    {
+      "name": "random_sample_250_iter",
+      "strategy": "random_sample",
+      "display_name": "Random sampling 250 iters",
+      "repeats": 250
+    },
+    {
+      "name": "random_sample_500_iter",
+      "strategy": "random_sample",
+      "display_name": "Random sampling 500 iters",
+      "repeats": 500
     }
   ]
 }

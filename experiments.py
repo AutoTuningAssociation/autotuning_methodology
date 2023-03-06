@@ -131,11 +131,11 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
                     strategy['options'] = dict()
                 cutoff_margin = 1.1    # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
 
-                # TODO make sure this works correctly (but how could it?)
+                # TODO make sure this works correctly
                 # if cutoff_type == 'time':
                 #     strategy['options']['time_limit'] = cutoff_point_time * cutoff_margin
                 # else:
-                strategy['options']['max_fevals'] = int(ceil(cutoff_point_fevals * cutoff_margin))
+                strategy['options']['max_fevals'] = min(int(ceil(cutoff_point_fevals * cutoff_margin)), searchspace_stats.size)
                 results_description = ResultsDescription(experiment_folder_id, kernel_name, gpu_name, strategy_name, strategy_display_name, stochastic,
                                                          objective_time_keys=objective_time_keys, objective_performance_keys=objective_performance_keys,
                                                          minimization=minimization)

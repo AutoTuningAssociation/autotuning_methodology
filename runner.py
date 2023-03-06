@@ -1,11 +1,11 @@
 """ Interface to run an experiment on Kernel Tuner """
-from cProfile import label
 import numpy as np
 import progressbar
 from typing import Tuple
 import time as python_time
 import warnings
 import yappi
+from cProfile import label
 from caching import ResultsDescription
 
 kernel_tuner_error_types_strings = ['InvalidConfig', 'CompilationFailedConfig', 'RuntimeFailedConfig']
