@@ -41,8 +41,6 @@ class Baseline(ABC):
                 standardised_curves.append(None)
                 continue
             assert strategy_curve.shape == random_curve.shape
-            if not self.searchspace_stats.minimization:
-                raise NotImplementedError()    # make sure this works when maximizing
             standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
             standardised_curves.append(standardised_curve)
         return tuple(standardised_curves)
@@ -227,7 +225,7 @@ class RandomSearchSimulatedBaseline(Baseline):
     def __init__(self, searchspace_stats: SearchspaceStatistics, repeats: int = 500, limit_fevals: int = None, index=True, flatten=True) -> None:
         self.searchspace_stats = searchspace_stats
         self.label = f"Simulated baseline, {repeats} repeats ({'index' if index else 'performance'}, {'flattened' if flatten else 'accumulated'})"
-        self.index = index
+        self.use_index = index
         self._simulate(repeats, limit_fevals, index, flatten)
 
     def _simulate(self, repeats: int, limit_fevals: int, index: bool, flatten: bool):
@@ -253,10 +251,10 @@ class RandomSearchSimulatedBaseline(Baseline):
         assert times_at_feval.shape == best_performances_at_feval.shape == best_indices_at_feval.shape == target_shape
 
         # accumulate if necessary
+        self.index_at_feval: np.ndarray = np.nanmean(best_indices_at_feval, axis=0)
+        self.performance_at_feval: np.ndarray = np.nanmean(best_performances_at_feval, axis=0)
         if not flatten:
             self.time_at_feval: np.ndarray = np.nanmean(times_at_feval, axis=0)
-            self.index_at_feval: np.ndarray = np.nanmean(best_indices_at_feval, axis=0)
-            self.performance_at_feval: np.ndarray = np.nanmean(best_performances_at_feval, axis=0)
             assert self.time_at_feval.shape == self.index_at_feval.shape == self.performance_at_feval.shape == (size, )
 
         # prepare isotonic regression
@@ -267,23 +265,29 @@ class RandomSearchSimulatedBaseline(Baseline):
         # fit the data
         x_array = times_at_feval.flatten() if flatten else self.time_at_feval
         y_array = best_indices_at_feval if index else best_performances_at_feval
+        self.y_array = y_array
         if flatten:
             y_array = y_array.flatten()
         else:
             y_array = self.index_at_feval if index else self.performance_at_feval
+            self.y_array = y_array
         self._ir.fit(x_array, y_array)
 
     def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_curve(range, x_type)
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
-        return self.performance_at_feval[fevals_range]
+        if self.use_index:
+            return self.searchspace_stats.objective_performances_total_sorted_nan[np.array(np.round(self.index_at_feval[fevals_range]), dtype=int)]
+        else:
+            assert self.y_array.ndim == 1
+            return self.y_array[fevals_range]
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        if self.index:
-            return self.searchspace_stats.objective_performances_total_sorted_nan[np.array(np.round(self._ir.predict(time_range)), dtype=int)]
-        else:
-            return self._ir.predict(time_range)
+        predicted_y_values = self._ir.predict(time_range)
+        if not self.use_index:
+            return predicted_y_values
+        return self.searchspace_stats.objective_performances_total_sorted_nan[np.array(np.round(predicted_y_values), dtype=int)]
 
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
