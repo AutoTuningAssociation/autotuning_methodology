@@ -170,7 +170,7 @@ class RandomSearchCalculatedBaseline(Baseline):
 
     def _get_random_curve(self, fevals_range: np.ndarray) -> np.ndarray:
         """ Returns the drawn values of the random curve at each number of function evaluations """
-        ks = fevals_range - 1    # because ranges of number of function evaluations start at 1, we need to subtract 1 to use the index version
+        ks = fevals_range
         draws = np.array([self._redwhite_index_value(k) for k in ks])
         return draws
 

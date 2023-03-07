@@ -3,6 +3,8 @@
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
+    "pnpoly",
+    "convolution",
     "gemm"
   ],
   "kernel_path": "../cached_data_used/kernels",
@@ -13,7 +15,7 @@
   "minimization": true,
   "resolution": 1e3,
   "cutoff_percentile": 0.99,
-  "cutoff_percentile_start": 0.1,
+  "cutoff_percentile_start": 0.0,
   "objective_time_keys": [
     "strategy_time",
     "compile_time",
@@ -27,8 +29,7 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
-      "fevals",
-      "time"
+      "fevals"
     ],
     "plot_y_value_types": [
       "absolute",
