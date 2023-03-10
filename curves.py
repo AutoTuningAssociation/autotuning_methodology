@@ -421,41 +421,84 @@ class StochasticOptimizationAlgorithm(Curve):
         assert masked_times.ndim == 2
         assert masked_times.shape == masked_values.shape
 
-        # bin the values to their closest point in low resolution time_range
-        time_range_low_res = np.linspace(time_range[0], time_range[-1],
-                                         num=round(num_fevals / 10))    # should result in on average num_repeat observations per bin
-        bins = [[] for _ in range(len(time_range_low_res))]
-        for multi_index, value in np.ndenumerate(masked_values):
-            # for each element look up the index of the closest point in time_range, write the value to this bin
-            if not np.isnan(value):
-                index = (np.abs(time_range_low_res - masked_times[multi_index])).argmin()
-                bins[index].append(value)
+        # why can we not have a confidence interval in isotonic regression?
+        # -> because we can not get multiple values (one for each repeat) at a single point in time like with index
+        # --> instead, we look up in each repeat the x-value closest to each x_test (x[i]) and its index (i)
+        # ---> for each repeat, we can now use the raw value y[i], which deviates by abs(y_test - y[i])
+        # ----> optionally, values closer to x can be given more importance by taking 1 - (abs(x_test - x[i]) / sum(abs(x_test - x[i]) for each repeat))
 
-        # calculate the confidence interval for each bin
-        bins = list([np.array(bin) for bin in bins])
+        def index_of_nearest(array, value):
+            """ Find in the array the indices of the values closest to the given value (or values) """
+            idx = np.searchsorted(array, value, side="left")
+            idx = idx - (np.abs(value - array[idx - 1]) < np.abs(value - array[idx]))
+            return idx
+
+        # for each repeat, look up the index of the value closest to each time in the time range
+        closest_indices = np.empty((masked_times.shape[1], time_range.shape[0]))
+        closest_indices_times = np.empty_like(closest_indices)
+        closest_indices_values = np.empty_like(closest_indices)
+        for repeat in range(masked_times.shape[1]):
+            closest_indices_at_repeat = index_of_nearest(masked_times[:, repeat], time_range)
+            closest_indices[repeat] = closest_indices_at_repeat
+            closest_indices_times[repeat] = masked_times[closest_indices_at_repeat, repeat]
+            closest_indices_values[repeat] = masked_values[closest_indices_at_repeat, repeat]
+
+        # transpose the arrays to allow correct iteration
+        closest_indices = closest_indices.transpose()
+        closest_indices_times = closest_indices_times.transpose()
+        closest_indices_values = closest_indices_values.transpose()
+
+        # get the weights of each raw value depending on its distance to time_range
+        closest_indices_weights = np.empty_like(closest_indices)
+        for i_time, time in enumerate(time_range):
+            times_at_repeat = closest_indices_times[i_time]
+            time_distance = np.abs(times_at_repeat - time)
+            time_distance_sum = np.sum(time_distance)
+            # inverse the fractional distance to the time in time_range, so values closer to the time in time_range have proportionally more weight
+            closest_indices_weights[i_time] = 1 - (time_distance / time_distance_sum)
+            assert np.sum(closest_indices_weights[i_time]) == 1
+
+        # get the confidence interval at each time in the time range
         if confidence_level is None:
-            # get the standard error, interpolate missing bins
-            curve_std: np.ndarray = np.full_like(time_range_low_res, np.nan)
-            for bin_index, bin in enumerate(bins):
-                # at least three non-zero values must be present to calculate the standard error
-                if np.count_nonzero(~np.isnan(bin)) >= 3:
-                    curve_std[bin_index] = np.nanstd(bin)
-            # filter out where NaN
-            nan_mask = ~np.isnan(curve_std)
-            curve_std = curve_std[nan_mask]
-            time_range_low_res = time_range_low_res[nan_mask]
-            # interpolate missing bins
-            curve_std = np.interp(time_range, time_range_low_res, curve_std)
-            curve_lower_err = curve - curve_std
-            curve_upper_err = curve + curve_std
-        else:
-            # calculate in bins, interpolate missing bins
-            # TODO make sure this is appropriate, calculating the confidence interval of the isotonic curve instead of the median
-            curve_lower_err, curve_upper_err = self.get_confidence_interval_jagged(bins, confidence_level)
-            curve_lower_err, curve_upper_err = np.interp(time_range, time_range_low_res,
-                                                         curve_lower_err), np.interp(time_range, time_range_low_res, curve_upper_err)
-            # alternative: calculate using get_confidence_interval, interpolate to time_range afterwards (cons: naive assumption that the times roughly match per function evaluation)
-            # curve_lower_err, curve_upper_err = self.get_confidence_interval(values, confidence_level)
+            confidence_level = 0.95
+        curve_lower_err, curve_upper_err = self.get_confidence_interval(closest_indices_values, confidence_level, closest_indices_weights)
+
+        # # OLD WAY BELOW
+        # # bin the values to their closest point in low resolution time_range
+        # time_range_low_res = np.linspace(time_range[0], time_range[-1],
+        #                                  num=round(num_fevals / 10))    # should result in, on average, num_repeat observations per bin
+        # bins = [[] for _ in range(len(time_range_low_res))]
+        # for multi_index, value in np.ndenumerate(masked_values):
+        #     # for each element look up the index of the closest point in time_range, write the value to this bin
+        #     if not np.isnan(value):
+        #         index = (np.abs(time_range_low_res - masked_times[multi_index])).argmin()
+        #         bins[index].append(value)
+
+        # # calculate the confidence interval for each bin
+        # bins = list([np.array(bin) for bin in bins])
+        # if confidence_level is None:
+        #     # get the standard error, interpolate missing bins
+        #     curve_std: np.ndarray = np.full_like(time_range_low_res, np.nan)
+        #     for bin_index, bin in enumerate(bins):
+        #         # at least three non-zero values must be present to calculate the standard error
+        #         if np.count_nonzero(~np.isnan(bin)) >= 3:
+        #             curve_std[bin_index] = np.nanstd(bin)
+        #     # filter out where NaN
+        #     nan_mask = ~np.isnan(curve_std)
+        #     curve_std = curve_std[nan_mask]
+        #     time_range_low_res = time_range_low_res[nan_mask]
+        #     # interpolate missing bins
+        #     curve_std = np.interp(time_range, time_range_low_res, curve_std)
+        #     curve_lower_err = curve - curve_std
+        #     curve_upper_err = curve + curve_std
+        # else:
+        #     # calculate in bins, interpolate missing bins
+        #     # TODO make sure this is appropriate, calculating the confidence interval of the isotonic curve instead of the median
+        #     curve_lower_err, curve_upper_err = self.get_confidence_interval_jagged(bins, confidence_level)
+        #     curve_lower_err, curve_upper_err = np.interp(time_range, time_range_low_res,
+        #                                                  curve_lower_err), np.interp(time_range, time_range_low_res, curve_upper_err)
+        #     # alternative: calculate using get_confidence_interval, interpolate to time_range afterwards (cons: naive assumption that the times roughly match per function evaluation)
+        #     # curve_lower_err, curve_upper_err = self.get_confidence_interval(values, confidence_level)
 
         # pad with NaN where outside the range, yielding an array.shape == fevals.shape
         assert curve.shape == time_range.shape
@@ -487,9 +530,13 @@ class StochasticOptimizationAlgorithm(Curve):
 
         return split_time_per_feval
 
-    def get_confidence_interval(self, values: np.ndarray, confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
-        """ Calculates the non-parametric confidence interval for repeated function evaluations, assumed to be IID """
+    def get_confidence_interval(self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
+        """ Calculates the non-parametric confidence interval at each function evaluation for repeated function evaluations, assumed to be IID """
         assert values.ndim == 2    # should be two-dimensional (iterations, repeats)
+        if weights is not None:
+            assert weights.shape == values.shape
+            assert np.all(~np.isnan(weights))
+            raise NotImplementedError
 
         # confidence interval using normal distribution assumption
         from statistics import NormalDist
@@ -518,7 +565,7 @@ class StochasticOptimizationAlgorithm(Curve):
         return confidence_interval_lower, confidence_interval_upper
 
     def get_confidence_interval_jagged(self, bins: list[np.ndarray], confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
-        """ Calculates the non-parametric confidence interval for jagged bins, assumed to be IID, slower than get_confidence_interval() """
+        """ Calculates the non-parametric confidence interval at each function evaluation for jagged bins, assumed to be IID, slower than get_confidence_interval() """
         confidence_interval_lower = np.full(len(bins), np.nan)
         confidence_interval_upper = np.full(len(bins), np.nan)
 
