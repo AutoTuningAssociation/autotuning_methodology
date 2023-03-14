@@ -328,6 +328,8 @@ class Visualize:
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
             elif y_type == 'normalized' or y_type == 'baseline':
                 baseline = baseline_curve.get_curve(x_axis_range, x_type)
+                # baseline_2 = RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000).get_curve(x_axis_range, x_type)
+                # baseline = np.mean(np.array([baseline, baseline_2]), axis=0)
                 if y_type == 'normalized':
                     baseline = normalize(baseline)
                 ax.plot(x_axis_range, baseline, label="baseline curve", color="black", ls="--")
@@ -352,28 +354,31 @@ class Visualize:
                 real_stopping_point, x_axis_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = strategy_curve.get_curve(
                     x_axis_range, x_type, dist=dist, confidence_level=confidence_level)
 
-            # transform the curves as necessary
-            if y_type == 'baseline':
-                curve_real, curve_lower_err_real, curve_upper_err_real = baseline_curve.get_standardised_curves(
-                    x_axis_range_real, [curve_real, curve_lower_err_real, curve_upper_err_real], x_type)
-                if x_axis_range_fictional.ndim > 0:
-                    curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = baseline_curve.get_standardised_curves(
-                        x_axis_range_fictional, [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional], x_type)
+            # transform the curves as necessary and set ylims
+            if y_type == 'absolute':
+                ax.set_ylim(absolute_optimum, min(np.max(curve_real), median))
             elif y_type == 'normalized':
                 curve_real, curve_lower_err_real, curve_upper_err_real = normalize_multiple([curve_real, curve_lower_err_real, curve_upper_err_real])
                 curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = normalize_multiple(
                     [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional])
                 ax.set_ylim((0.0, 1.02))
+            elif y_type == 'baseline':
+                curve_real, curve_lower_err_real, curve_upper_err_real = baseline_curve.get_standardised_curves(
+                    x_axis_range_real, [curve_real, curve_lower_err_real, curve_upper_err_real], x_type)
+                if x_axis_range_fictional.ndim > 0:
+                    curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = baseline_curve.get_standardised_curves(
+                        x_axis_range_fictional, [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional], x_type)
+                ax.set_ylim((-0.02, 1.02))
 
             # visualize
-            if plot_errors and x_type != 'time':
+            if plot_errors:
                 ax.fill_between(x_axis_range_real, curve_lower_err_real, curve_upper_err_real, alpha=0.15, antialiased=True, color=color)
             ax.plot(x_axis_range_real, curve_real, label=label, color=color)
 
             # select the parts of the data that are fictional
             if real_stopping_point < x_axis_range.shape[-1]:
                 # visualize fictional part
-                if plot_errors and x_type != 'time':
+                if plot_errors:
                     ax.fill_between(x_axis_range_fictional, curve_lower_err_fictional, curve_upper_err_fictional, alpha=0.15, antialiased=True, color=color,
                                     ls='dashed')
                 ax.plot(x_axis_range_fictional, curve_fictional, color=color, ls='dashed')

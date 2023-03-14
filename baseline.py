@@ -6,33 +6,33 @@ from searchspace_statistics import SearchspaceStatistics
 
 
 class Baseline(ABC):
-    """ Class to use as a baseline for Curves in plots """
+    """Class to use as a baseline for Curves in plots"""
 
     def __init__(self) -> None:
         super().__init__()
 
     @abstractmethod
     def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:
-        """ Get the curve over the specified range of time or function evaluations, returns NaN beyond limits. """
-        if x_type == 'fevals':
+        """Get the curve over the specified range of time or function evaluations, returns NaN beyond limits."""
+        if x_type == "fevals":
             return self.get_curve_over_fevals(range)
-        elif x_type == 'time':
+        elif x_type == "time":
             return self.get_curve_over_time(range)
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     @abstractmethod
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
-        """ Get the curve over the specified range of function evaluations, returns NaN beyond limits. """
+        """Get the curve over the specified range of function evaluations, returns NaN beyond limits."""
         raise NotImplementedError
 
     @abstractmethod
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        """ Get the curve at the specified times using isotonic regression, returns NaN beyond limits. """
+        """Get the curve at the specified times using isotonic regression, returns NaN beyond limits."""
         raise NotImplementedError
 
     @abstractmethod
     def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
-        """ Substract the baseline curve from the provided strategy curves, yielding standardised strategy curves """
+        """Substract the baseline curve from the provided strategy curves, yielding standardised strategy curves"""
         absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
         random_curve = self.get_curve(range, x_type)
         standardised_curves: list[np.ndarray] = list()
@@ -47,17 +47,17 @@ class Baseline(ABC):
 
     @abstractmethod
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
-        """ Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve """
+        """Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve"""
         return self.get_standardised_curves(range, [strategy_curve], x_type)[0]
 
     @abstractmethod
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """ Get the times at each function eval in the range split into objective_time_keys """
+        """Get the times at each function eval in the range split into objective_time_keys"""
         raise NotImplementedError()
 
 
 class StochasticCurveBasedBaseline(Baseline):
-    """ Baseline object using a stochastic curve as input """
+    """Baseline object using a stochastic curve as input"""
 
     def __init__(self, curve: Curve) -> None:
         self.curve = curve
@@ -84,12 +84,12 @@ class StochasticCurveBasedBaseline(Baseline):
 
 
 class RandomSearchCalculatedBaseline(Baseline):
-    """ Baseline object using calculated random search without replacement """
+    """Baseline object using calculated random search without replacement"""
 
-    def __init__(self, searchspace_stats: SearchspaceStatistics, include_nan: bool = True, time_per_feval_operator: str = 'median_per_feval') -> None:
+    def __init__(self, searchspace_stats: SearchspaceStatistics, include_nan: bool = True, time_per_feval_operator: str = "median_per_feval") -> None:
         self.searchspace_stats = searchspace_stats
         self.time_per_feval_operator = time_per_feval_operator
-        self.label = f'Calculated baseline, {include_nan=}, {time_per_feval_operator=}'
+        self.label = f"Calculated baseline, {include_nan=}, {time_per_feval_operator=}"
         self.dist_best_first = searchspace_stats.objective_performances_total_sorted_nan
         self.dist_ascending = searchspace_stats.objective_performances_total_sorted
         self.dist_descending = self.dist_ascending[::-1]
@@ -102,7 +102,7 @@ class RandomSearchCalculatedBaseline(Baseline):
         super().__init__()
 
     def time_to_fevals(self, time_range: np.ndarray) -> np.ndarray:
-        """ Convert a time range to a number of function evaluations range """
+        """Convert a time range to a number of function evaluations range"""
         # TODO more accurate mapping from fevals to time, using interpolated indices, preferably without median_time_per_feval
         time_per_feval = self.searchspace_stats.get_time_per_feval(self.time_per_feval_operator)
         # assert all(a <= b for a, b in zip(time_range, time_range[1:])), "Time range is not monotonically non-decreasing"
@@ -118,11 +118,11 @@ class RandomSearchCalculatedBaseline(Baseline):
         # return self.dist_descending[indices]
 
     def _draw_random(xs, k):
-        """ Monte Carlo simulation over cache """
+        """Monte Carlo simulation over cache"""
         return np.random.choice(xs, size=k, replace=False)
 
     def _get_indices(self, draws: np.ndarray, dist: np.ndarray = None) -> np.ndarray:
-        """ For each draw, get the index (position) in the distribution """
+        """For each draw, get the index (position) in the distribution"""
         if dist is None:
             dist = self.dist_descending
         indices_found = list()
@@ -135,7 +135,7 @@ class RandomSearchCalculatedBaseline(Baseline):
                     indices_found.append(indices)
                 else:
                     indices_per_trial.append(np.NaN)
-            #indices = np.concatenate([np.where(x == dist) for x in draws]).flatten()
+            # indices = np.concatenate([np.where(x == dist) for x in draws]).flatten()
         elif draws.ndim == 2:
             for y in draws:
                 indices_per_trial = list()
@@ -147,14 +147,14 @@ class RandomSearchCalculatedBaseline(Baseline):
                     else:
                         indices_per_trial.append(np.NaN)
                 indices_found.append(indices_per_trial)
-            #indices = [np.concatenate([np.where(x == dist) for x in y]).flatten() for y in draws]
+            # indices = [np.concatenate([np.where(x == dist) for x in y]).flatten() for y in draws]
         else:
             raise Exception("Expected draws to be 1D or 2D")
         indices_found = np.array(indices_found)
         return indices_found
 
     def _redwhite_index(self, M: int) -> float:
-        """ Get the expected index in the distribution for a budget in number of function evaluations M """
+        """Get the expected index in the distribution for a budget in number of function evaluations M"""
         assert M >= 0, f"M must be >= 0, is {M}"
         # N = self.searchspace_stats.size
         N = self._redwhite_index_dist.shape[0]
@@ -163,11 +163,11 @@ class RandomSearchCalculatedBaseline(Baseline):
         return index
 
     def _redwhite_index_value(self, M: int) -> float:
-        """ Get the expected value in the distribution for a budget in number of function evaluations M """
+        """Get the expected value in the distribution for a budget in number of function evaluations M"""
         return self._redwhite_index_dist[self._redwhite_index(M)]
 
     def _get_random_curve(self, fevals_range: np.ndarray) -> np.ndarray:
-        """ Returns the drawn values of the random curve at each number of function evaluations """
+        """Returns the drawn values of the random curve at each number of function evaluations"""
         ks = fevals_range
         draws = np.array([self._redwhite_index_value(k) for k in ks])
         return draws
@@ -180,7 +180,7 @@ class RandomSearchCalculatedBaseline(Baseline):
         return np.array([opt_func(self._draw_random(xs, k)) for trial in range(trials)])
 
     def _get_random_curve_means(self, fevals_range: np.ndarray) -> np.ndarray:
-        """ Returns the mean drawn values of the random curve at each function evaluation """
+        """Returns the mean drawn values of the random curve at each function evaluation"""
         trials = 500
         dist = self.dist_descending
         opt_func = np.min if self.searchspace_stats.minimization else np.max
@@ -220,7 +220,7 @@ class RandomSearchCalculatedBaseline(Baseline):
 
 
 class RandomSearchSimulatedBaseline(Baseline):
-    """ Baseline object using simulated random search"""
+    """Baseline object using simulated random search"""
 
     def __init__(self, searchspace_stats: SearchspaceStatistics, repeats: int = 500, limit_fevals: int = None, index=True, flatten=True) -> None:
         self.searchspace_stats = searchspace_stats
@@ -229,7 +229,7 @@ class RandomSearchSimulatedBaseline(Baseline):
         self._simulate(repeats, limit_fevals, index, flatten)
 
     def _simulate(self, repeats: int, limit_fevals: int, index: bool, flatten: bool):
-        """ Simulate running random search over half of the search space or limit_fevals [repeats] times """
+        """Simulate running random search over half of the search space or limit_fevals [repeats] times"""
         opt_func = np.fmin if self.searchspace_stats.minimization else np.fmax
         time_array = self.searchspace_stats.objective_times_total
         performance_array = self.searchspace_stats.objective_performances_total_sorted_nan
@@ -259,8 +259,9 @@ class RandomSearchSimulatedBaseline(Baseline):
 
         # prepare isotonic regression
         from sklearn.isotonic import IsotonicRegression
+
         increasing = not self.searchspace_stats.minimization
-        self._ir = IsotonicRegression(increasing=increasing, out_of_bounds='clip')
+        self._ir = IsotonicRegression(increasing=increasing, out_of_bounds="clip")
 
         # fit the data
         x_array = times_at_feval.flatten() if flatten else self.time_at_feval

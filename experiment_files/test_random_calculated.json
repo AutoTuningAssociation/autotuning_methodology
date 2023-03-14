@@ -3,19 +3,16 @@
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
-    "pnpoly",
-    "convolution",
-    "gemm"
+    "pnpoly"
   ],
   "kernel_path": "../cached_data_used/kernels",
   "GPUs": [
-    "RTX_2080_Ti",
-    "RTX_3090"
+    "RTX_2080_Ti"
   ],
   "minimization": true,
   "resolution": 1e3,
   "cutoff_percentile": 0.99,
-  "cutoff_percentile_start": 0.0,
+  "cutoff_percentile_start": 0.7,
   "objective_time_keys": [
     "strategy_time",
     "compile_time",
@@ -29,7 +26,7 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
-      "fevals"
+      "time"
     ],
     "plot_y_value_types": [
       "absolute",

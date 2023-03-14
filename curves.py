@@ -189,6 +189,7 @@ class StochasticOptimizationAlgorithm(Curve):
         else:
             raise Exception("Expected draws to be 1D or 2D")
         indices_found = np.array(indices_found)
+        assert indices_found.ndim == draws.ndim
         return indices_found
 
     def _get_curve_split_real_fictional_parts(
@@ -413,7 +414,7 @@ class StochasticOptimizationAlgorithm(Curve):
             # obtain the curves
             raise NotImplementedError()
 
-        # filter to only get the time range (for the binned error calculation)
+        # filter to only get the time range (for the binned error / confidence interval calculation)
         range_mask = (time_range[0] <= times) & (times <= time_range[-1])
         assert np.all(np.count_nonzero(range_mask, axis=0) > 1), "Not enough overlap in time range and time values"
         masked_times = np.where(range_mask, times, np.nan)
@@ -429,39 +430,52 @@ class StochasticOptimizationAlgorithm(Curve):
 
         def index_of_nearest(array, value):
             """ Find in the array the indices of the values closest to the given value (or values) """
-            idx = np.searchsorted(array, value, side="left")
-            idx = idx - (np.abs(value - array[idx - 1]) < np.abs(value - array[idx]))
+            idx = np.clip(np.searchsorted(array, value, side="left"), a_min=0, a_max=len(array) - 1)
+            idx = idx - (np.abs(value - array[np.max(idx - 1, 0)]) < np.abs(value - array[idx]))
             return idx
 
         # for each repeat, look up the index of the value closest to each time in the time range
         closest_indices = np.empty((masked_times.shape[1], time_range.shape[0]))
         closest_indices_times = np.empty_like(closest_indices)
         closest_indices_values = np.empty_like(closest_indices)
+        closest_indices_indices = np.empty_like(closest_indices)
+        masked_indices = self._get_indices(masked_values, dist)
         for repeat in range(masked_times.shape[1]):
             closest_indices_at_repeat = index_of_nearest(masked_times[:, repeat], time_range)
             closest_indices[repeat] = closest_indices_at_repeat
             closest_indices_times[repeat] = masked_times[closest_indices_at_repeat, repeat]
             closest_indices_values[repeat] = masked_values[closest_indices_at_repeat, repeat]
+            closest_indices_indices[repeat] = masked_indices[closest_indices_at_repeat, repeat]
 
         # transpose the arrays to allow correct iteration
         closest_indices = closest_indices.transpose()
         closest_indices_times = closest_indices_times.transpose()
         closest_indices_values = closest_indices_values.transpose()
+        closest_indices_indices = closest_indices_indices.transpose()
 
-        # get the weights of each raw value depending on its distance to time_range
-        closest_indices_weights = np.empty_like(closest_indices)
-        for i_time, time in enumerate(time_range):
-            times_at_repeat = closest_indices_times[i_time]
-            time_distance = np.abs(times_at_repeat - time)
-            time_distance_sum = np.sum(time_distance)
-            # inverse the fractional distance to the time in time_range, so values closer to the time in time_range have proportionally more weight
-            closest_indices_weights[i_time] = 1 - (time_distance / time_distance_sum)
-            assert np.sum(closest_indices_weights[i_time]) == 1
+        # # get the weights of each raw value depending on its distance to time_range
+        # closest_indices_weights = np.empty_like(closest_indices)
+        # for i_time, time in enumerate(time_range):
+        #     times_at_repeat = closest_indices_times[i_time]
+        #     time_distance = np.abs(times_at_repeat - time)
+        #     time_distance_sum = np.nansum(time_distance)
+        #     # inverse the fractional distance to the time in time_range, so values closer to the time in time_range have proportionally more weight
+        #     closest_indices_weights[i_time] = 1 - (time_distance / time_distance_sum)
+        #     print(closest_indices_weights[i_time])
+        #     assert np.nansum(closest_indices_weights[i_time]) <= 1, f"{np.nansum(closest_indices_weights[i_time])=} should be at most 1"
+        #     # TODO natuurlijk klopt dit niet, want alles begint vanaf 0 distance...
+        # TODO in plaats daarvan zou je ook met een gewicht per segment kunnen rekenen
 
         # get the confidence interval at each time in the time range
         if confidence_level is None:
             confidence_level = 0.95
-        curve_lower_err, curve_upper_err = self.get_confidence_interval(closest_indices_values, confidence_level, closest_indices_weights)
+        curve_lower_err_indx, curve_upper_err_indx = self.get_confidence_interval(closest_indices_indices, confidence_level)
+        curve_lower_err = np.full_like(curve_lower_err_indx, np.NaN)
+        curve_upper_err = np.full_like(curve_upper_err_indx, np.NaN)
+        curve_lower_err_non_nan = ~np.isnan(curve_lower_err_indx)
+        curve_upper_err_non_nan = ~np.isnan(curve_upper_err_indx)
+        curve_lower_err[curve_lower_err_non_nan] = dist[np.array(curve_lower_err_indx[curve_lower_err_non_nan], dtype=int)]
+        curve_upper_err[curve_upper_err_non_nan] = dist[np.array(curve_upper_err_indx[curve_upper_err_non_nan], dtype=int)]
 
         # # OLD WAY BELOW
         # # bin the values to their closest point in low resolution time_range
