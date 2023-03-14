@@ -7,6 +7,27 @@ from math import floor, ceil, sqrt
 import warnings
 
 
+def get_indices_in_distribution(draws: np.ndarray, dist: np.ndarray) -> np.ndarray:
+    """ For each draw, get the index (position) in the ascendingly sorted distribution (not checked!), returns an array of type float of the same shape as draws """
+    # NOTE: no check is performed on whether the distribution is sorted in ascending order
+    indices_found = np.searchsorted(dist, draws, side='left').astype(float)
+    assert indices_found.shape == draws.shape
+
+    # if indices found are outside the array
+    indices_found[indices_found < 0] = np.NaN
+    indices_found[indices_found >= len(dist)] = np.NaN
+
+    # # sanity check / test: each draw should have the same value in the distribution
+    # for index, draw in np.ndenumerate(draws):
+    #     if np.isnan(draw):
+    #         continue
+    #     try:
+    #         assert draw == dist[np.int(indices_found[index])], f"Is {draw}, but distribution value at index is {dist[np.int(indices_found[index])]}"
+    #     except ValueError:
+    #         raise ValueError(f"{draw=}, but {indices_found[index]=}")
+    return indices_found
+
+
 class Curve(ABC):
     """ The Curve object can produce NumPy arrays directly suitable for plotting """
 
@@ -159,39 +180,6 @@ class DeterministicOptimizationAlgorithm(Curve):
 
 class StochasticOptimizationAlgorithm(Curve):
 
-    def _get_indices(self, draws: np.ndarray, dist: np.ndarray) -> np.ndarray:
-        """ For each draw, get the index (position) in the distribution """
-        # TODO make this more efficient using np.argwhere(np.isin()) or list.index()
-        # dist = dist[::-1]
-        indices_found = list()
-        if draws.ndim == 1:
-            for x in draws:
-                indices_per_trial = list()
-                if not np.isnan(x):
-                    indices = np.where(x == dist)[0]
-                    indices = round(np.mean(indices))
-                    indices_found.append(indices)
-                else:
-                    indices_per_trial.append(np.NaN)
-            #indices = np.concatenate([np.where(x == dist) for x in draws]).flatten()
-        elif draws.ndim == 2:
-            for y in draws:
-                indices_per_trial = list()
-                for x in y:
-                    if not np.isnan(x):
-                        indices = np.where(x == dist)[0]
-                        indices = round(np.mean(indices))
-                        indices_per_trial.append(indices)
-                    else:
-                        indices_per_trial.append(np.NaN)
-                indices_found.append(indices_per_trial)
-            #indices = [np.concatenate([np.where(x == dist) for x in y]).flatten() for y in draws]
-        else:
-            raise Exception("Expected draws to be 1D or 2D")
-        indices_found = np.array(indices_found)
-        assert indices_found.ndim == draws.ndim
-        return indices_found
-
     def _get_curve_split_real_fictional_parts(
             self, real_stopping_point_index: int, x_axis_range: np.ndarray, curve: np.ndarray, curve_lower_err: np.ndarray,
             curve_upper_err: np.ndarray) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -301,7 +289,7 @@ class StochasticOptimizationAlgorithm(Curve):
         if dist is not None:
             assert dist.ndim == 1
             # for each value, get the index in the distribution
-            indices = self._get_indices(masked_values, dist)
+            indices = get_indices_in_distribution(masked_values, dist)
             # get the mean index per feval
             indices_mean = np.array(np.round(np.nanmedian(indices, axis=1)), dtype=int)
             if confidence_level is None:
@@ -406,7 +394,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # if a distribution is included
         if dist is not None:
             # for each value, get the index in the distribution
-            indices = self._get_indices(values_1D, dist)
+            indices = get_indices_in_distribution(values_1D, dist)
             indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, npoints=num_fevals, package='sklearn')
             indices_curve = np.array(np.round(indices_curve), dtype=int)
             curve = dist[indices_curve]
@@ -439,7 +427,7 @@ class StochasticOptimizationAlgorithm(Curve):
         closest_indices_times = np.empty_like(closest_indices)
         closest_indices_values = np.empty_like(closest_indices)
         closest_indices_indices = np.empty_like(closest_indices)
-        masked_indices = self._get_indices(masked_values, dist)
+        masked_indices = get_indices_in_distribution(masked_values, dist)
         for repeat in range(masked_times.shape[1]):
             closest_indices_at_repeat = index_of_nearest(masked_times[:, repeat], time_range)
             closest_indices[repeat] = closest_indices_at_repeat
@@ -533,7 +521,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
-        indices = self._get_indices(masked_values, searchspace_stats.objective_performances_total)
+        indices = get_indices_in_distribution(masked_values, searchspace_stats.objective_performances_total)
         average_index_at_feval = np.array(np.round(np.nanmedian(indices, axis=1)), dtype=int)
 
         # for each key, obtain the time at a feval

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from math import ceil
 import numpy as np
-from curves import Curve
+from curves import Curve, get_indices_in_distribution
 from searchspace_statistics import SearchspaceStatistics
 
 
@@ -112,7 +112,7 @@ class RandomSearchCalculatedBaseline(Baseline):
         assert all(fevals_range >= 1), f"Fevals range must have minimum of 1, has {fevals_range[fevals_range < 1]}"
         return fevals_range
         # curve = self._get_random_curve(fevals_range)
-        # indices = self._get_indices(curve)
+        # indices = get_indices_in_distribution(curve)
         # indices_interpolated = np.interp(, fevals_range, indices)
         # assert indices.shape == time_range.shape
         # return self.dist_descending[indices]
@@ -185,7 +185,7 @@ class RandomSearchCalculatedBaseline(Baseline):
         dist = self.dist_descending
         opt_func = np.min if self.searchspace_stats.minimization else np.max
         results = np.array([self._stats_max(dist, budget, trials, opt_func) for budget in fevals_range])
-        val_indices = self._get_indices(results)
+        val_indices = get_indices_in_distribution(results)
         # Find the mean index per list of trial runs per function evaluation.
         mean_indices = [round(x) for x in val_indices.mean(axis=1)]
         val_results_index_mean = dist[mean_indices]
@@ -208,7 +208,7 @@ class RandomSearchCalculatedBaseline(Baseline):
 
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         random_curve = self.get_curve_over_fevals(fevals_range)
-        index_at_feval = self._get_indices(random_curve, searchspace_stats.objective_performances_total)
+        index_at_feval = get_indices_in_distribution(random_curve, searchspace_stats.objective_performances_total)
 
         # for each key, obtain the time at a feval
         objective_time_keys = searchspace_stats.objective_time_keys
