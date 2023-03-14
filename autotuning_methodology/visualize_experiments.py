@@ -1,17 +1,18 @@
 """ Visualize the results of the experiments """
+
 from typing import Tuple
 import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
-from experiments import execute_experiment, get_args_from_cli
-from curves import Curve, StochasticOptimizationAlgorithm
-from baseline import Baseline, RandomSearchCalculatedBaseline, RandomSearchSimulatedBaseline
-from searchspace_statistics import SearchspaceStatistics
-
 import sys
 
 sys.path.append("..")
+
+from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
+from autotuning_methodology.curves import Curve, StochasticOptimizationAlgorithm
+from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline, RandomSearchSimulatedBaseline
+from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 # The kernel information per device and device information for visualization purposes
 marker_variatons = ["v", "s", "*", "1", "2", "d", "P", "X"]

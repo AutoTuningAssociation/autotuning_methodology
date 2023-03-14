@@ -1,8 +1,8 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "Methodology paper evaluation",
   "folder_id": "methodology_paper_evaluation",
-  "kernel_path": "../cached_data_used/kernels",
+  "kernel_path": "cached_data_used/kernels",
   "kernels": [
     "pnpoly",
     "convolution"

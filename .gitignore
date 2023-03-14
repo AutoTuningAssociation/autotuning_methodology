@@ -4,6 +4,11 @@
 # ignore genated plots
 generated_plots/*
 
+# ignore files in cachefile folder
+cached_data_used/cachefiles/*
+cached_data_used/kernels/*
+cached_data_used/visualizations/*
+
 # ignore mypy
 mypy.ini
 

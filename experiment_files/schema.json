@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/schemas/experiments/v0.1.1.schema.json",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "title": "Experiment",
   "description": "An experiment configuration file",
   "type": "object",

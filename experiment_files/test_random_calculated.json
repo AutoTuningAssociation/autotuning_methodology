@@ -1,11 +1,11 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
     "pnpoly"
   ],
-  "kernel_path": "../cached_data_used/kernels",
+  "kernel_path": "cached_data_used/kernels",
   "GPUs": [
     "RTX_2080_Ti"
   ],
@@ -51,18 +51,6 @@
       "strategy": "random_sample",
       "display_name": "Random sampling 100 iters",
       "repeats": 100
-    },
-    {
-      "name": "random_sample_250_iter",
-      "strategy": "random_sample",
-      "display_name": "Random sampling 250 iters",
-      "repeats": 250
-    },
-    {
-      "name": "random_sample_500_iter",
-      "strategy": "random_sample",
-      "display_name": "Random sampling 500 iters",
-      "repeats": 500
     }
   ]
 }

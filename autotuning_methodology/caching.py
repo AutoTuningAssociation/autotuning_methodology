@@ -1,3 +1,5 @@
+""" Code regarding storage and retrieval of caches """
+
 from __future__ import annotations    # for referring to class within own method
 import numpy as np
 from typing import Dict
@@ -39,8 +41,10 @@ class ResultsDescription():
     def is_same_as(self, other: ResultsDescription) -> bool:
         """ Check for equality against another ResultsDescription object """
         # check if same type
-        if not isinstance(other, ResultsDescription):
-            raise NotImplemented(f"Can not compare to object of type {type(other)}")
+        if not isinstance(other, (ResultsDescription)):
+            # additional check for legacy structure
+            # if not str(type(other)) == "<class 'caching.ResultsDescription'>":
+            raise NotImplementedError(f"Can not compare to object of type {type(other)}")
 
         # check if same version
         if not hasattr(other, "_version"):
@@ -67,7 +71,7 @@ class ResultsDescription():
 
     def __get_cache_filepath(self) -> Path:
         """ Get the filepath to this experiment """
-        return Path("../cached_data_used/visualizations") / self.__folder_id / self.kernel_name
+        return Path("cached_data_used/visualizations") / self.__folder_id / self.kernel_name
 
     def __get_cache_full_filepath(self) -> Path:
         """ Get the filepath for this file, including the filename and extension """
@@ -113,7 +117,8 @@ class ResultsDescription():
 
     def get_results(self) -> Results:
         """ Get the Results object """
-        return Results(self.__read_from_file())
+        args = self.__read_from_file()
+        return Results(args)
 
     def has_results(self) -> bool:
         """ Checks whether there are results or the file exists """

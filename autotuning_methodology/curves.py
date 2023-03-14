@@ -1,30 +1,34 @@
+""" Code for curve generation """
+
 from abc import ABC, abstractmethod
-from typing import Tuple, Union
+from typing import Tuple
 import numpy as np
-from caching import ResultsDescription
-from searchspace_statistics import SearchspaceStatistics
 from math import floor, ceil, sqrt
 import warnings
 
+from autotuning_methodology.caching import ResultsDescription
+from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
-def get_indices_in_distribution(draws: np.ndarray, dist: np.ndarray) -> np.ndarray:
-    """ For each draw, get the index (position) in the ascendingly sorted distribution (not checked!), returns an array of type float of the same shape as draws """
-    # NOTE: no check is performed on whether the distribution is sorted in ascending order
+
+def get_indices_in_distribution(draws: np.ndarray, dist: np.ndarray, skip_draws_check: bool = False, skip_dist_check: bool = False) -> np.ndarray:
+    """ For each draw, get the index (position) in the ascendingly sorted distribution, returns an array of type float of the same shape as draws, NaN where not found in dist """
+    # check whether the distribution is correctly ordered
+    if not skip_dist_check:
+        strictly_ascending_sort = dist[:-1] <= dist[1:]
+        assert np.all(strictly_ascending_sort
+                      ), f"Distribution is not sorted ascendingly, {np.count_nonzero(~strictly_ascending_sort)} violations in {len(dist)} values: {dist}"
+
+    # check whether each value of draws (excluding NaN) is in dist
+    if not skip_draws_check:
+        assert np.all(np.in1d(draws[~np.isnan(draws)], dist)), f"Each value in draws should be in dist"
+
+    # find the index of each draw in the distribution
     indices_found = np.searchsorted(dist, draws, side='left').astype(float)
     assert indices_found.shape == draws.shape
 
-    # if indices found are outside the array
+    # if indices found are outside the array, make them NaN
     indices_found[indices_found < 0] = np.NaN
     indices_found[indices_found >= len(dist)] = np.NaN
-
-    # # sanity check / test: each draw should have the same value in the distribution
-    # for index, draw in np.ndenumerate(draws):
-    #     if np.isnan(draw):
-    #         continue
-    #     try:
-    #         assert draw == dist[np.int(indices_found[index])], f"Is {draw}, but distribution value at index is {dist[np.int(indices_found[index])]}"
-    #     except ValueError:
-    #         raise ValueError(f"{draw=}, but {indices_found[index]=}")
     return indices_found
 
 

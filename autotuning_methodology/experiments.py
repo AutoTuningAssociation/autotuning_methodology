@@ -9,9 +9,9 @@ from pathlib import Path
 import os
 import sys
 
-from runner import collect_results
-from caching import ResultsDescription
-from searchspace_statistics import SearchspaceStatistics
+from autotuning_methodology.runner import collect_results
+from autotuning_methodology.caching import ResultsDescription
+from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
 def get_args_from_cli() -> str:
@@ -45,9 +45,9 @@ def get_experiment(filename: str) -> dict:
         path = folder / filename
     else:
         path = Path(path)
-    assert path.exists()
+    assert path.exists(), f"Path to experiment file does not exist, attempted path: {path}"
     schemafilepath = folder / 'schema.json'
-    assert schemafilepath.exists()
+    assert schemafilepath.exists(), f"Path to schema.json does not exist, attempted path: {schemafilepath}"
     with open(path) as file, open(schemafilepath) as schemafile:
         schema = json.load(schemafile)
         experiment = json.load(file)

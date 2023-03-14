@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from math import ceil
 import numpy as np
-from curves import Curve, get_indices_in_distribution
-from searchspace_statistics import SearchspaceStatistics
+
+from autotuning_methodology.curves import Curve, get_indices_in_distribution
+from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
 class Baseline(ABC):

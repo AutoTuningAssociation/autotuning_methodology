@@ -1,9 +1,12 @@
+""" Code for obtaining search space statistics """
+
 from pathlib import Path
 from typing import Tuple
 from math import floor, ceil
 import json
 import numpy as np
-from runner import is_invalid_objective_time, is_invalid_objective_performance
+
+from autotuning_methodology.runner import is_invalid_objective_time, is_invalid_objective_performance
 
 
 def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
@@ -81,7 +84,7 @@ class SearchspaceStatistics():
 
     def _get_filepath(self) -> Path:
         """ Returns the filepath """
-        basepath = Path("../cached_data_used/cachefiles")
+        basepath = Path("cached_data_used/cachefiles")
         kernel_directory = self.kernel_name.lower()
         filename = f"{self.device_name.lower()}.json"
         return basepath / kernel_directory / filename
@@ -90,7 +93,8 @@ class SearchspaceStatistics():
         """ Returns the filepath if it exists """
         filepath = self._get_filepath()
         if not filepath.exists():
-            raise FileNotFoundError(f"{filepath} does not exist")
+            import os
+            raise FileNotFoundError(f"{filepath} does not exist relative to current working directory {os.getcwd()}")
         return filepath
 
     def _is_not_invalid_value(self, value, performance: bool) -> bool:
