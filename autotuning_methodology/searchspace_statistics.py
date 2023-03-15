@@ -138,7 +138,7 @@ class SearchspaceStatistics():
                     data = json.loads(contents)
             cache: dict = data['cache']
 
-            # get the performance and time values per configuration
+            # get the time values per configuration
             cache_values = list(cache.values())
             self.size = len(cache_values)
             self.objective_times = dict()
@@ -148,12 +148,19 @@ class SearchspaceStatistics():
                 assert self.objective_times[key].ndim == 1, f"Should have one dimension, has {self.objective_times[key].ndim}"
                 assert self.objective_times[key].shape[0] == len(
                     cache_values), f"Should have the same size as cache_values ({self.size}), has {self.objective_times[key].shape[0]}"
+                assert not np.all(np.isnan(self.objective_times[key])
+                                  ), f"All values for {key=} are NaN. Likely the experiment did not collect time values for objective_time_keys '{key}'."
+
+            # get the performance values per configuration
             self.objective_performances = dict()
             for key in self.objective_performance_keys:
                 self.objective_performances[key] = self._to_valid_array(cache_values, key, performance=True)
                 assert self.objective_performances[key].ndim == 1, f"Should have one dimension, has {self.objective_performances[key].ndim}"
                 assert self.objective_performances[key].shape[0] == len(
                     cache_values), f"Should have the same size as cache_values ({self.size}), has {self.objective_performances[key].shape[0]}"
+                assert not np.all(
+                    np.isnan(self.objective_performances[key])
+                ), f"All values for {key=} are NaN. Likely the experiment did not collect performance values for objective_performance_key '{key}'."
 
             # get the number of repeats
             valid_cache_index: int = 0
@@ -170,12 +177,12 @@ class SearchspaceStatistics():
             # get the totals
             self.objective_times_total = nansumwrapper(self.objective_times_array, axis=0)
             assert self.objective_times_total.shape == tuple([self.size])
-            assert np.sum(self.objective_times_array[:, 0]) == self.objective_times_total[
-                0], f"Sums of objective performances do not match: {np.sum(self.objective_times_array[:, 0])} vs. {self.objective_times_total[0]}"    # more of a test
+            assert np.nansum(self.objective_times_array[:, 0]) == self.objective_times_total[
+                0], f"Sums of objective performances do not match: {np.nansum(self.objective_times_array[:, 0])} vs. {self.objective_times_total[0]}"    # more of a test
             self.objective_performances_total = nansumwrapper(self.objective_performances_array, axis=0)
             assert self.objective_performances_total.shape == tuple([self.size])
-            assert np.sum(self.objective_performances_array[:, 0]) == self.objective_performances_total[
-                0], f"Sums of objective performances do not match: {np.sum(self.objective_performances_array[:, 0])} vs. {self.objective_performances_total[0]}"    # more of a test
+            assert np.nansum(self.objective_performances_array[:, 0]) == self.objective_performances_total[
+                0], f"Sums of objective performances do not match: {np.nansum(self.objective_performances_array[:, 0])} vs. {self.objective_performances_total[0]}"    # more of a test
 
             # sort
             self.objective_times_total_sorted = np.sort(self.objective_times_total[~np.isnan(self.objective_times_total)])
@@ -277,7 +284,7 @@ class SearchspaceStatistics():
 
     def total_performance_mean(self) -> float:
         """ Get the mean of total performance """
-        return np.mean(self.objective_performances_total)
+        return np.mean(self.objective_performances_total_sorted)
 
     def total_performance_median(self) -> float:
         """ Get the median of total performance """

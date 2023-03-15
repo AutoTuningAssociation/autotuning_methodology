@@ -369,7 +369,7 @@ class Visualize:
                 if x_axis_range_fictional.ndim > 0:
                     curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = baseline_curve.get_standardised_curves(
                         x_axis_range_fictional, [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional], x_type)
-                ax.set_ylim((-0.02, 1.02))
+                ax.set_ylim((min(-0.02, np.min(curve_real)), 1.02))
 
             # visualize
             if plot_errors:

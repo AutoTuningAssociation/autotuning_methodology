@@ -61,8 +61,9 @@ class ResultsDescription():
         for attribute_key, attribute_value in self.__dict__.items():
             if attribute_key == 'strategy_display_name':
                 continue
-            assert attribute_value == other.__dict__[
-                attribute_key], f"{attribute_key} has different values: {attribute_value}, other: {other.__dict__[attribute_key]}"
+            else:
+                assert attribute_value == other.__dict__[
+                    attribute_key], f"{attribute_key} has different values: {attribute_value}, other: {other.__dict__[attribute_key]}"
 
         return True
 
