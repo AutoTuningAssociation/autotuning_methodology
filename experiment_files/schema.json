@@ -109,6 +109,10 @@
         "compare_baselines": {
           "type": "boolean",
           "default": false
+        },
+        "compare_split_times": {
+          "type": "boolean",
+          "default": false
         }
       },
       "required": [

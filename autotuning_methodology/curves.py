@@ -10,8 +10,10 @@ from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
-def get_indices_in_distribution(draws: np.ndarray, dist: np.ndarray, skip_draws_check: bool = False, skip_dist_check: bool = False) -> np.ndarray:
-    """ For each draw, get the index (position) in the ascendingly sorted distribution, returns an array of type float of the same shape as draws, NaN where not found in dist """
+def get_indices_in_distribution(draws: np.ndarray, dist: np.ndarray, sorter=None, skip_draws_check: bool = False, skip_dist_check: bool = False) -> np.ndarray:
+    """For each draw, get the index (position) in the ascendingly sorted distribution, returns an array of type float of the same shape as draws, NaN where not found in dist. For unsorted dists, use get_indices_in_array()"""
+    assert dist.ndim == 1, f"distribution can not have more than one dimension, has {dist.ndim}"
+
     # check whether the distribution is correctly ordered
     if not skip_dist_check:
         strictly_ascending_sort = dist[:-1] <= dist[1:]
@@ -22,21 +24,42 @@ def get_indices_in_distribution(draws: np.ndarray, dist: np.ndarray, skip_draws_
     if not skip_draws_check:
         assert np.all(np.in1d(draws[~np.isnan(draws)], dist)), f"Each value in draws should be in dist"
 
+    # check the sorter
+    if sorter is not None:
+        assert sorter.shape == dist.shape
+
     # find the index of each draw in the distribution
-    indices_found = np.searchsorted(dist, draws, side='left').astype(float)
+    indices_found = np.searchsorted(dist, draws, side="left", sorter=sorter).astype(float)
     assert indices_found.shape == draws.shape
 
     # if indices found are outside the array, make them NaN
     indices_found[indices_found < 0] = np.NaN
     indices_found[indices_found >= len(dist)] = np.NaN
+
     return indices_found
 
 
+def get_indices_in_array(values: np.ndarray, array: np.ndarray) -> np.ndarray:
+    """For each value, get the index (position) in the 1D array. More general version of get_indices_in_distribution() that first sorts array and reverses the sort on the result."""
+    # get the order of indices that would sort the array
+    array_sorter = np.argsort(array)
+
+    # get the index in array of the values
+    indices_found = get_indices_in_distribution(values, dist=array, sorter=array_sorter, skip_dist_check=True)
+
+    # replace the indices found with the original, unsorted indices of array
+    nan_mask = ~np.isnan(indices_found)
+    indices_found_unsorted = np.full_like(indices_found, fill_value=np.NaN)
+    indices_found_unsorted[nan_mask] = array_sorter[indices_found[nan_mask].astype(int)]
+
+    return indices_found_unsorted
+
+
 class Curve(ABC):
-    """ The Curve object can produce NumPy arrays directly suitable for plotting """
+    """The Curve object can produce NumPy arrays directly suitable for plotting"""
 
     def __init__(self, results_description: ResultsDescription) -> None:
-        """ Initialize using a ResultsDescription """
+        """Initialize using a ResultsDescription"""
 
         # inputs
         self.name = results_description.strategy_name
@@ -57,7 +80,7 @@ class Curve(ABC):
         super().__init__()
 
     def check_attributes(self) -> None:
-        """ Asserts the types and values of attributes upon initialisation """
+        """Asserts the types and values of attributes upon initialisation"""
 
         # assert types
         assert isinstance(self.name, str)
@@ -84,30 +107,30 @@ class Curve(ABC):
 
     @abstractmethod
     def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
-        """ Get the curve over the specified range of time or function evaluations, returns a tuple of NDArrays with NaN beyond limits. """
-        if x_type == 'fevals':
+        """Get the curve over the specified range of time or function evaluations, returns a tuple of NDArrays with NaN beyond limits."""
+        if x_type == "fevals":
             return self.get_curve_over_fevals(range, dist, confidence_level)
-        elif x_type == 'time':
+        elif x_type == "time":
             return self.get_curve_over_time(range, dist, confidence_level)
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     @abstractmethod
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """ Get the real_stopping_point_index and the real and fictional curve, errors over the specified range of function evaluations """
+        """Get the real_stopping_point_index and the real and fictional curve, errors over the specified range of function evaluations"""
         raise NotImplementedError
 
     @abstractmethod
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """ Get the real_stopping_point_index and the real and fictional curve, errors at the specified times using isotonic regression """
+        """Get the real_stopping_point_index and the real and fictional curve, errors at the specified times using isotonic regression"""
         raise NotImplementedError
 
     @abstractmethod
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """ Get the times at each function eval in the range split into objective_time_keys """
+        """Get the times at each function eval in the range split into objective_time_keys"""
         raise NotImplementedError()
 
     def fevals_find_pad_width(self, array: np.ndarray, target_array: np.ndarray) -> tuple[int, int]:
-        """ Find the amount of padding required on both sides of array to match target_array """
+        """Find the amount of padding required on both sides of array to match target_array"""
         if array.ndim != 1 or target_array.ndim != 1:
             raise ValueError("Both arrays must be one-dimensional")
 
@@ -125,15 +148,15 @@ class Curve(ABC):
         return padding
 
     def get_scatter_data(self, x_type: str) -> Tuple[np.ndarray, np.ndarray]:
-        if x_type == 'fevals':
+        if x_type == "fevals":
             return self._x_fevals, self._y
-        elif x_type == 'time':
+        elif x_type == "time":
             return self._x_time, self._y
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
-    def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package='isotonic', npoints=1000, power=2, ymin=None,
+    def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package="isotonic", npoints=1000, power=2, ymin=None,
                            ymax=None) -> np.ndarray:
-        """ Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic' """
+        """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'"""
         # check if the assumptions that the input arrays are numpy arrays holds
         assert isinstance(x, np.ndarray)
         assert isinstance(y, np.ndarray)
@@ -146,18 +169,20 @@ class Curve(ABC):
             y = y.flatten()
 
         increasing = not self.minimization
-        if package == 'sklearn':
+        if package == "sklearn":
             from sklearn.isotonic import IsotonicRegression
             import warnings
+
             if npoints != 1000:
                 warnings.warn("npoints argument is impotent for sklearn package")
             if power != 2:
                 warnings.warn("power argument is impotent for sklearn package")
-            ir = IsotonicRegression(increasing=increasing, y_min=ymin, y_max=ymax, out_of_bounds='clip')
+            ir = IsotonicRegression(increasing=increasing, y_min=ymin, y_max=ymax, out_of_bounds="clip")
             ir.fit(x, y)
             return ir.predict(x_new)
-        elif package == 'isotonic':
+        elif package == "isotonic":
             from isotonic.isotonic import LpIsotonicRegression
+
             ir = LpIsotonicRegression(npoints, increasing=increasing, power=power).fit(x, y)
             y_isotonic_regression = ir.predict_proba(x_new)
             # TODO check if you are not indadvertedly clipping too much here
@@ -187,7 +212,7 @@ class StochasticOptimizationAlgorithm(Curve):
     def _get_curve_split_real_fictional_parts(
             self, real_stopping_point_index: int, x_axis_range: np.ndarray, curve: np.ndarray, curve_lower_err: np.ndarray,
             curve_upper_err: np.ndarray) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """ Split the provided curves based on the real_stopping_point_index, return real_stopping_point_index and the real and fictional part for each curve """
+        """Split the provided curves based on the real_stopping_point_index, return real_stopping_point_index and the real and fictional part for each curve"""
         # select the parts of the data that are real
         x_axis_range_real = x_axis_range[:real_stopping_point_index]
         curve_real = curve[:real_stopping_point_index]
@@ -198,32 +223,74 @@ class StochasticOptimizationAlgorithm(Curve):
         x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = np.ndarray([]), np.ndarray([]), np.ndarray(
             []), np.ndarray([])
         target_index = x_axis_range.shape[0] - 1
-        if real_stopping_point_index < target_index:
+        if real_stopping_point_index <= target_index:
             x_axis_range_fictional = x_axis_range[real_stopping_point_index:]
             curve_fictional = curve[real_stopping_point_index:]
             curve_lower_err_fictional = curve_lower_err[real_stopping_point_index:]
             curve_upper_err_fictional = curve_upper_err[real_stopping_point_index:]
 
         # check and return
-        self._check_curve_real_fictional_consistency(x_axis_range, curve, curve_lower_err, curve_upper_err, x_axis_range_real, curve_real, curve_lower_err_real,
-                                                     curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional,
-                                                     curve_upper_err_fictional)
+        self._check_curve_real_fictional_consistency(
+            x_axis_range,
+            curve,
+            curve_lower_err,
+            curve_upper_err,
+            x_axis_range_real,
+            curve_real,
+            curve_lower_err_real,
+            curve_upper_err_real,
+            x_axis_range_fictional,
+            curve_fictional,
+            curve_lower_err_fictional,
+            curve_upper_err_fictional,
+        )
 
-        return real_stopping_point_index, x_axis_range_real, curve_real, curve_lower_err_real, curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional
+        return (
+            real_stopping_point_index,
+            x_axis_range_real,
+            curve_real,
+            curve_lower_err_real,
+            curve_upper_err_real,
+            x_axis_range_fictional,
+            curve_fictional,
+            curve_lower_err_fictional,
+            curve_upper_err_fictional,
+        )
 
-    def _check_curve_real_fictional_consistency(self, x_axis_range, curve, curve_lower_err, curve_upper_err, x_axis_range_real, curve_real,
-                                                curve_lower_err_real, curve_upper_err_real, x_axis_range_fictional, curve_fictional, curve_lower_err_fictional,
-                                                curve_upper_err_fictional):
-        """ Asserts that the real and fictional results add up correctly """
-        assert x_axis_range.shape == curve.shape == curve_lower_err.shape == curve_upper_err.shape, f"Shapes must be equal: {x_axis_range.shape=}, {curve.shape=}, {curve_lower_err.shape=}, {curve_upper_err.shape=}"
-        assert x_axis_range_real.shape == curve_real.shape == curve_lower_err_real.shape == curve_upper_err_real.shape, f"Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=}, {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"
-        assert x_axis_range_fictional.shape == curve_fictional.shape == curve_lower_err_fictional.shape == curve_upper_err_fictional.shape, f"Shapes must be equal: {x_axis_range_fictional.shape=}, {curve_fictional.shape=}, {curve_lower_err_fictional.shape=} {curve_upper_err_fictional.shape=}"
+    def _check_curve_real_fictional_consistency(
+        self,
+        x_axis_range,
+        curve,
+        curve_lower_err,
+        curve_upper_err,
+        x_axis_range_real,
+        curve_real,
+        curve_lower_err_real,
+        curve_upper_err_real,
+        x_axis_range_fictional,
+        curve_fictional,
+        curve_lower_err_fictional,
+        curve_upper_err_fictional,
+    ):
+        """Asserts that the real and fictional results add up correctly"""
+        assert (x_axis_range.shape == curve.shape == curve_lower_err.shape ==
+                curve_upper_err.shape), f"Shapes must be equal: {x_axis_range.shape=}, {curve.shape=}, {curve_lower_err.shape=}, {curve_upper_err.shape=}"
+        assert (x_axis_range_real.shape == curve_real.shape == curve_lower_err_real.shape == curve_upper_err_real.shape
+                ), f"Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=}, {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"
+        assert (
+            x_axis_range_fictional.shape == curve_fictional.shape == curve_lower_err_fictional.shape == curve_upper_err_fictional.shape
+        ), f"Shapes must be equal: {x_axis_range_fictional.shape=}, {curve_fictional.shape=}, {curve_lower_err_fictional.shape=} {curve_upper_err_fictional.shape=}"
         if x_axis_range_fictional.ndim > 0:
+            # if there is a fictional part, ensure that all the expected data is in the combined real and fictional parts
+            x_axis_range_combined = np.concatenate([x_axis_range_real, x_axis_range_fictional])
+            assert x_axis_range.shape == x_axis_range_combined.shape, f"The shapes of {x_axis_range.shape=} and {x_axis_range_combined.shape=} do not match"
             assert np.array_equal(x_axis_range, np.concatenate([x_axis_range_real, x_axis_range_fictional]), equal_nan=True)
             assert np.array_equal(curve, np.concatenate([curve_real, curve_fictional]), equal_nan=True)
             assert np.array_equal(curve_lower_err, np.concatenate([curve_lower_err_real, curve_lower_err_fictional]), equal_nan=True)
             assert np.array_equal(curve_upper_err, np.concatenate([curve_upper_err_real, curve_upper_err_fictional]), equal_nan=True)
         else:
+            # if there is no fictional part, ensure that all the expected data is in the real part
+            assert x_axis_range.shape == x_axis_range_real.shape, f"The shapes of {x_axis_range.shape=} and {x_axis_range_real.shape=} do not match"
             assert np.array_equal(x_axis_range, x_axis_range_real, equal_nan=True), f"Unequal arrays: {x_axis_range}, {x_axis_range_real}"
             assert np.array_equal(curve, curve_real, equal_nan=True), f"Unequal arrays: {curve}, {curve_real}"
             assert np.array_equal(curve_lower_err, curve_lower_err_real, equal_nan=True), f"Unequal arrays: {curve_lower_err}, {curve_lower_err_real}"
@@ -233,7 +300,7 @@ class StochasticOptimizationAlgorithm(Curve):
         return super().get_curve(range, x_type, dist, confidence_level)
 
     def _get_curve_over_fevals_values_in_range(self, fevals_range: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """ Get the valid fevals and values that are in the given range """
+        """Get the valid fevals and values that are in the given range"""
         assert fevals_range.ndim == 1
         assert np.all(np.isfinite(fevals_range))
         target_index: int = fevals_range[-1] - 1
@@ -399,7 +466,7 @@ class StochasticOptimizationAlgorithm(Curve):
         if dist is not None:
             # for each value, get the index in the distribution
             indices = get_indices_in_distribution(values_1D, dist)
-            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, npoints=num_fevals, package='sklearn')
+            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, npoints=num_fevals, package="sklearn")
             indices_curve = np.array(np.round(indices_curve), dtype=int)
             curve = dist[indices_curve]
         else:
@@ -421,7 +488,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # ----> optionally, values closer to x can be given more importance by taking 1 - (abs(x_test - x[i]) / sum(abs(x_test - x[i]) for each repeat))
 
         def index_of_nearest(array, value):
-            """ Find in the array the indices of the values closest to the given value (or values) """
+            """Find in the array the indices of the values closest to the given value (or values)"""
             idx = np.clip(np.searchsorted(array, value, side="left"), a_min=0, a_max=len(array) - 1)
             idx = idx - (np.abs(value - array[np.max(idx - 1, 0)]) < np.abs(value - array[idx]))
             return idx
@@ -525,7 +592,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
-        indices = get_indices_in_distribution(masked_values, searchspace_stats.objective_performances_total)
+        indices = get_indices_in_array(masked_values, searchspace_stats.objective_performances_total)
         average_index_at_feval = np.array(np.round(np.nanmedian(indices, axis=1)), dtype=int)
 
         # for each key, obtain the time at a feval
@@ -537,7 +604,7 @@ class StochasticOptimizationAlgorithm(Curve):
         return split_time_per_feval
 
     def get_confidence_interval(self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
-        """ Calculates the non-parametric confidence interval at each function evaluation for repeated function evaluations, assumed to be IID """
+        """Calculates the non-parametric confidence interval at each function evaluation for repeated function evaluations, assumed to be IID"""
         assert values.ndim == 2    # should be two-dimensional (iterations, repeats)
         if weights is not None:
             assert weights.shape == values.shape
@@ -546,8 +613,9 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # confidence interval using normal distribution assumption
         from statistics import NormalDist
+
         distribution = NormalDist()    # TODO check if binomial is more appropriate (calculate according to book)
-        z = distribution.inv_cdf((1 + confidence_level) / 2.)
+        z = distribution.inv_cdf((1 + confidence_level) / 2.0)
         n = values.shape[1]
         q = 0.5
         nq = n * q
@@ -571,14 +639,15 @@ class StochasticOptimizationAlgorithm(Curve):
         return confidence_interval_lower, confidence_interval_upper
 
     def get_confidence_interval_jagged(self, bins: list[np.ndarray], confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
-        """ Calculates the non-parametric confidence interval at each function evaluation for jagged bins, assumed to be IID, slower than get_confidence_interval() """
+        """Calculates the non-parametric confidence interval at each function evaluation for jagged bins, assumed to be IID, slower than get_confidence_interval()"""
         confidence_interval_lower = np.full(len(bins), np.nan)
         confidence_interval_upper = np.full(len(bins), np.nan)
 
         # confidence interval using normal distribution assumption
         from statistics import NormalDist
+
         distribution = NormalDist()    # TODO check if binomial is more appropriate (calculate according to book)
-        z = distribution.inv_cdf((1 + confidence_level) / 2.)
+        z = distribution.inv_cdf((1 + confidence_level) / 2.0)
         q = 0.5
 
         # for each bin, look up the confidence interval

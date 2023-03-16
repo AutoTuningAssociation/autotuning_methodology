@@ -111,6 +111,7 @@ class Visualize:
         plot_x_value_types: list = plot_settings.get("plot_x_value_types")
         plot_y_value_types: list = plot_settings.get("plot_y_value_types")
         compare_baselines: bool = plot_settings.get("compare_baselines", False)
+        compare_split_times: bool = plot_settings.get("compare_split_times", False)
 
         # visualize
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]] = list()
@@ -144,8 +145,10 @@ class Visualize:
                 if compare_baselines is True:
                     self.plot_baselines_comparison(time_range, searchspace_stats, objective_time_keys, title=title,
                                                    strategies_curves=[strategies_curves[0], strategies_curves[1]])
+                if compare_split_times is True:
                     self.plot_split_times_comparison(fevals_range, searchspace_stats, objective_time_keys, title=title,
-                                                     strategies_curves=[strategies_curves[1]])
+                                                     strategies_curves=[strategies_curves[0], strategies_curves[2]])
+                if compare_baselines is True or compare_split_times is True:
                     continue
 
                 # get the random baseline
@@ -192,7 +195,7 @@ class Visualize:
                         plt.show()
 
         # plot the aggregated searchspaces
-        if 'aggregated' in plot_x_value_types:
+        if 'aggregated' in plot_x_value_types and not (compare_baselines or compare_split_times):
             fig, axs = plt.subplots(ncols=1, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
             if not hasattr(axs, "__len__"):
                 axs = [axs]
@@ -256,7 +259,7 @@ class Visualize:
         """ Plots a comparison of split times for strategies and baselines """
         # list the baselines to test
         baselines: list[Baseline] = list()
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_per_feval'))
+        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_per_feval'))
         lines = strategies_curves + baselines
 
         # setup the subplots
@@ -537,7 +540,8 @@ def is_ran_as_notebook() -> bool:
 if __name__ == "__main__":
     is_notebook = is_ran_as_notebook()
     if is_notebook:
-        experiment_filepath = 'test_random_calculated'
+        # experiment_filepath = 'test_random_calculated'
+        experiment_filepath = 'methodology_paper_example'
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
         experiment_filepath = get_args_from_cli()

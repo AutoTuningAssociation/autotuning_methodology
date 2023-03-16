@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from math import ceil
 import numpy as np
 
-from autotuning_methodology.curves import Curve, get_indices_in_distribution
+from autotuning_methodology.curves import Curve, get_indices_in_distribution, get_indices_in_array
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
@@ -209,7 +209,9 @@ class RandomSearchCalculatedBaseline(Baseline):
 
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         random_curve = self.get_curve_over_fevals(fevals_range)
-        index_at_feval = get_indices_in_distribution(random_curve, searchspace_stats.objective_performances_total)
+        index_at_feval = get_indices_in_array(random_curve, searchspace_stats.objective_performances_total)
+        assert not np.all(np.isnan(index_at_feval))
+        index_at_feval = index_at_feval.astype(int)
 
         # for each key, obtain the time at a feval
         objective_time_keys = searchspace_stats.objective_time_keys
