@@ -125,8 +125,22 @@ class Curve(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """Get the times at each point in range split into objective_time_keys"""
+        if x_type == "fevals":
+            return self.get_split_times_at_feval(range, searchspace_stats)
+        elif x_type == "time":
+            return self.get_split_times_at_time(range, searchspace_stats)
+        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
+
+    @abstractmethod
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         """Get the times at each function eval in the range split into objective_time_keys"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """Get the times at each time point in the range split into objective_time_keys"""
         raise NotImplementedError()
 
     def fevals_find_pad_width(self, array: np.ndarray, target_array: np.ndarray) -> tuple[int, int]:
@@ -203,8 +217,14 @@ class DeterministicOptimizationAlgorithm(Curve):
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> np.ndarray:
         return super().get_curve_over_time(time_range, dist, confidence_level)
 
+    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics):
+        return super().get_split_times(range, x_type, searchspace_stats)
+
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         return super().get_split_times_at_feval(fevals_range, searchspace_stats)
+
+    def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times_at_time(fevals_range, searchspace_stats)
 
 
 class StochasticOptimizationAlgorithm(Curve):
@@ -423,11 +443,10 @@ class StochasticOptimizationAlgorithm(Curve):
         # return the curves split in real and fictional
         return self._get_curve_split_real_fictional_parts(real_stopping_point_index + 1, fevals_range, curve, curve_lower_err, curve_upper_err)
 
-    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
+    def _get_curve_over_time_values_in_range(self, time_range: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+        """Get the valid times and values that are in the given range"""
         assert time_range.ndim == 1
         assert np.all(np.isfinite(time_range))
-        if dist is not None:
-            assert dist.ndim == 1
 
         times = self._x_time
         values = self._y
@@ -443,7 +462,7 @@ class StochasticOptimizationAlgorithm(Curve):
         times_no_nan[np.isnan(values)] = np.nan    # to count only valid configurations towards highest time
         highest_time_per_repeat = np.nanmax(times_no_nan, axis=0)
         assert highest_time_per_repeat.shape[0] == num_repeats
-        real_stopping_point_time = np.nanmedian(highest_time_per_repeat)
+        real_stopping_point_time: float = np.nanmedian(highest_time_per_repeat)
 
         # filter to get the time range with a margin on both ends for the isotonic regression
         time_range_margin = 0.1
@@ -451,7 +470,7 @@ class StochasticOptimizationAlgorithm(Curve):
         assert np.all(np.count_nonzero(range_mask_margin, axis=0) > 1), "Not enough overlap in time range and time values"
         times = np.where(range_mask_margin, times, np.nan)
         values = np.where(range_mask_margin, values, np.nan)
-        num_fevals, num_repeats = values.shape
+        num_repeats = values.shape[1]
 
         # remove all NaNs, yielding a 1D array (because iterations has no meaning for over time anyway, and isotonic regression requires a 1D array)
         no_nan_mask = ~np.isnan(times) & ~np.isnan(values)    # only keep indices where both the times and values are not NaN
@@ -462,8 +481,15 @@ class StochasticOptimizationAlgorithm(Curve):
         assert np.all(~np.isnan(times_1D))
         assert np.all(~np.isnan(values_1D))
 
+        return times, values, times_1D, values_1D, real_stopping_point_time
+
+    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
+        times, values, times_1D, values_1D, real_stopping_point_time = self._get_curve_over_time_values_in_range(time_range)
+        num_fevals = values.shape[0]
+
         # if a distribution is included
         if dist is not None:
+            assert dist.ndim == 1
             # for each value, get the index in the distribution
             indices = get_indices_in_distribution(values_1D, dist)
             indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, npoints=num_fevals, package="sklearn")
@@ -590,18 +616,37 @@ class StochasticOptimizationAlgorithm(Curve):
 
         return self._get_curve_split_real_fictional_parts(real_stopping_point_index, time_range, curve, curve_lower_err, curve_upper_err)
 
+    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times(range, x_type, searchspace_stats)
+
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
         indices = get_indices_in_array(masked_values, searchspace_stats.objective_performances_total)
         average_index_at_feval = np.array(np.round(np.nanmedian(indices, axis=1)), dtype=int)
 
-        # for each key, obtain the time at a feval
+        # for each time key, obtain the time at the fevals in fevals_range
         objective_time_keys = searchspace_stats.objective_time_keys
         split_time_per_feval = np.empty((len(objective_time_keys), average_index_at_feval.shape[0]))
         for key_index, key in enumerate(objective_time_keys):
             split_time_per_feval[key_index] = searchspace_stats.objective_times_array[key_index, average_index_at_feval]
 
         return split_time_per_feval
+
+    def get_split_times_at_time(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        times, values, times_1D, values_1D, _ = self._get_curve_over_time_values_in_range(time_range)
+
+        # get the index in searchspace at each value
+        searchspace_indices = get_indices_in_array(values_1D, searchspace_stats.objective_performances_total)
+
+        # for each time key, obtain the time at the times in time_range
+        objective_time_keys = searchspace_stats.objective_time_keys
+        split_time_per_timestamp = np.full((len(objective_time_keys), time_range.shape[0]), np.NaN)
+        for key_index, key in enumerate(objective_time_keys):
+            nan_mask = ~np.isnan(searchspace_indices)
+            time_1D = searchspace_stats.objective_times_array[key_index, searchspace_indices[nan_mask].astype(int)]
+            split_time_per_timestamp[key_index] = np.interp(time_range, times_1D[nan_mask], time_1D)
+
+        return split_time_per_timestamp
 
     def get_confidence_interval(self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
         """Calculates the non-parametric confidence interval at each function evaluation for repeated function evaluations, assumed to be IID"""

@@ -32,6 +32,25 @@ class Baseline(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """Get the times at each point in range split into objective_time_keys"""
+        if x_type == "fevals":
+            return self.get_split_times_at_feval(range, searchspace_stats)
+        elif x_type == "time":
+            return self.get_split_times_at_time(range, searchspace_stats)
+        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
+
+    @abstractmethod
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """Get the times at each function eval in the range split into objective_time_keys"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """Get the times at each time point in the range split into objective_time_keys"""
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
         """Substract the baseline curve from the provided strategy curves, yielding standardised strategy curves"""
         absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
@@ -74,14 +93,20 @@ class StochasticCurveBasedBaseline(Baseline):
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
         return self.curve.get_curve_over_time(time_range)
 
+    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics):
+        return super().get_split_times(range, x_type, searchspace_stats)
+
+    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times_at_feval(fevals_range, searchspace_stats)
+
+    def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times_at_time(fevals_range, searchspace_stats)
+
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
 
     def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
         return super().get_standardised_curves(range, strategy_curves, x_type)
-
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        return super().get_split_times_at_feval(fevals_range, searchspace_stats)
 
 
 class RandomSearchCalculatedBaseline(Baseline):
@@ -207,6 +232,9 @@ class RandomSearchCalculatedBaseline(Baseline):
     def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
         return super().get_standardised_curves(range, strategy_curves, x_type)
 
+    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times(range, x_type, searchspace_stats)
+
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         random_curve = self.get_curve_over_fevals(fevals_range)
         index_at_feval = get_indices_in_array(random_curve, searchspace_stats.objective_performances_total)
@@ -220,6 +248,9 @@ class RandomSearchCalculatedBaseline(Baseline):
             split_time_per_feval[key_index] = searchspace_stats.objective_times_array[key_index, index_at_feval]
 
         return split_time_per_feval
+
+    def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times_at_time(fevals_range, searchspace_stats)
 
 
 class RandomSearchSimulatedBaseline(Baseline):
@@ -298,6 +329,12 @@ class RandomSearchSimulatedBaseline(Baseline):
 
     def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
         return super().get_standardised_curves(range, strategy_curves, x_type)
+
+    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times(range, x_type, searchspace_stats)
+
+    def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        return super().get_split_times_at_time(fevals_range, searchspace_stats)
 
     def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         return super().get_split_times_at_feval(fevals_range, searchspace_stats)
