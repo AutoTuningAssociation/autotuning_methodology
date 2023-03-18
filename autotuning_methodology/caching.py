@@ -15,6 +15,8 @@ class Results():
         self.objective_performance_results = numpy_arrays[2]
         self.objective_performance_best_results = numpy_arrays[3]
         self.objective_performance_stds = numpy_arrays[4]
+        self.objective_time_results_per_key = numpy_arrays[5]
+        self.objective_performance_results_per_key = numpy_arrays[6]
 
 
 class ResultsDescription():
@@ -23,7 +25,7 @@ class ResultsDescription():
     def __init__(self, folder_id: str, kernel_name: str, device_name: str, strategy_name: str, strategy_display_name: str, stochastic: bool,
                  objective_time_keys: list[str], objective_performance_keys: list[str], minimization: bool) -> None:
         # all attributes must be hashable for symetric difference checking
-        self._version = "1.2.0"
+        self._version = "1.3.0"
         self.__stored = False
         self.__folder_id = folder_id
         self.kernel_name = kernel_name
@@ -35,8 +37,9 @@ class ResultsDescription():
         self.objective_performance_keys = objective_performance_keys
         self.minimization = minimization
         self.numpy_arrays_keys = [
-            'fevals_results', 'objective_time_results', 'objective_performance_results', 'objective_performance_best_results', 'objective_performance_stds'
-        ]    # the order must not be changed here!
+            'fevals_results', 'objective_time_results', 'objective_performance_results', 'objective_performance_best_results', 'objective_performance_stds',
+            'objective_time_results_per_key', 'objective_performance_results_per_key'
+        ]    # the order must not be changed here! see 'numpy_arrays' in runner.py
 
     def is_same_as(self, other: ResultsDescription) -> bool:
         """ Check for equality against another ResultsDescription object """

@@ -22,7 +22,9 @@ def get_indices_in_distribution(draws: np.ndarray, dist: np.ndarray, sorter=None
 
     # check whether each value of draws (excluding NaN) is in dist
     if not skip_draws_check:
-        assert np.all(np.in1d(draws[~np.isnan(draws)], dist)), f"Each value in draws should be in dist"
+        assert np.all(
+            np.in1d(draws[~np.isnan(draws)],
+                    dist)), f"Each value in draws should be in dist, but these are missing: {draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)]}"
 
     # check the sorter
     if sorter is not None:
@@ -74,6 +76,8 @@ class Curve(ABC):
         self._x_fevals = results.fevals_results    # the time per objective value in number of function evaluations since start (1d if deterministic, 2d if stochastic)
         self._x_time = results.objective_time_results    # the time per objective value in seconds since start the raw x-axis (1d if deterministic, 2d if stochastic)
         self._y = results.objective_performance_best_results    # the objective performances (1d if deterministic, 2d if stochastic)
+        self._x_time_per_key = results.objective_time_results_per_key
+        self._y_per_key = results.objective_performance_results_per_key
 
         # complete initialisation
         self.check_attributes()
@@ -639,7 +643,7 @@ class StochasticOptimizationAlgorithm(Curve):
         searchspace_indices = get_indices_in_array(values_1D, searchspace_stats.objective_performances_total)
 
         # for each time key, obtain the time at the times in time_range
-        objective_time_keys = searchspace_stats.objective_time_keys
+        objective_time_keys = searchspace_stats.objective_time_keys    # TODO use _x_time_per_key instead
         split_time_per_timestamp = np.full((len(objective_time_keys), time_range.shape[0]), np.NaN)
         for key_index, key in enumerate(objective_time_keys):
             nan_mask = ~np.isnan(searchspace_indices)

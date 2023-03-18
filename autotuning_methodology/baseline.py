@@ -147,38 +147,6 @@ class RandomSearchCalculatedBaseline(Baseline):
         """Monte Carlo simulation over cache"""
         return np.random.choice(xs, size=k, replace=False)
 
-    def _get_indices(self, draws: np.ndarray, dist: np.ndarray = None) -> np.ndarray:
-        """For each draw, get the index (position) in the distribution"""
-        if dist is None:
-            dist = self.dist_descending
-        indices_found = list()
-        if draws.ndim == 1:
-            for x in draws:
-                indices_per_trial = list()
-                if not np.isnan(x):
-                    indices = np.where(x == dist)[0]
-                    indices = round(np.mean(indices))
-                    indices_found.append(indices)
-                else:
-                    indices_per_trial.append(np.NaN)
-            # indices = np.concatenate([np.where(x == dist) for x in draws]).flatten()
-        elif draws.ndim == 2:
-            for y in draws:
-                indices_per_trial = list()
-                for x in y:
-                    if not np.isnan(x):
-                        indices = np.where(x == dist)[0]
-                        indices = round(np.mean(indices))
-                        indices_per_trial.append(indices)
-                    else:
-                        indices_per_trial.append(np.NaN)
-                indices_found.append(indices_per_trial)
-            # indices = [np.concatenate([np.where(x == dist) for x in y]).flatten() for y in draws]
-        else:
-            raise Exception("Expected draws to be 1D or 2D")
-        indices_found = np.array(indices_found)
-        return indices_found
-
     def _redwhite_index(self, M: int) -> float:
         """Get the expected index in the distribution for a budget in number of function evaluations M"""
         assert M >= 0, f"M must be >= 0, is {M}"

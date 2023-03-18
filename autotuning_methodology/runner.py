@@ -25,7 +25,7 @@ def is_invalid_objective_performance(objective_performance: float) -> bool:
 
 def is_invalid_objective_time(objective_time: float) -> bool:
     """ Returns whether an objective time is invalid """
-    return np.isnan(objective_time)
+    return np.isnan(objective_time) or objective_time < 0
 
 
 def sum_inner_iterables(objective_value, performance: bool):
@@ -112,7 +112,6 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
             if attempt > 0:
                 report_multiple_attempts(rep, len_res, strategy['repeats'])
             res, total_time_ms = tune(kernel, results_description.kernel_name, results_description.device_name, strategy, tune_options, profiling)
-            # TODO continue here with confidence interval
             len_res: int = len(res)
             # check if there are only invalid configs in the first min_num_evals, if so, try again
             temp_res_filtered = list(t for t in res[:min_num_evals] if not is_invalid_objective_performance(t['time']))
@@ -156,6 +155,8 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
     objective_performance_results = get_nan_array()
     objective_performance_best_results = get_nan_array()
     objective_performance_stds = get_nan_array()
+    objective_time_results_per_key = get_nan_array()
+    objective_performance_results_per_key = get_nan_array()
 
     # combine the results
     opt_func = np.nanmin if results_description.minimization is True else np.nanmax
@@ -165,19 +166,33 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         objective_performance_best = np.nan
         for evaluation_index, evaluation in enumerate(repeat):
 
-            # obtain the objective time
-            objective_times = list(filter(None, (sum_inner_iterables(evaluation[key], performance=False) for key in objective_time_keys if key in evaluation)))
-            if len(objective_times) >= 1:
-                objective_time = sum(objective_times)
+            # obtain the objective time per key
+            objective_times_list = list()
+            for key in objective_time_keys:
+                if key in evaluation:
+                    key_sum_result = sum_inner_iterables(evaluation[key], performance=False)
+                    if key_sum_result is not None and not is_invalid_objective_time(key_sum_result):
+                        key_sum_result = key_sum_result / 1000    # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
+                        objective_time_results_per_key[evaluation_index, repeat_index] = key_sum_result
+                        objective_times_list.append(key_sum_result)
+            # sum the objective times of the keys
+            if len(objective_times_list) >= 1:
+                objective_time = sum(objective_times_list)
                 if not is_invalid_objective_time(objective_time):
-                    cumulative_objective_time += (objective_time / 1000)    # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
+                    cumulative_objective_time += objective_time
                     objective_time_results[evaluation_index, repeat_index] = cumulative_objective_time
 
-            # obtain the objective performance
-            objective_performances = list(
-                filter(None, (sum_inner_iterables(evaluation[key], performance=True) for key in objective_performance_keys if key in evaluation)))
-            if len(objective_performances) >= 1:
-                objective_performance = sum(objective_performances)
+            # obtain the objective time per key
+            objective_performances_list = list()
+            for key in objective_time_keys:
+                if key in evaluation:
+                    key_sum_result = sum_inner_iterables(evaluation[key], performance=True)
+                    if key_sum_result is not None and not is_invalid_objective_performance(key_sum_result):
+                        objective_performance_results_per_key[evaluation_index, repeat_index] = key_sum_result
+                        objective_performances_list.append(key_sum_result)
+            # sum the objective performances of the keys
+            if len(objective_performances_list) >= 1:
+                objective_performance = sum(objective_performances_list)
                 if not is_invalid_objective_performance(objective_performance):
                     objective_performance_results[evaluation_index, repeat_index] = objective_performance
                     objective_performance_best = opt_func([objective_performance, objective_performance_best])
@@ -195,6 +210,8 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         'objective_time_results': objective_time_results,
         'objective_performance_results': objective_performance_results,
         'objective_performance_best_results': objective_performance_best_results,
-        'objective_performance_stds': objective_performance_stds
+        'objective_performance_stds': objective_performance_stds,
+        'objective_time_results_per_key': objective_time_results_per_key,
+        'objective_performance_results_per_key': objective_performance_results_per_key,
     }
     return results_description.set_results(numpy_arrays)
