@@ -8,7 +8,8 @@
     "convolution"
   ],
   "GPUs": [
-    "RTX_2080_Ti"
+    "RTX_2080_Ti",
+    "RTX_3090"
   ],
   "minimization": true,
   "resolution": 1e3,
