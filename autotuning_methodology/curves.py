@@ -535,10 +535,10 @@ class StochasticOptimizationAlgorithm(Curve):
             return idx
 
         # for each repeat, look up the index of the value closest to each time in the time range
-        closest_indices = np.empty((masked_times.shape[1], time_range.shape[0]))
-        closest_indices_times = np.empty_like(closest_indices)
-        closest_indices_values = np.empty_like(closest_indices)
-        closest_indices_indices = np.empty_like(closest_indices)
+        closest_indices = np.full((masked_times.shape[1], time_range.shape[0]), np.NaN)
+        closest_indices_times = np.full_like(closest_indices, np.NaN)
+        closest_indices_values = np.full_like(closest_indices, np.NaN)
+        closest_indices_indices = np.full_like(closest_indices, np.NaN)
         masked_indices = get_indices_in_distribution(masked_values, dist)
         for repeat in range(masked_times.shape[1]):
             closest_indices_at_repeat = index_of_nearest(masked_times[:, repeat], time_range)
@@ -653,7 +653,7 @@ class StochasticOptimizationAlgorithm(Curve):
             time_in_range_per_key[key_index] = masked_time_per_key[key_index][all_nan_mask]
 
         # get the median time per key at each repeat
-        split_time_per_feval = np.empty((num_keys, fevals_range.shape[0]))
+        split_time_per_feval = np.full((num_keys, fevals_range.shape[0]), np.NaN)
         for key_index in range(num_keys):
             split_time_per_feval[key_index] = np.mean(time_in_range_per_key[key_index], axis=1)
         assert split_time_per_feval.shape == (num_keys, fevals_range.shape[0]), f"{split_time_per_feval.shape} != {(num_keys, fevals_range.shape[0])}"

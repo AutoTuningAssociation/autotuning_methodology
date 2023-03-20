@@ -211,7 +211,7 @@ class RandomSearchCalculatedBaseline(Baseline):
 
         # for each key, obtain the time at a feval
         objective_time_keys = searchspace_stats.objective_time_keys
-        split_time_per_feval = np.empty((len(objective_time_keys), index_at_feval.shape[0]))
+        split_time_per_feval = np.full((len(objective_time_keys), index_at_feval.shape[0]), np.NaN)
         for key_index, key in enumerate(objective_time_keys):
             split_time_per_feval[key_index] = searchspace_stats.objective_times_array[key_index, index_at_feval]
 

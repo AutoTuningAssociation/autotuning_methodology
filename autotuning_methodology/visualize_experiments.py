@@ -146,10 +146,12 @@ class Visualize:
                     self.plot_baselines_comparison(time_range, searchspace_stats, objective_time_keys, title=title,
                                                    strategies_curves=[strategies_curves[0], strategies_curves[1]])
                 if compare_split_times is True:
-                    self.plot_split_times_comparison('fevals', fevals_range, searchspace_stats, objective_time_keys, title=title,
-                                                     strategies_curves=[strategies_curves[0], strategies_curves[2]])
-                    self.plot_split_times_comparison('time', time_range, searchspace_stats, objective_time_keys, title=title,
-                                                     strategies_curves=[strategies_curves[0], strategies_curves[2]])
+                    # self.plot_split_times_comparison('fevals', fevals_range, searchspace_stats, objective_time_keys, title=title,
+                    #                                  strategies_curves=[strategies_curves[0], strategies_curves[2]])
+                    # self.plot_split_times_comparison('time', time_range, searchspace_stats, objective_time_keys, title=title,
+                    #                                  strategies_curves=[strategies_curves[0], strategies_curves[2]])
+                    self.plot_split_times_bar_comparison('time', time_range, searchspace_stats, objective_time_keys, title=title,
+                                                         strategies_curves=strategies_curves)
                 if compare_baselines is True or compare_split_times is True:
                     continue
 
@@ -258,7 +260,7 @@ class Visualize:
 
     def plot_split_times_comparison(self, x_type: str, fevals_or_time_range: np.ndarray, searchspace_stats: SearchspaceStatistics, objective_time_keys: list,
                                     title: str = None, strategies_curves: list[Curve] = list()):
-        """ Plots a comparison of split times for strategies and baselines """
+        """ Plots a comparison of split times for strategies and baselines over the given range """
         # list the baselines to test
         baselines: list[Baseline] = list()
         # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_per_feval'))
@@ -303,6 +305,42 @@ class Visualize:
         handles, labels = ax.get_legend_handles_labels()
         fig.legend(handles, labels)
         fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
+        fig.tight_layout()
+        plt.show()
+
+    def plot_split_times_bar_comparison(self, x_type: str, fevals_or_time_range: np.ndarray, searchspace_stats: SearchspaceStatistics,
+                                        objective_time_keys: list, title: str = None, strategies_curves: list[Curve] = list()):
+        """ Plots a comparison of the average split times for strategies over the given range """
+        fig, ax = plt.subplots(dpi=200)
+        width = 0.5
+        strategy_label_list = list()
+
+        # get a dictionary of {time_key: [array_average_time_per_strategy]}
+        data_dict = dict.fromkeys(objective_time_keys)
+        for objective_time_key in objective_time_keys:
+            data_dict[objective_time_key] = np.full((len(strategies_curves)), np.NaN)
+        for strategy_index, strategy_curve in enumerate(strategies_curves):
+            strategy_label_list.append(strategy_curve.display_name)
+            strategy_split_times = strategy_curve.get_split_times(fevals_or_time_range, x_type, searchspace_stats)
+            # print(f"{strategy_curve.display_name}: ({strategy_split_times.shape})")
+            for objective_time_key_index, objective_time_key in enumerate(objective_time_keys):
+                key_split_times = strategy_split_times[objective_time_key_index]
+                key_split_times = key_split_times[key_split_times > 0]
+                data_dict[objective_time_key][strategy_index] = np.median(key_split_times)
+                # print(f"    {objective_time_key}: {key_split_times[key_split_times > 0].shape}, {np.mean(key_split_times)}, {np.median(key_split_times)}")
+
+        # plot the bars
+        bottom = np.zeros(len(strategies_curves))
+        for objective_time_key, objective_times in data_dict.items():
+            objective_times = np.array(objective_times)
+            ax.bar(strategy_label_list, objective_times, width, label=objective_time_key, bottom=bottom)
+            bottom += objective_times
+
+        # finalize the plot
+        ax.set_ylabel(self.get_x_axis_label(x_type, objective_time_keys))
+        ax.legend()
+        # ax.set_title(title)
+        # fig.supxlabel("Median split times per optimization algorithm")
         fig.tight_layout()
         plt.show()
 
