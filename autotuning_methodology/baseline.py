@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from math import ceil
 import numpy as np
+from typing import Callable
 
 from autotuning_methodology.curves import Curve, get_indices_in_distribution, get_indices_in_array
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
@@ -8,6 +9,8 @@ from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 class Baseline(ABC):
     """Class to use as a baseline for Curves in plots"""
+
+    label: str
 
     def __init__(self) -> None:
         super().__init__()
@@ -81,6 +84,7 @@ class StochasticCurveBasedBaseline(Baseline):
 
     def __init__(self, curve: Curve) -> None:
         self.curve = curve
+        self.label = "StochasticCurveBasedBaseline"
         self.minimization = curve.minimization
         super().__init__()
 
@@ -112,10 +116,12 @@ class StochasticCurveBasedBaseline(Baseline):
 class RandomSearchCalculatedBaseline(Baseline):
     """Baseline object using calculated random search without replacement"""
 
-    def __init__(self, searchspace_stats: SearchspaceStatistics, include_nan: bool = True, time_per_feval_operator: str = "median_per_feval") -> None:
+    def __init__(self, searchspace_stats: SearchspaceStatistics, include_nan=False, time_per_feval_operator: str = "mean_per_feval",
+                 simulate: bool = False) -> None:
         self.searchspace_stats = searchspace_stats
         self.time_per_feval_operator = time_per_feval_operator
-        self.label = f"Calculated baseline, {include_nan=}, {time_per_feval_operator=}"
+        self.simulate = simulate
+        self.label = f"Calculated baseline, {include_nan=}, {time_per_feval_operator=}, {simulate=}"
         self.dist_best_first = searchspace_stats.objective_performances_total_sorted_nan
         self.dist_ascending = searchspace_stats.objective_performances_total_sorted
         self.dist_descending = self.dist_ascending[::-1]
@@ -147,23 +153,23 @@ class RandomSearchCalculatedBaseline(Baseline):
         """Monte Carlo simulation over cache"""
         return np.random.choice(xs, size=k, replace=False)
 
-    def _redwhite_index(self, M: int) -> float:
+    def _redwhite_index(self, M: int, N: int) -> float:
         """Get the expected index in the distribution for a budget in number of function evaluations M"""
         assert M >= 0, f"M must be >= 0, is {M}"
-        # N = self.searchspace_stats.size
-        N = self._redwhite_index_dist.shape[0]
         index = round(M * (N + 1) / (M + 1))
         index = min(N - 1, index)
         return index
 
-    def _redwhite_index_value(self, M: int) -> float:
+    def _redwhite_index_value(self, M: int, N: int, dist: np.ndarray) -> float:
         """Get the expected value in the distribution for a budget in number of function evaluations M"""
-        return self._redwhite_index_dist[self._redwhite_index(M)]
+        return dist[self._redwhite_index(M, N)]
 
     def _get_random_curve(self, fevals_range: np.ndarray) -> np.ndarray:
         """Returns the drawn values of the random curve at each number of function evaluations"""
         ks = fevals_range
-        draws = np.array([self._redwhite_index_value(k) for k in ks])
+        dist = self._redwhite_index_dist
+        N = dist.shape[0]
+        draws = np.array([self._redwhite_index_value(k, N, dist) for k in ks])
         return draws
 
     def _draw_random(self, xs: np.ndarray, k: int):
@@ -179,7 +185,7 @@ class RandomSearchCalculatedBaseline(Baseline):
         dist = self.dist_descending
         opt_func = np.min if self.searchspace_stats.minimization else np.max
         results = np.array([self._stats_max(dist, budget, trials, opt_func) for budget in fevals_range])
-        val_indices = get_indices_in_distribution(results)
+        val_indices = get_indices_in_array(results, dist)
         # Find the mean index per list of trial runs per function evaluation.
         mean_indices = [round(x) for x in val_indices.mean(axis=1)]
         val_results_index_mean = dist[mean_indices]
@@ -189,10 +195,13 @@ class RandomSearchCalculatedBaseline(Baseline):
         return super().get_curve(range, x_type)
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
+        if self.simulate:
+            return self._get_random_curve_means(fevals_range)
         return self._get_random_curve(fevals_range)
 
     def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        return self._get_random_curve(self.time_to_fevals(time_range))
+        fevals_range = self.time_to_fevals(time_range)
+        return self.get_curve_over_fevals(fevals_range)
 
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
@@ -224,13 +233,16 @@ class RandomSearchCalculatedBaseline(Baseline):
 class RandomSearchSimulatedBaseline(Baseline):
     """Baseline object using simulated random search"""
 
-    def __init__(self, searchspace_stats: SearchspaceStatistics, repeats: int = 500, limit_fevals: int = None, index=True, flatten=True) -> None:
+    def __init__(self, searchspace_stats: SearchspaceStatistics, repeats: int = 500, limit_fevals: int = None, index=True, flatten=True, index_avg='mean',
+                 performance_avg='mean') -> None:
         self.searchspace_stats = searchspace_stats
-        self.label = f"Simulated baseline, {repeats} repeats ({'index' if index else 'performance'}, {'flattened' if flatten else 'accumulated'})"
+        self.label = f"Simulated baseline, {repeats} repeats ({'index' if index else 'performance'}, {'flattened' if flatten else 'accumulated'}{'' if index_avg == 'mean' else ', index-median'}{'' if performance_avg == 'mean' else ', performance-median'})"
         self.use_index = index
-        self._simulate(repeats, limit_fevals, index, flatten)
+        index_average_func = np.nanmean if index_avg == 'mean' else np.nanmedian
+        performance_average_func = np.nanmean if performance_avg == 'mean' else np.nanmedian
+        self._simulate(repeats, limit_fevals, index, flatten, index_average_func, performance_average_func)
 
-    def _simulate(self, repeats: int, limit_fevals: int, index: bool, flatten: bool):
+    def _simulate(self, repeats: int, limit_fevals: int, index: bool, flatten: bool, index_average_func: Callable, performance_average_func: Callable):
         """Simulate running random search over half of the search space or limit_fevals [repeats] times"""
         opt_func = np.fmin if self.searchspace_stats.minimization else np.fmax
         time_array = self.searchspace_stats.objective_times_total
@@ -253,8 +265,8 @@ class RandomSearchSimulatedBaseline(Baseline):
         assert times_at_feval.shape == best_performances_at_feval.shape == best_indices_at_feval.shape == target_shape
 
         # accumulate if necessary
-        self.index_at_feval: np.ndarray = np.nanmean(best_indices_at_feval, axis=0)
-        self.performance_at_feval: np.ndarray = np.nanmean(best_performances_at_feval, axis=0)
+        self.index_at_feval: np.ndarray = index_average_func(best_indices_at_feval, axis=0)
+        self.performance_at_feval: np.ndarray = performance_average_func(best_performances_at_feval, axis=0)
         if not flatten:
             self.time_at_feval: np.ndarray = np.nanmean(times_at_feval, axis=0)
             assert self.time_at_feval.shape == self.index_at_feval.shape == self.performance_at_feval.shape == (size, )

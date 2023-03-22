@@ -197,8 +197,8 @@ class Curve(ABC):
             from sklearn.isotonic import IsotonicRegression
             import warnings
 
-            if npoints != 1000:
-                warnings.warn("npoints argument is impotent for sklearn package")
+            # if npoints != 1000:
+            #     warnings.warn("npoints argument is impotent for sklearn package") # TODO look into what to do about the segments
             if power != 2:
                 warnings.warn("power argument is impotent for sklearn package")
             ir = IsotonicRegression(increasing=increasing, y_min=ymin, y_max=ymax, out_of_bounds="clip")

@@ -5,10 +5,6 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
-import sys
-
-sys.path.append("..")
-
 from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
 from autotuning_methodology.curves import Curve, StochasticOptimizationAlgorithm
 from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline, RandomSearchSimulatedBaseline
@@ -143,8 +139,7 @@ class Visualize:
 
                 # compare baselines
                 if compare_baselines is True:
-                    self.plot_baselines_comparison(time_range, searchspace_stats, objective_time_keys, title=title,
-                                                   strategies_curves=[strategies_curves[0], strategies_curves[1]])
+                    self.plot_baselines_comparison(time_range, searchspace_stats, objective_time_keys, title=title, strategies_curves=[strategies_curves[0]])
                 if compare_split_times is True:
                     # self.plot_split_times_comparison('fevals', fevals_range, searchspace_stats, objective_time_keys, title=title,
                     #                                  strategies_curves=[strategies_curves[0], strategies_curves[2]])
@@ -157,7 +152,11 @@ class Visualize:
 
                 # get the random baseline
                 random_baseline = RandomSearchCalculatedBaseline(searchspace_stats)
-                # random_baseline = RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000)
+
+                # set additional baselines for comparison
+                baselines_extra: list[Baseline] = []
+                # baselines_extra.append(RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000))
+                # baselines_extra.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True))
 
                 # collect aggregatable data
                 aggregation_data.append(tuple([random_baseline, strategies_curves, searchspace_stats, time_range]))
@@ -174,7 +173,7 @@ class Visualize:
                         raise ValueError(f"Invalid {x_type=}")
 
                     # create the figure and plots
-                    fig, axs = plt.subplots(nrows=len(plot_y_value_types), ncols=1, figsize=(9, 3 * len(plot_y_value_types)), sharex=True)
+                    fig, axs = plt.subplots(nrows=len(plot_y_value_types), ncols=1, figsize=(9, 3 * len(plot_y_value_types)), sharex=True, dpi=300)
                     if not hasattr(axs, "__len__"):    # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
                         axs = [axs]
                     fig.canvas.manager.set_window_title(title)
@@ -183,7 +182,8 @@ class Visualize:
 
                     # plot the subplots of individual searchspaces
                     for index, y_type in enumerate(plot_y_value_types):
-                        self.plot_strategies(x_type, y_type, axs[index], searchspace_stats, strategies_curves, x_axis_range, plot_settings, random_baseline)
+                        self.plot_strategies(x_type, y_type, axs[index], searchspace_stats, strategies_curves, x_axis_range, plot_settings, random_baseline,
+                                             baselines_extra=baselines_extra)
                         if index == 0:
                             loc = 'lower right' if y_type == 'normalized' else 'best'
                             axs[index].legend(loc=loc)
@@ -200,7 +200,7 @@ class Visualize:
 
         # plot the aggregated searchspaces
         if 'aggregated' in plot_x_value_types and not (compare_baselines or compare_split_times):
-            fig, axs = plt.subplots(ncols=1, figsize=(9, 6))    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+            fig, axs = plt.subplots(ncols=1, figsize=(9, 6), dpi=300)    # if multiple subplots, pass the axis to the plot function with axs[0] etc.
             if not hasattr(axs, "__len__"):
                 axs = [axs]
             title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
@@ -222,19 +222,13 @@ class Visualize:
                                   strategies_curves: list[Curve] = list()):
         """ Plots a comparison of baselines on a time range, optionally also compares against strategies listed in strategies_curves """
         dist = searchspace_stats.objective_performances_total_sorted
+        fig = plt.figure(figsize=(8, 5), dpi=300)
 
         # list the baselines to test
         baselines: list[Baseline] = list()
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median'))    # +3: 3
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='mean'))    # +1: 2, 4
-        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median_nan'))
-        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_nan'))
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_per_feval'))    # +3: 1, 2, 4
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median_per_feval'))    # +1: 1, 3
-        # baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=True, flatten=True))
-        # baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=True, flatten=False))
-        # baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=False, flatten=True))
-        # baselines.append(RandomSearchSimulatedBaseline(searchspace_stats, 1000, None, index=False, flatten=False))
+        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median'))
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, time_per_feval_operator='mean'))
+        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_per_feval'))
 
         # plot random baseline implementations
         for baseline in baselines:
@@ -345,7 +339,8 @@ class Visualize:
         plt.show()
 
     def plot_strategies(self, x_type: str, y_type: str, ax: plt.Axes, searchspace_stats: SearchspaceStatistics, strategies_curves: list[Curve],
-                        x_axis_range: np.ndarray, plot_settings: dict, baseline_curve: Baseline = None, plot_errors=True, plot_cutoffs=False):
+                        x_axis_range: np.ndarray, plot_settings: dict, baseline_curve: Baseline = None, baselines_extra: list[Baseline] = list(),
+                        plot_errors=True, plot_cutoffs=False):
         """ Plots all optimization strategies for individual search spaces """
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
         absolute_optimum = searchspace_stats.total_performance_absolute_optimum()
@@ -373,11 +368,22 @@ class Visualize:
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
             elif y_type == 'normalized' or y_type == 'baseline':
                 baseline = baseline_curve.get_curve(x_axis_range, x_type)
-                # baseline_2 = RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000).get_curve(x_axis_range, x_type)
-                # baseline = np.mean(np.array([baseline, baseline_2]), axis=0)
                 if y_type == 'normalized':
                     baseline = normalize(baseline)
                 ax.plot(x_axis_range, baseline, label="baseline curve", color="black", ls="--")
+
+        # plot additional baselines if provided
+        baselines_extra_curves = list()
+        for baseline_extra in baselines_extra:
+            curve = baseline_extra.get_curve(x_axis_range, x_type)
+            if y_type == 'normalized':
+                curve = normalize(curve)
+            elif y_type == 'baseline':
+                curve = baseline_curve.get_standardised_curve(x_axis_range, curve, x_type=x_type)
+            ax.plot(x_axis_range, curve, label=baseline_extra.label, ls=":")
+            baselines_extra_curves.append(curve)
+        if len(baselines_extra) >= 2:
+            ax.plot(x_axis_range, np.mean(baselines_extra_curves, axis=0), label='Mean of extra baselines', ls=":")
 
         # plot each strategy
         dist = searchspace_stats.objective_performances_total_sorted
@@ -581,8 +587,11 @@ def is_ran_as_notebook() -> bool:
 if __name__ == "__main__":
     is_notebook = is_ran_as_notebook()
     if is_notebook:
-        # experiment_filepath = 'test_random_calculated'
-        experiment_filepath = 'methodology_paper_example'
+        # take the CWD one level up
+        import os
+        os.chdir('../')
+        experiment_filepath = 'test_random_calculated'
+        # experiment_filepath = 'methodology_paper_example'
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
         experiment_filepath = get_args_from_cli()

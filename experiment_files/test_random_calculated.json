@@ -29,11 +29,10 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
-      "fevals",
-      "time"
+      "time",
+      "aggregated"
     ],
     "plot_y_value_types": [
-      "absolute",
       "normalized",
       "baseline"
     ],
@@ -68,6 +67,12 @@
       "strategy": "random_sample",
       "display_name": "Random sampling 500 iters",
       "repeats": 500
+    },
+    {
+      "name": "random_sample_1000_iter",
+      "strategy": "random_sample",
+      "display_name": "Random sampling 1000 iters",
+      "repeats": 1000
     }
   ]
 }
