@@ -6,7 +6,6 @@ import json
 from jsonschema import validate
 from importlib import import_module
 from pathlib import Path
-import os
 import sys
 
 from autotuning_methodology.runner import collect_results
@@ -24,13 +23,6 @@ def get_args_from_cli() -> str:
     if filepath is None:
         raise ValueError("Invalid '-experiment' option. Run 'visualize_experiments.py -h' to read more about the options.")
     return filepath
-
-
-def change_directory(path: str):
-    """ Change the current working directory to the given path """
-    absolute_path = os.path.abspath(path)
-    os.chdir(absolute_path)
-    sys.path.append(absolute_path)
 
 
 def get_experiment(filename: str) -> dict:
@@ -97,8 +89,6 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
     sys.path.append(str(kernel_path))
     kernel_names = experiment['kernels']
     kernels = list(import_module(kernel_name) for kernel_name in kernel_names)
-    # cachefiles_path = kernel_path + '../cachefiles'
-    # change_directory("cached_data_used" + kernel_path)
 
     # variables for comparison
     objective_time_keys = experiment.get('objective_time_keys')
