@@ -10,8 +10,12 @@ import numpy as np
 from time import perf_counter
 
 
-# basic setup
+# Parameters
+N = 200
+selected_dataset = 0
 confidence_level = 0.95
+
+# Basic setup
 dict_timings = dict()
 colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 dict_regressions = dict(
@@ -25,25 +29,23 @@ dict_regressions = dict(
     }
 )
 
-# Sample dataset (from https://www.geeksforgeeks.org/isotonic-regression-in-scikit-learn/)
-# start_perf_counter = perf_counter()
-N = 200
-x = np.arange(N)
+# Data setup
+start_perf_counter = perf_counter()
+datasets = [0, 1]
+if selected_dataset == 0:
+    # Logarithmic sample data from https://www.geeksforgeeks.org/isotonic-regression-in-scikit-learn/
+    x = np.arange(N)
+    y = np.random.randint(0, 20, size=N) + 10 * np.log1p(np.arange(N))
+elif selected_dataset == 1:
+    # Bernoulli sample data from https://github.com/stucchio/isotonic
+    x = norm(0, 50).rvs(N) - bernoulli(0.25).rvs(N) * 50
+    y = -7 + np.sqrt(np.maximum(x, 0)) + norm(0, 0.5).rvs(N)
+else:
+    raise KeyError(f"Selected dataset {selected_dataset} not in {datasets=}")
+x_test = np.linspace(start=x.min(), stop=x.max(), num=round(N * 2.5))
 x_2d = x.reshape(-1, 1)
-# print('Input:\n', x)
-y = np.random.randint(0, 20, size=N) + 10 * np.log1p(np.arange(N))
-# print("Target :\n", y)
-x_test = x
 x_test_2d = x_test.reshape(-1, 1)
-# dict_timings["loading dataset"] = perf_counter() - start_perf_counter
-
-# # Sample dataset (from https://github.com/stucchio/isotonic)
-# # start_perf_counter = perf_counter()
-# N = 500
-# x = norm(0, 50).rvs(N) - bernoulli(0.25).rvs(N) * 50
-# y = -7 + np.sqrt(np.maximum(x, 0)) + norm(0, 0.5).rvs(N)
-# x_test = np.arange(x.min(), x.max(), 0.01)
-# # dict_timings["loading dataset"] = perf_counter() - start_perf_counter
+dict_timings["loading dataset"] = perf_counter() - start_perf_counter
 
 
 def calculate_confidence_interval(values: np.ndarray):
@@ -184,23 +186,6 @@ for key, reginfo in dict_regressions.items():
 # print(ir2linear_all._grad_err_func(x_test, x, y)(alpha_arr))
 # print(ir2linear_half._err_func(x_test, x, y)(alpha_arr))
 # print(ir2linear_half._grad_err_func(x_test, x, y)(alpha_arr))
-
-
-# # Plot the results (from https://www.geeksforgeeks.org/isotonic-regression-in-scikit-learn/)
-# plt.plot(x, y, 'o', label='data')    # plot the original data
-# # plot the fitted linear regression model
-# plt.plot(x, y_lr, label='linear regression')
-# # plot the fitted isotonic regression model
-# plt.plot(x, y_ir, label='isotonic regression')
-# plt.plot(x, y_ir2linear_all, label='isotonic regression (all segments)')
-# plt.plot(x, y_ir2linear_half, label='isotonic regression (half segments)')
-# plt.legend()    # add a legend
-
-# # Add labels and title
-# plt.xlabel('X')    # add x-axis label
-# plt.ylabel('Y')    # add y-axis label
-# plt.title('Comparison of Regression Techniques')    # add title
-# plt.show()    # show the plot
 
 # Plot the results (from https://github.com/stucchio/isotonic)
 output_notebook()
