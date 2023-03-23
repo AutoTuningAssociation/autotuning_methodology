@@ -11,23 +11,19 @@ from time import perf_counter
 
 
 # basic setup
-alpha = 0.95
 confidence_level = 0.95
 dict_timings = dict()
 colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 dict_regressions = dict(
     {
-        "sklearn_linear": {"use": True, "name": "SKLearn linear", "color": colors[0]},
-        "sklearn_isotonic": {"use": True, "name": "SKLearn isotonic", "color": colors[1]},
-        "isotonic_all": {"use": False, "name": "Isotonic (all)", "color": colors[2]},
-        "isotonic_half": {"use": False, "name": "Isotonic (half)", "color": colors[3]},
-        "sklearn_isotonic_bagging": {"use": True, "name": "SKLearn isotonic bagging", "color": colors[4]},
+        "sklearn_linear": {"use": False, "use_interval": False, "name": "SKLearn linear", "color": colors[0]},
+        "sklearn_isotonic": {"use": True, "use_interval": False, "name": "SKLearn isotonic", "color": colors[1]},
+        "isotonic_all": {"use": False, "use_interval": False, "name": "Isotonic (all)", "color": colors[2]},
+        "isotonic_half": {"use": False, "use_interval": False, "name": "Isotonic (half)", "color": colors[3]},
+        "sklearn_gradient_boosting": {"use": False, "use_interval": False, "name": "SKLearn gradient boosting", "color": colors[4]},
+        "sklearn_isotonic_bagging": {"use": True, "use_interval": True, "name": "SKLearn isotonic bagging", "color": colors[5]},
     }
 )
-
-# select errors
-use_gradient_boosting_regressor_error = False
-use_bagging_regressor_error = dict_regressions["sklearn_isotonic_bagging"]["use"] and True
 
 # Sample dataset (from https://www.geeksforgeeks.org/isotonic-regression-in-scikit-learn/)
 # start_perf_counter = perf_counter()
@@ -50,54 +46,8 @@ x_test_2d = x_test.reshape(-1, 1)
 # # dict_timings["loading dataset"] = perf_counter() - start_perf_counter
 
 
-# Regressions
-
-# Fit linear regression model for comparison
-# create an instance of the LinearRegression class
-if dict_regressions["sklearn_linear"]["use"]:
-    start_perf_counter = perf_counter()
-    lr = LinearRegression().fit(x_2d, y)
-    # make predictions using the fitted model
-    y_lr = lr.predict(x_test_2d)
-    dict_timings["sklearn linear"] = perf_counter() - start_perf_counter
-
-# Fit isotonic regression model
-# create an instance of the IsotonicRegression class
-if dict_regressions["sklearn_isotonic"]["use"]:
-    start_perf_counter = perf_counter()
-    ir = IsotonicRegression().fit(x, y)
-    # make predictions using the fitted model
-    y_ir = ir.predict(x_test)
-    dict_timings["sklearn isotonic"] = perf_counter() - start_perf_counter
-
-# Isotonic regression with Isotonic package (all segments)
-if dict_regressions["isotonic_all"]["use"]:
-    start_perf_counter = perf_counter()
-    ir2linear_all = LpIsotonicRegression(N, increasing=True, curve_algo=PiecewiseLinearIsotonicCurve)
-    ir2linear_all_fit = ir2linear_all.fit(x, y)
-    y_ir2linear_all = ir2linear_all_fit.predict_proba(x_test)
-    dict_timings["isotonic all"] = perf_counter() - start_perf_counter
-
-# Isotonic regression with Isotonic package (half segments)
-if dict_regressions["isotonic_half"]["use"]:
-    start_perf_counter = perf_counter()
-    ir2linear_half = LpIsotonicRegression(round(N / 10), increasing=True, curve_algo=PiecewiseLinearIsotonicCurve)
-    ir2linear_half_fit = ir2linear_half.fit(x, y)
-    y_ir2linear_half = ir2linear_half_fit.predict_proba(x_test)
-    dict_timings["isotonic half"] = perf_counter() - start_perf_counter
-
-# Bagging Regressor
-if dict_regressions["sklearn_isotonic_bagging"]["use"]:
-    start_perf_counter = perf_counter()
-    br = BaggingRegressor(IsotonicRegression(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
-    y_br = br.predict(x_test_2d)
-    dict_timings["sklearn isotonic bagging"] = perf_counter() - start_perf_counter
-
-
-# Error calculations
-
-
 def calculate_confidence_interval(values: np.ndarray):
+    """Helper function for calculating a confidence interval on a 2D array"""
     from statistics import NormalDist
     from math import sqrt, floor, ceil
 
@@ -128,22 +78,66 @@ def calculate_confidence_interval(values: np.ndarray):
     return confidence_interval_lower, confidence_interval_upper
 
 
-# Bagging Regressor (based on https://stats.stackexchange.com/questions/183230/bootstrapping-confidence-interval-from-a-regression-prediction)
-if use_bagging_regressor_error:
-    start_perf_counter = perf_counter()
-    br_collection = np.array([m.predict(x_test_2d) for m in br.estimators_])  # yields 2D array with shape (run, x_test)
-    y_br_lower, y_br_upper = calculate_confidence_interval(br_collection.transpose())
-    dict_timings["sklearn isotonic bagging error"] = perf_counter() - start_perf_counter
+# Calculate regressions
+for key, reginfo in dict_regressions.items():
+    if reginfo["use"]:
+        start_perf_counter = perf_counter()
+
+        # check the type of regression and calculate accordingly
+        if key == "sklearn_linear":
+            lr = LinearRegression().fit(x_2d, y)
+            y_pred = lr.predict(x_test_2d)
+        elif key == "sklearn_isotonic":
+            ir = IsotonicRegression().fit(x, y)
+            y_pred = ir.predict(x_test)
+        elif key == "isotonic_all":
+            ir2linear_all = LpIsotonicRegression(N, increasing=True, curve_algo=PiecewiseLinearIsotonicCurve)
+            ir2linear_all_fit = ir2linear_all.fit(x, y)
+            y_pred = ir2linear_all_fit.predict_proba(x_test)
+        elif key == "isotonic_half":
+            ir2linear_half = LpIsotonicRegression(round(N / 10), increasing=True, curve_algo=PiecewiseLinearIsotonicCurve)
+            ir2linear_half_fit = ir2linear_half.fit(x, y)
+            y_pred = ir2linear_half_fit.predict_proba(x_test)
+        elif key == "sklearn_gradient_boosting":
+            gbr = GradientBoostingRegressor(loss="quantile", alpha=0.5).fit(x_2d, y)  # predicts median
+            y_pred = gbr.predict(x_test_2d)
+        elif key == "sklearn_isotonic_bagging":
+            br = BaggingRegressor(IsotonicRegression(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
+            y_pred = br.predict(x_test_2d)
+        else:
+            raise KeyError(f"Regression method key '{key}' unkown")
+
+        # write the prediction and timing to the dicts
+        dict_regressions[key]["y_pred"] = y_pred
+        dict_timings[reginfo["name"]] = perf_counter() - start_perf_counter
 
 
-# Gradient Boosting Regressor (based on https://towardsdatascience.com/how-to-generate-prediction-intervals-with-scikit-learn-and-python-ab3899f992ed)
-if use_gradient_boosting_regressor_error:
-    start_perf_counter = perf_counter()
-    gbr_lower = GradientBoostingRegressor(loss="quantile", alpha=1 - alpha).fit(x_2d, y)
-    gbr_upper = GradientBoostingRegressor(loss="quantile", alpha=alpha).fit(x_2d, y)
-    y_gbr_lower = gbr_lower.predict(x_test_2d)
-    y_gbr_upper = gbr_upper.predict(x_test_2d)
-    dict_timings["GBR error"] = perf_counter() - start_perf_counter
+# Calculate intervals
+for key, reginfo in dict_regressions.items():
+    if reginfo["use_interval"]:
+        start_perf_counter = perf_counter()
+
+        # check the type of interval and calculate accordingly
+        if key == "sklearn_gradient_boosting":
+            # Gradient Boosting Regressor (based on https://towardsdatascience.com/how-to-generate-prediction-intervals-with-scikit-learn-and-python-ab3899f992ed)
+            lower_alpha = 1 - confidence_level
+            upper_alpha = confidence_level
+            gbr_lower = GradientBoostingRegressor(loss="quantile", alpha=lower_alpha).fit(x_2d, y)
+            gbr_upper = GradientBoostingRegressor(loss="quantile", alpha=upper_alpha).fit(x_2d, y)
+            y_lower_err = gbr_lower.predict(x_test_2d)
+            y_upper_err = gbr_upper.predict(x_test_2d)
+        elif key == "sklearn_isotonic_bagging":
+            # Bagging Regressor (based on https://stats.stackexchange.com/questions/183230/bootstrapping-confidence-interval-from-a-regression-prediction)
+            br_collection = np.array([m.predict(x_test_2d) for m in br.estimators_])  # yields 2D array with shape (run, x_test)
+            y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
+        else:
+            raise KeyError(f"Interval method key '{key}' unkown")
+
+        # write the errors and timing to the dicts
+        dict_regressions[key]["y_lower_err"] = y_lower_err
+        dict_regressions[key]["y_upper_err"] = y_upper_err
+        dict_timings[f"{reginfo['name']} error"] = perf_counter() - start_perf_counter
+
 
 # # scipy isotonic regression error
 # total_sum_of_squares = ((y - y.mean()) ** 2).sum()
@@ -185,7 +179,7 @@ if use_gradient_boosting_regressor_error:
 #     err = np.mean([])
 
 # # isotonic regression error
-# alpha_arr = np.full(N, 1 - alpha)
+# alpha_arr = np.full(N, 1 - confidence_level)
 # print(ir2linear_all._err_func(x_test, x, y)(alpha_arr))
 # print(ir2linear_all._grad_err_func(x_test, x, y)(alpha_arr))
 # print(ir2linear_half._err_func(x_test, x, y)(alpha_arr))
@@ -215,38 +209,13 @@ plot = figure(tools="pan,box_zoom,reset,save,", y_axis_label="y", title="Compari
 # plot raw data
 plot.circle(x, y, color="black", alpha=0.2, legend_label="raw data")
 
-# plot regressors
-if dict_regressions["sklearn_linear"]["use"]:
-    reginfo = dict_regressions["sklearn_linear"]
-    plot.line(x_test, y_lr, color=reginfo["color"], legend_label=reginfo["name"])
-if dict_regressions["sklearn_isotonic"]["use"]:
-    reginfo = dict_regressions["sklearn_isotonic"]
-    plot.line(x_test, y_ir, color=reginfo["color"], legend_label=reginfo["name"])
-if dict_regressions["isotonic_all"]["use"]:
-    reginfo = dict_regressions["isotonic_all"]
-    plot.line(x_test, y_ir2linear_all, color=reginfo["color"], legend_label=reginfo["name"])
-if dict_regressions["isotonic_half"]["use"]:
-    reginfo = dict_regressions["isotonic_half"]
-    plot.line(x_test, y_ir2linear_half, color=reginfo["color"], legend_label=reginfo["name"])
-if dict_regressions["sklearn_isotonic_bagging"]["use"]:
-    reginfo = dict_regressions["sklearn_isotonic_bagging"]
-    plot.line(x_test, y_br, color=reginfo["color"], legend_label=reginfo["name"])
-
-# # plot errors
-
-# gradient boosting regressor error
-if use_gradient_boosting_regressor_error:
-    # plot.line(x_test, y_gbr_lower, alpha=0.5, color="orange", legend_label="bagging regressor error")
-    # plot.line(x_test, y_gbr_upper, alpha=0.5, color="orange")
-    plot.varea(x_test, y1=y_gbr_lower, y2=y_gbr_upper, alpha=0.3, color="orange")
-
-# bagging regressor: plot each base estimator
-if use_bagging_regressor_error:
-    # for bre in br_collection:
-    #     plot.line(x_test, bre, color="grey", alpha=0.2)
-    # plot.line(x_test, y_br_lower)
-    # plot.line(x_test, y_br_upper)
-    plot.varea(x_test, y1=y_br_lower, y2=y_br_upper, alpha=0.3, color=dict_regressions["sklearn_isotonic_bagging"]["color"])
+# plot regressors and errors
+for key, reginfo in dict_regressions.items():
+    # plot the error first so the regression line comes on top of it
+    if reginfo["use_interval"]:
+        plot.varea(x_test, y1=reginfo["y_lower_err"], y2=reginfo["y_upper_err"], alpha=0.3, color=reginfo["color"])
+    if reginfo["use"]:
+        plot.line(x_test, reginfo["y_pred"], color=reginfo["color"], legend_label=reginfo["name"])
 
 # plot setup
 plot.legend.location = "bottom_right"
@@ -254,9 +223,10 @@ show(plot)
 
 
 # plot the performance
-fig = plt.figure(figsize=(12, 8))
-plt.bar(dict_timings.keys(), dict_timings.values())
+fig = plt.figure(figsize=(20, 8))
+plt.bar(dict_timings.keys(), dict_timings.values(), zorder=3)
 plt.yscale("log")
 plt.ylabel("Time in seconds")
 plt.title(f"Timing comparison with {N=}")
+plt.grid(axis="y", which="both", zorder=0)
 plt.show()
