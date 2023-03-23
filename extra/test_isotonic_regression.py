@@ -1,33 +1,53 @@
+# import utilities
+from time import perf_counter
+import numpy as np
 import matplotlib.pyplot as plt
 from bokeh.plotting import figure, output_notebook, show
+
+# import regression and interval models
 from sklearn.linear_model import LinearRegression
 from sklearn.isotonic import IsotonicRegression
 from sklearn.ensemble import BaggingRegressor, GradientBoostingRegressor
-from isotonic.isotonic import LpIsotonicRegression
-from isotonic.isotonic.curves import PiecewiseLinearIsotonicCurve, PiecewiseConstantIsotonicCurve
-from scipy.stats import norm, bernoulli  # for isotonic dataset only
-import numpy as np
-from time import perf_counter
 
 
 # Parameters
 N = 200
-selected_dataset = 0
+selected_dataset = 1
 confidence_level = 0.95
+constant_colors = False  # if true, the colors are assigned in the order of dict_regressions. if false, only used algorithms are assigned colors
 
-# Basic setup
+# Configuration of regression algorithms
 dict_timings = dict()
-colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 dict_regressions = dict(
     {
-        "sklearn_linear": {"use": False, "use_interval": False, "name": "SKLearn linear", "color": colors[0]},
-        "sklearn_isotonic": {"use": True, "use_interval": False, "name": "SKLearn isotonic", "color": colors[1]},
-        "isotonic_all": {"use": False, "use_interval": False, "name": "Isotonic (all)", "color": colors[2]},
-        "isotonic_half": {"use": False, "use_interval": False, "name": "Isotonic (half)", "color": colors[3]},
-        "sklearn_gradient_boosting": {"use": False, "use_interval": False, "name": "SKLearn gradient boosting", "color": colors[4]},
-        "sklearn_isotonic_bagging": {"use": True, "use_interval": True, "name": "SKLearn isotonic bagging", "color": colors[5]},
+        "sklearn_linear": {"use": False, "use_interval": False, "name": "SKLearn linear"},
+        "sklearn_isotonic": {"use": True, "use_interval": False, "name": "SKLearn isotonic"},
+        "isotonic_all": {"use": False, "use_interval": False, "name": "Isotonic (all)"},
+        "isotonic_half": {"use": False, "use_interval": False, "name": "Isotonic (half)"},
+        "isotonic_constant": {"use": False, "use_interval": False, "name": "Isotonic (half, constant)"},
+        "sklearn_gradient_boosting": {"use": False, "use_interval": False, "name": "SKLearn gradient boosting"},
+        "sklearn_isotonic_bagging": {"use": True, "use_interval": True, "name": "SKLearn isotonic bagging"},
+        "inductive_conformal_prediction": {"use": False, "use_interval": True, "name": "Inductive Conformal Prediction"},
     }
 )
+
+# Set the colors
+color_index = 0
+colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+for key in dict_regressions.keys():
+    if constant_colors or (dict_regressions[key]["use"] or dict_regressions[key]["use_interval"]):
+        dict_regressions[key]["color"] = colors[color_index]
+        color_index += 1
+
+# Conditional imports
+if dict_regressions["isotonic_all"]["use"] or dict_regressions["isotonic_half"]["use"] or dict_regressions["isotonic_constant"]["use"]:
+    # can be installed from https://github.com/stucchio/isotonic
+    from isotonic.isotonic import LpIsotonicRegression
+    from isotonic.isotonic.curves import PiecewiseLinearIsotonicCurve, PiecewiseConstantIsotonicCurve
+if dict_regressions["inductive_conformal_prediction"]["use"] or dict_regressions["inductive_conformal_prediction"]["use_interval"]:
+    # can be installed with 'pip install nonconformist'
+    from nonconformist.cp import IcpRegressor
+    from nonconformist.nc import NcFactory, SignErrorErrFunc
 
 # Data setup
 start_perf_counter = perf_counter()
@@ -38,6 +58,8 @@ if selected_dataset == 0:
     y = np.random.randint(0, 20, size=N) + 10 * np.log1p(np.arange(N))
 elif selected_dataset == 1:
     # Bernoulli sample data from https://github.com/stucchio/isotonic
+    from scipy.stats import norm, bernoulli
+
     x = norm(0, 50).rvs(N) - bernoulli(0.25).rvs(N) * 50
     y = -7 + np.sqrt(np.maximum(x, 0)) + norm(0, 0.5).rvs(N)
 else:
@@ -97,21 +119,27 @@ for key, reginfo in dict_regressions.items():
             ir2linear_all_fit = ir2linear_all.fit(x, y)
             y_pred = ir2linear_all_fit.predict_proba(x_test)
         elif key == "isotonic_half":
-            ir2linear_half = LpIsotonicRegression(round(N / 10), increasing=True, curve_algo=PiecewiseLinearIsotonicCurve)
+            ir2linear_half = LpIsotonicRegression(round(N / 5), increasing=True, curve_algo=PiecewiseLinearIsotonicCurve)
             ir2linear_half_fit = ir2linear_half.fit(x, y)
             y_pred = ir2linear_half_fit.predict_proba(x_test)
+        elif key == "isotonic_constant":
+            ir2constant = LpIsotonicRegression(round(N / 5), increasing=True, curve_algo=PiecewiseConstantIsotonicCurve)
+            ir2constant_fit = ir2constant.fit(x, y)
+            y_pred = ir2constant_fit.predict_proba(x_test)
         elif key == "sklearn_gradient_boosting":
             gbr = GradientBoostingRegressor(loss="quantile", alpha=0.5).fit(x_2d, y)  # predicts median
             y_pred = gbr.predict(x_test_2d)
         elif key == "sklearn_isotonic_bagging":
             br = BaggingRegressor(IsotonicRegression(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
             y_pred = br.predict(x_test_2d)
+        elif key == "inductive_conformal_prediction":
+            raise NotImplementedError("Inductive conformal prediction is not implemented as a regressor, only as an interval estimator")
         else:
             raise KeyError(f"Regression method key '{key}' unkown")
 
         # write the prediction and timing to the dicts
         dict_regressions[key]["y_pred"] = y_pred
-        dict_timings[reginfo["name"]] = perf_counter() - start_perf_counter
+        dict_timings[str(reginfo["name"])] = perf_counter() - start_perf_counter
 
 
 # Calculate intervals
@@ -132,6 +160,27 @@ for key, reginfo in dict_regressions.items():
             # Bagging Regressor (based on https://stats.stackexchange.com/questions/183230/bootstrapping-confidence-interval-from-a-regression-prediction)
             br_collection = np.array([m.predict(x_test_2d) for m in br.estimators_])  # yields 2D array with shape (run, x_test)
             y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
+        elif key == "inductive_conformal_prediction":
+            # Inductive Conformal Point Prediction (based on https://arxiv.org/pdf/2107.00363.pdf, page 16 & 17)
+            # divide data into training and calibration set (75%-25%)
+            cutoff = round(N * 0.75)
+            random_indices = np.random.permutation(N)
+            indices_train, indices_calibrate = random_indices[:cutoff], random_indices[cutoff:]
+            assert len(indices_train) + len(indices_calibrate) == N
+
+            # create the regression model, nonconformity function and inductive conformal regressor
+            regression_model = IsotonicRegression()
+            nonconformity_function = NcFactory.create_nc(regression_model)
+            inductive_conformal_regressor = IcpRegressor(nonconformity_function)
+
+            # fit and calibrate the ICP
+            inductive_conformal_regressor.fit(x_2d[indices_train, :], y[indices_train])
+            inductive_conformal_regressor.calibrate(x_2d[indices_calibrate, :], y[indices_calibrate])
+
+            # predict the interval
+            prediction = inductive_conformal_regressor.predict(x_test_2d, significance=1 - confidence_level)
+            y_lower_err, y_upper_err = prediction[:, 0], prediction[:, 1]
+            assert y_lower_err.shape == y_upper_err.shape
         else:
             raise KeyError(f"Interval method key '{key}' unkown")
 
@@ -140,53 +189,6 @@ for key, reginfo in dict_regressions.items():
         dict_regressions[key]["y_upper_err"] = y_upper_err
         dict_timings[f"{reginfo['name']} error"] = perf_counter() - start_perf_counter
 
-
-# # scipy isotonic regression error
-# total_sum_of_squares = ((y - y.mean()) ** 2).sum()
-# residual_sum_of_squares = total_sum_of_squares * (1 - ir.score(x, y))
-# # TODO instead take ((y_true - y_pred)** 2) to get error at each point
-# print(f"Scipy error: {np.sqrt(residual_sum_of_squares)}")
-
-# why can we not have a confidence interval in isotonic regression?
-# -> because we can not get multiple values (one for each repeat) at a single point in time like with index
-# --> instead, we look up in each repeat the x-value closest to each x_test (x[i]) and its index (i)
-# ---> for each repeat, we can now use the raw value y[i] this gives the error abs(y_test - y[i])
-# ----> optionally, values closer to x can be given more importance by taking 1 - (abs(x_test - x[i]) / sum(abs(x_test - x[i]) for each repeat))
-
-# # error calculation own method
-# def index_of_nearest(array, value):
-#     """Find the indices of the closest given values in array"""
-#     idx = np.searchsorted(array, value, side="left")
-#     idx = idx - (np.abs(value - array[idx - 1]) < np.abs(value - array[idx]))
-#     return idx
-
-
-# # find the closest x-value in the raw data for each test value
-# indices_real = index_of_nearest(x, x_test)
-# # for each element in the resolution
-# for i_test, i_real in enumerate(indices_real):
-#     # get the index on either side
-#     i_l = max(i_real - 1, 0)
-#     i_r = min(i_real + 1, len(x_test) - 1)
-#     # get the distance to the real y-value on either side
-#     y_l = np.abs(y_ir[i_test] - y[i_l]) if i_test != i_l else np.nan
-#     y_r = np.abs(y_ir[i_test] - y[i_r]) if i_test != i_r else np.nan
-#     # get the distance to the real x-value on either side
-#     x_l = np.abs(x_test[i_test] - x[i_l])
-#     x_r = np.abs(x_test[i_test] - x[i_l])
-#     sum_dist = x_l + x_r
-#     # get the importance by taking the distance on x and reversing it, because the closer to the real value it is, because the closer to x_test, the more importance they should have
-#     imp_l = x_l / sum_dist
-#     err_l = y_l * imp_l
-#     err = np.mean([])
-
-# # isotonic regression error
-# alpha_arr = np.full(N, 1 - confidence_level)
-# print(ir2linear_all._err_func(x_test, x, y)(alpha_arr))
-# print(ir2linear_all._grad_err_func(x_test, x, y)(alpha_arr))
-# print(ir2linear_half._err_func(x_test, x, y)(alpha_arr))
-# print(ir2linear_half._grad_err_func(x_test, x, y)(alpha_arr))
-
 # Plot the results (from https://github.com/stucchio/isotonic)
 output_notebook()
 plot = figure(tools="pan,box_zoom,reset,save,", y_axis_label="y", title="Comparison of isotonic regression and interval methods", x_axis_label="x")
@@ -194,11 +196,18 @@ plot = figure(tools="pan,box_zoom,reset,save,", y_axis_label="y", title="Compari
 # plot raw data
 plot.circle(x, y, color="black", alpha=0.2, legend_label="raw data")
 
-# plot regressors and errors
+# plot the intervals
 for key, reginfo in dict_regressions.items():
-    # plot the error first so the regression line comes on top of it
+    # plot the intervals first so the regression line comes on top of it
     if reginfo["use_interval"]:
-        plot.varea(x_test, y1=reginfo["y_lower_err"], y2=reginfo["y_upper_err"], alpha=0.3, color=reginfo["color"])
+        if reginfo["use"]:
+            plot.varea(x_test, y1=reginfo["y_lower_err"], y2=reginfo["y_upper_err"], alpha=0.3, color=reginfo["color"])
+        else:
+            # if only the interval shade is drawn, add it to the legend
+            plot.varea(x_test, y1=reginfo["y_lower_err"], y2=reginfo["y_upper_err"], alpha=0.3, color=reginfo["color"], legend_label=reginfo["name"])
+
+# plot the regressors
+for key, reginfo in dict_regressions.items():
     if reginfo["use"]:
         plot.line(x_test, reginfo["y_pred"], color=reginfo["color"], legend_label=reginfo["name"])
 
