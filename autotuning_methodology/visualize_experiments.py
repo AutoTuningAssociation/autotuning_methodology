@@ -387,6 +387,7 @@ class Visualize:
 
         # plot each strategy
         dist = searchspace_stats.objective_performances_total_sorted
+        ylim_min = 0
         for strategy_index, strategy in enumerate(self.strategies):
             if "hide" in strategy.keys() and strategy["hide"]:
                 continue
@@ -412,14 +413,13 @@ class Visualize:
                 curve_real, curve_lower_err_real, curve_upper_err_real = normalize_multiple([curve_real, curve_lower_err_real, curve_upper_err_real])
                 curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = normalize_multiple(
                     [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional])
-                ax.set_ylim((0.0, 1.02))
             elif y_type == 'baseline':
                 curve_real, curve_lower_err_real, curve_upper_err_real = baseline_curve.get_standardised_curves(
                     x_axis_range_real, [curve_real, curve_lower_err_real, curve_upper_err_real], x_type)
                 if x_axis_range_fictional.ndim > 0:
                     curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = baseline_curve.get_standardised_curves(
                         x_axis_range_fictional, [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional], x_type)
-                ax.set_ylim((min(-0.02, np.min(curve_real)), 1.02))
+                ylim_min = min(np.min(curve_real), ylim_min)
 
             # visualize
             if plot_errors:
@@ -464,8 +464,14 @@ class Visualize:
         #     cutoff_percentiles_high_precision = np.arange(0.925, cutoff_percentile_end, step=0.001)
         #     plot_cutoff_point(np.concatenate([cutoff_percentiles_low_precision, cutoff_percentiles_high_precision]))
 
-        ax.set_ylabel(self.y_metric_displayname[f"objective_{y_type}"])
+        # finalize the plot
         ax.set_xlim(tuple([x_axis_range[0], x_axis_range[-1]]))
+        ax.set_ylabel(self.y_metric_displayname[f"objective_{y_type}"])
+        normalized_ylim_margin = 0.02
+        if y_type == 'normalized':
+            ax.set_ylim((0.0, 1 + normalized_ylim_margin))
+        elif y_type == 'baseline':
+            ax.set_ylim((min(-normalized_ylim_margin, ylim_min - normalized_ylim_margin), 1 + normalized_ylim_margin))
 
     def get_strategies_aggregated_performance(
         self,
@@ -590,8 +596,8 @@ if __name__ == "__main__":
         # take the CWD one level up
         import os
         os.chdir('../')
-        # experiment_filepath = 'test_random_calculated'
-        experiment_filepath = 'methodology_paper_example'
+        experiment_filepath = 'test_random_calculated'
+        # experiment_filepath = 'methodology_paper_example'
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
         experiment_filepath = get_args_from_cli()

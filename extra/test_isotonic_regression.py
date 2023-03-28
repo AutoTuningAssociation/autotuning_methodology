@@ -13,6 +13,7 @@ from sklearn.ensemble import BaggingRegressor, GradientBoostingRegressor
 # Parameters
 N = 200
 selected_dataset = 1
+increasing = [True, True][selected_dataset]
 confidence_level = 0.95
 constant_colors = False  # if true, the colors are assigned in the order of dict_regressions. if false, only used algorithms are assigned colors
 
@@ -25,7 +26,7 @@ dict_regressions = dict(
         "isotonic_all": {"use": False, "use_interval": False, "name": "Isotonic (all)"},
         "isotonic_half": {"use": False, "use_interval": False, "name": "Isotonic (half)"},
         "isotonic_constant": {"use": False, "use_interval": False, "name": "Isotonic (half, constant)"},
-        "sklearn_gradient_boosting": {"use": False, "use_interval": False, "name": "SKLearn gradient boosting"},
+        "sklearn_gradient_boosting": {"use": False, "use_interval": True, "name": "SKLearn gradient boosting"},
         "sklearn_isotonic_bagging": {"use": True, "use_interval": True, "name": "SKLearn isotonic bagging"},
         "inductive_conformal_prediction": {"use": False, "use_interval": True, "name": "Inductive Conformal Prediction"},
     }
@@ -54,6 +55,7 @@ start_perf_counter = perf_counter()
 datasets = [0, 1]
 if selected_dataset == 0:
     # Logarithmic sample data from https://www.geeksforgeeks.org/isotonic-regression-in-scikit-learn/
+    np.random.seed(42)
     x = np.arange(N)
     y = np.random.randint(0, 20, size=N) + 10 * np.log1p(np.arange(N))
 elif selected_dataset == 1:
@@ -112,18 +114,18 @@ for key, reginfo in dict_regressions.items():
             lr = LinearRegression().fit(x_2d, y)
             y_pred = lr.predict(x_test_2d)
         elif key == "sklearn_isotonic":
-            ir = IsotonicRegression().fit(x, y)
+            ir = IsotonicRegression(y_min=y.min(), y_max=y.max(), increasing=increasing, out_of_bounds="clip").fit(x, y)
             y_pred = ir.predict(x_test)
         elif key == "isotonic_all":
-            ir2linear_all = LpIsotonicRegression(N, increasing=True, curve_algo=PiecewiseLinearIsotonicCurve)
+            ir2linear_all = LpIsotonicRegression(N, increasing=increasing, curve_algo=PiecewiseLinearIsotonicCurve)
             ir2linear_all_fit = ir2linear_all.fit(x, y)
             y_pred = ir2linear_all_fit.predict_proba(x_test)
         elif key == "isotonic_half":
-            ir2linear_half = LpIsotonicRegression(round(N / 5), increasing=True, curve_algo=PiecewiseLinearIsotonicCurve)
+            ir2linear_half = LpIsotonicRegression(round(N / 5), increasing=increasing, curve_algo=PiecewiseLinearIsotonicCurve)
             ir2linear_half_fit = ir2linear_half.fit(x, y)
             y_pred = ir2linear_half_fit.predict_proba(x_test)
         elif key == "isotonic_constant":
-            ir2constant = LpIsotonicRegression(round(N / 5), increasing=True, curve_algo=PiecewiseConstantIsotonicCurve)
+            ir2constant = LpIsotonicRegression(round(N / 5), increasing=increasing, curve_algo=PiecewiseConstantIsotonicCurve)
             ir2constant_fit = ir2constant.fit(x, y)
             y_pred = ir2constant_fit.predict_proba(x_test)
         elif key == "sklearn_gradient_boosting":
@@ -150,8 +152,8 @@ for key, reginfo in dict_regressions.items():
         # check the type of interval and calculate accordingly
         if key == "sklearn_gradient_boosting":
             # Gradient Boosting Regressor (based on https://towardsdatascience.com/how-to-generate-prediction-intervals-with-scikit-learn-and-python-ab3899f992ed)
-            lower_alpha = 1 - confidence_level
-            upper_alpha = confidence_level
+            lower_alpha = (1 - confidence_level) / 2
+            upper_alpha = 1 - lower_alpha
             gbr_lower = GradientBoostingRegressor(loss="quantile", alpha=lower_alpha).fit(x_2d, y)
             gbr_upper = GradientBoostingRegressor(loss="quantile", alpha=upper_alpha).fit(x_2d, y)
             y_lower_err = gbr_lower.predict(x_test_2d)
@@ -169,8 +171,8 @@ for key, reginfo in dict_regressions.items():
             assert len(indices_train) + len(indices_calibrate) == N
 
             # create the regression model, nonconformity function and inductive conformal regressor
-            regression_model = IsotonicRegression()
-            nonconformity_function = NcFactory.create_nc(regression_model)
+            regression_model = IsotonicRegression(y_min=y.min(), y_max=y.max(), increasing=increasing, out_of_bounds="clip")
+            nonconformity_function = NcFactory.create_nc(regression_model, err_func=SignErrorErrFunc())
             inductive_conformal_regressor = IcpRegressor(nonconformity_function)
 
             # fit and calibrate the ICP

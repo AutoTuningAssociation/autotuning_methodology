@@ -3,7 +3,6 @@
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
   "kernels": [
-    "pnpoly",
     "convolution",
     "gemm"
   ],
@@ -29,7 +28,6 @@
   "cutoff_type": "fevals",
   "plot": {
     "plot_x_value_types": [
-      "time",
       "aggregated"
     ],
     "plot_y_value_types": [
@@ -50,18 +48,6 @@
     ]
   },
   "strategies": [
-    {
-      "name": "random_sample_100_iter",
-      "strategy": "random_sample",
-      "display_name": "Random sampling 100 iters",
-      "repeats": 100
-    },
-    {
-      "name": "random_sample_250_iter",
-      "strategy": "random_sample",
-      "display_name": "Random sampling 250 iters",
-      "repeats": 250
-    },
     {
       "name": "random_sample_500_iter",
       "strategy": "random_sample",
