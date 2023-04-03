@@ -11,8 +11,8 @@ from sklearn.ensemble import BaggingRegressor, GradientBoostingRegressor
 
 
 # Parameters
-N = 200
-selected_dataset = 1
+N = 500
+selected_dataset = 0
 increasing = [True, True][selected_dataset]
 confidence_level = 0.95
 constant_colors = False  # if true, the colors are assigned in the order of dict_regressions. if false, only used algorithms are assigned colors
@@ -26,9 +26,12 @@ dict_regressions = dict(
         "isotonic_all": {"use": False, "use_interval": False, "name": "Isotonic (all)"},
         "isotonic_half": {"use": False, "use_interval": False, "name": "Isotonic (half)"},
         "isotonic_constant": {"use": False, "use_interval": False, "name": "Isotonic (half, constant)"},
-        "sklearn_gradient_boosting": {"use": False, "use_interval": True, "name": "SKLearn gradient boosting"},
-        "sklearn_isotonic_bagging": {"use": True, "use_interval": True, "name": "SKLearn isotonic bagging"},
+        "sklearn_gradient_boosting": {"use": False, "use_interval": False, "name": "SKLearn gradient boosting"},
+        "sklearn_isotonic_bagging": {"use": False, "use_interval": False, "name": "SKLearn isotonic bagging"},
         "inductive_conformal_prediction": {"use": False, "use_interval": True, "name": "Inductive Conformal Prediction"},
+        "conformal_prediction_crepes": {"use": False, "use_interval": False, "name": "Conformal Prediction"},
+        "conformal_prediction_crepes_normalized": {"use": False, "use_interval": True, "name": "Conformal Prediction Normalized"},
+        "conformal_prediction_crepes_mondrian": {"use": False, "use_interval": True, "name": "Conformal Prediction Mondrian"},
     }
 )
 
@@ -49,6 +52,9 @@ if dict_regressions["inductive_conformal_prediction"]["use"] or dict_regressions
     # can be installed with 'pip install nonconformist'
     from nonconformist.cp import IcpRegressor
     from nonconformist.nc import NcFactory, SignErrorErrFunc
+if dict_regressions["conformal_prediction_crepes"]["use_interval"] or dict_regressions["conformal_prediction_crepes_normalized"]["use_interval"]:
+    from crepes import ConformalRegressor
+    from crepes.fillings import sigma_knn, binning
 
 # Data setup
 start_perf_counter = perf_counter()
@@ -134,8 +140,13 @@ for key, reginfo in dict_regressions.items():
         elif key == "sklearn_isotonic_bagging":
             br = BaggingRegressor(IsotonicRegression(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
             y_pred = br.predict(x_test_2d)
-        elif key == "inductive_conformal_prediction":
-            raise NotImplementedError("Inductive conformal prediction is not implemented as a regressor, only as an interval estimator")
+        elif (
+            key == "inductive_conformal_prediction"
+            or key == "conformal_prediction_crepes"
+            or key == "conformal_prediction_crepes_normalized"
+            or key == "conformal_prediction_crepes_mondrian"
+        ):
+            raise NotImplementedError(f"{reginfo['name']} is not implemented as a regressor, only as an interval estimator")
         else:
             raise KeyError(f"Regression method key '{key}' unkown")
 
@@ -149,6 +160,24 @@ for key, reginfo in dict_regressions.items():
     if reginfo["use_interval"]:
         start_perf_counter = perf_counter()
 
+        if key.startswith("conformal_prediction_crepes"):
+            # Conformal Point Prediction (based on https://proceedings.mlr.press/v179/bostrom22a/bostrom22a.pdf)
+            # divide data into training and calibration set (75%-25%)
+            cutoff = round(N * 0.75)
+            random_indices = np.random.permutation(N)
+            indices_train, indices_calibrate = random_indices[:cutoff], random_indices[cutoff:]
+            assert len(indices_train) + len(indices_calibrate) == N
+            x_calibrate_2d = x_2d[indices_calibrate, :]
+
+            # create the regression model, nonconformity function and inductive conformal regressor
+            regression_model = IsotonicRegression(y_min=y.min(), y_max=y.max(), increasing=increasing, out_of_bounds="clip")
+            regression_model.fit(x_2d[indices_train, :], y[indices_train])
+            prediction = regression_model.predict(x_test_2d)
+
+            # get the difference in prediction and true values on the calibration set
+            prediction_calibrated = regression_model.predict(x_calibrate_2d)
+            residuals_calibrated = y[indices_calibrate] - prediction_calibrated
+
         # check the type of interval and calculate accordingly
         if key == "sklearn_gradient_boosting":
             # Gradient Boosting Regressor (based on https://towardsdatascience.com/how-to-generate-prediction-intervals-with-scikit-learn-and-python-ab3899f992ed)
@@ -158,10 +187,12 @@ for key, reginfo in dict_regressions.items():
             gbr_upper = GradientBoostingRegressor(loss="quantile", alpha=upper_alpha).fit(x_2d, y)
             y_lower_err = gbr_lower.predict(x_test_2d)
             y_upper_err = gbr_upper.predict(x_test_2d)
+
         elif key == "sklearn_isotonic_bagging":
             # Bagging Regressor (based on https://stats.stackexchange.com/questions/183230/bootstrapping-confidence-interval-from-a-regression-prediction)
             br_collection = np.array([m.predict(x_test_2d) for m in br.estimators_])  # yields 2D array with shape (run, x_test)
             y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
+
         elif key == "inductive_conformal_prediction":
             # Inductive Conformal Point Prediction (based on https://arxiv.org/pdf/2107.00363.pdf, page 16 & 17)
             # divide data into training and calibration set (75%-25%)
@@ -180,13 +211,38 @@ for key, reginfo in dict_regressions.items():
             inductive_conformal_regressor.calibrate(x_2d[indices_calibrate, :], y[indices_calibrate])
 
             # predict the interval
-            prediction = inductive_conformal_regressor.predict(x_test_2d, significance=1 - confidence_level)
-            y_lower_err, y_upper_err = prediction[:, 0], prediction[:, 1]
-            assert y_lower_err.shape == y_upper_err.shape
+            prediction_interval = inductive_conformal_regressor.predict(x_test_2d, significance=1 - confidence_level)
+            y_lower_err, y_upper_err = prediction_interval[:, 0], prediction_interval[:, 1]
+
+        elif key == "conformal_prediction_crepes":
+            # fit a conformal regressor
+            cr = ConformalRegressor()
+            cr.fit(residuals=residuals_calibrated)
+
+            # get the prediction intervals for the test set
+            prediction_interval = cr.predict(y_hat=prediction, confidence=confidence_level)
+            y_lower_err, y_upper_err = prediction_interval[:, 0], prediction_interval[:, 1]
+
+        elif key == "conformal_prediction_crepes_normalized":
+            # fit a normalized conformal regressor
+            sigmas_cal = sigma_knn(X=x_calibrate_2d, residuals=residuals_calibrated)
+            cr_norm = ConformalRegressor()
+            cr_norm.fit(residuals=residuals_calibrated, sigmas=sigmas_cal)
+
+            # generate difficulty estimates for the test set
+            sigmas_test = sigma_knn(X=x_calibrate_2d, residuals=residuals_calibrated, X_test=x_test_2d)
+
+            # get the prediction intervals for the test set
+            prediction_interval = cr_norm.predict(y_hat=prediction, confidence=confidence_level, sigmas=sigmas_test)
+            y_lower_err, y_upper_err = prediction_interval[:, 0], prediction_interval[:, 1]
+            print("hello")
+
         else:
             raise KeyError(f"Interval method key '{key}' unkown")
 
         # write the errors and timing to the dicts
+        print(key)
+        assert y_lower_err.shape == y_upper_err.shape
         dict_regressions[key]["y_lower_err"] = y_lower_err
         dict_regressions[key]["y_upper_err"] = y_upper_err
         dict_timings[f"{reginfo['name']} error"] = perf_counter() - start_perf_counter
