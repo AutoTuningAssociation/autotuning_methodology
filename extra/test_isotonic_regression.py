@@ -28,10 +28,12 @@ dict_regressions = dict(
         "isotonic_constant": {"use": False, "use_interval": False, "name": "Isotonic (half, constant)"},
         "sklearn_gradient_boosting": {"use": False, "use_interval": False, "name": "SKLearn gradient boosting"},
         "sklearn_isotonic_bagging": {"use": True, "use_interval": True, "name": "SKLearn isotonic bagging"},
+        "sklearn_isotonic_bagging_distance": {"use": False, "use_interval": False, "name": "SKLearn isotonic bagging with distance uncertainty"},
         "inductive_conformal_prediction": {"use": False, "use_interval": False, "name": "Inductive Conformal Prediction"},
         "conformal_prediction_crepes": {"use": False, "use_interval": False, "name": "Conformal Prediction"},
         "conformal_prediction_crepes_normalized": {"use": False, "use_interval": False, "name": "Conformal Prediction Normalized"},
         "conformal_prediction_crepes_mondrian": {"use": False, "use_interval": False, "name": "Conformal Prediction Mondrian"},
+        "manual_bootstrap": {"use": False, "use_interval": False, "name": "Bootstrapped"},
     }
 )
 
@@ -118,6 +120,15 @@ def get_regression_model():
     return IsotonicRegression(y_min=y.min(), y_max=y.max(), increasing=increasing, out_of_bounds="clip")
 
 
+def get_bagging_regressor():
+    n_estimators = max(round(np.sqrt(N) / 10), 3)
+    max_samples = 1 - (
+        n_estimators / N
+    )  # The fraction of samples allowed to be used is inversely proportional to the number of estimators. This way, a higher the number of estimators (reducing the confidence interval), results in more variation among the estimators (increasing the confidence interval)
+    print(f"{n_estimators=}, {max_samples=}")
+    return BaggingRegressor(get_regression_model(), n_estimators=n_estimators, max_samples=max_samples, bootstrap=True)
+
+
 # Calculate regressions
 for key, reginfo in dict_regressions.items():
     if reginfo["use"]:
@@ -145,14 +156,15 @@ for key, reginfo in dict_regressions.items():
         elif key == "sklearn_gradient_boosting":
             gbr = GradientBoostingRegressor(loss="quantile", alpha=0.5).fit(x_2d, y)  # predicts median
             y_pred = gbr.predict(x_test_2d)
-        elif key == "sklearn_isotonic_bagging":
-            br = BaggingRegressor(get_regression_model(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
+        elif key == "sklearn_isotonic_bagging" or key == "sklearn_isotonic_bagging_distance":
+            br = get_bagging_regressor().fit(x_2d, y)
             y_pred = br.predict(x_test_2d)
         elif (
             key == "inductive_conformal_prediction"
             or key == "conformal_prediction_crepes"
             or key == "conformal_prediction_crepes_normalized"
             or key == "conformal_prediction_crepes_mondrian"
+            or key == "manual_bootstrap"
         ):
             raise NotImplementedError(f"{reginfo['name']} is not implemented as a regressor, only as an interval estimator")
         else:
@@ -200,11 +212,15 @@ for key, reginfo in dict_regressions.items():
             y_lower_err = gbr_lower.predict(x_test_2d)
             y_upper_err = gbr_upper.predict(x_test_2d)
 
-        elif key == "sklearn_isotonic_bagging":
+        elif key == "sklearn_isotonic_bagging" or key == "sklearn_isotonic_bagging_distance":
             # Bagging Regressor (based on https://stats.stackexchange.com/questions/183230/bootstrapping-confidence-interval-from-a-regression-prediction)
-            br = BaggingRegressor(get_regression_model(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
+            br = get_bagging_regressor().fit(x_2d, y)
             br_collection = np.array([m.predict(x_test_2d) for m in br.estimators_])  # yields 2D array with shape (run, x_test)
-            y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
+            if key == "sklearn_isotonic_bagging":
+                y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
+            elif key == "sklearn_isotonic_bagging_distance":
+                raise NotImplementedError()
+                y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
 
         elif key == "inductive_conformal_prediction":
             # Inductive Conformal Point Prediction (based on https://arxiv.org/pdf/2107.00363.pdf, page 16 & 17)
@@ -257,12 +273,81 @@ for key, reginfo in dict_regressions.items():
             prediction_interval = cr_mond.predict(y_hat=prediction, confidence=confidence_level, bins=bins_test)
             y_lower_err, y_upper_err = prediction_interval[:, 0], prediction_interval[:, 1]
 
+        elif key == "manual_bootstrap":
+            # does manual bootstrapping, after https://www.saattrupdan.com/2020-03-01-bootstrap-prediction
+            def prediction_interval(model, X_train, y_train, x0, alpha: float = 0.05):
+                """Compute a prediction interval around the model's prediction of x0.
+
+                INPUT
+                    model
+                    A predictive model with `fit` and `predict` methods
+                    X_train: numpy array of shape (n_samples, n_features)
+                    A numpy array containing the training input data
+                    y_train: numpy array of shape (n_samples,)
+                    A numpy array containing the training target data
+                    x0
+                    A new data point, of shape (n_features,)
+                    alpha: float = 0.05
+                    The prediction uncertainty
+
+                OUTPUT
+                    A triple (`lower`, `pred`, `upper`) with `pred` being the prediction
+                    of the model and `lower` and `upper` constituting the lower- and upper
+                    bounds for the prediction interval around `pred`, respectively."""
+
+                # Number of training samples
+                n = X_train.shape[0]
+
+                # The authors choose the number of bootstrap samples as the square root
+                # of the number of samples
+                nbootstraps = np.sqrt(n).astype(int)
+
+                # Compute the m_i's and the validation residuals
+                bootstrap_preds, val_residuals_list = np.empty((nbootstraps, x0.shape[0])), []
+                for b in range(nbootstraps):
+                    train_idxs = np.random.choice(range(n), size=n, replace=True)
+                    val_idxs = np.array([idx for idx in range(n) if idx not in train_idxs])
+                    model.fit(X_train[train_idxs, :], y_train[train_idxs])
+                    preds = model.predict(X_train[val_idxs])
+                    val_residuals_list.append(y_train[val_idxs] - preds)
+                    bootstrap_preds[b] = model.predict(x0)
+                bootstrap_preds -= np.mean(bootstrap_preds)
+                val_residuals = np.concatenate(val_residuals_list)
+
+                # Compute the prediction and the training residuals
+                model.fit(X_train, y_train)
+                preds = model.predict(X_train)
+                train_residuals = y_train - preds
+
+                # Take percentiles of the training- and validation residuals to enable
+                # comparisons between them
+                val_residuals = np.percentile(val_residuals, q=np.arange(100))
+                train_residuals = np.percentile(train_residuals, q=np.arange(100))
+
+                # Compute the .632+ bootstrap estimate for the sample noise and bias
+                no_information_error = np.mean(np.abs(np.random.permutation(y_train) - np.random.permutation(preds)))
+                generalisation = np.abs(val_residuals.mean() - train_residuals.mean())
+                no_information_val = np.abs(no_information_error - train_residuals)
+                relative_overfitting_rate = np.mean(generalisation / no_information_val)
+                weight = 0.632 / (1 - 0.368 * relative_overfitting_rate)
+                residuals = (1 - weight) * train_residuals + weight * val_residuals
+
+                # Construct the C set and get the percentiles
+                C = np.array([m + o for m in bootstrap_preds for o in residuals])
+                qs = [100 * alpha / 2, 100 * (1 - alpha / 2)]
+                # calculate the percentile at each point in x0
+                C = C.transpose()
+                percentiles = np.array([np.percentile(c, q=qs) for c in C])
+
+                return percentiles[:, 0], model.predict(x0), percentiles[:, 1]
+
+            y_lower_err, _, y_upper_err = prediction_interval(get_regression_model(), X_train=x_2d, y_train=y, x0=x_test_2d, alpha=1 - confidence_level)
+
         else:
             raise KeyError(f"Interval method key '{key}' unkown")
 
         # write the errors and timing to the dicts
-        print(key)
-        assert y_lower_err.shape == y_upper_err.shape
+        assert y_lower_err.shape == y_upper_err.shape == x_test.shape, f"{y_lower_err.shape=} != {y_upper_err.shape=} != {x_test.shape=}"
         dict_regressions[key]["y_lower_err"] = y_lower_err
         dict_regressions[key]["y_upper_err"] = y_upper_err
         dict_timings[f"{reginfo['name']} error"] = perf_counter() - start_perf_counter
