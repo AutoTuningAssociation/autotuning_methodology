@@ -11,7 +11,7 @@ from sklearn.ensemble import BaggingRegressor, GradientBoostingRegressor
 
 
 # Parameters
-N = 500
+N = 250
 selected_dataset = 0
 increasing = [True, True][selected_dataset]
 confidence_level = 0.95
@@ -27,11 +27,11 @@ dict_regressions = dict(
         "isotonic_half": {"use": False, "use_interval": False, "name": "Isotonic (half)"},
         "isotonic_constant": {"use": False, "use_interval": False, "name": "Isotonic (half, constant)"},
         "sklearn_gradient_boosting": {"use": False, "use_interval": False, "name": "SKLearn gradient boosting"},
-        "sklearn_isotonic_bagging": {"use": False, "use_interval": False, "name": "SKLearn isotonic bagging"},
-        "inductive_conformal_prediction": {"use": False, "use_interval": True, "name": "Inductive Conformal Prediction"},
+        "sklearn_isotonic_bagging": {"use": True, "use_interval": True, "name": "SKLearn isotonic bagging"},
+        "inductive_conformal_prediction": {"use": False, "use_interval": False, "name": "Inductive Conformal Prediction"},
         "conformal_prediction_crepes": {"use": False, "use_interval": False, "name": "Conformal Prediction"},
-        "conformal_prediction_crepes_normalized": {"use": False, "use_interval": True, "name": "Conformal Prediction Normalized"},
-        "conformal_prediction_crepes_mondrian": {"use": False, "use_interval": True, "name": "Conformal Prediction Mondrian"},
+        "conformal_prediction_crepes_normalized": {"use": False, "use_interval": False, "name": "Conformal Prediction Normalized"},
+        "conformal_prediction_crepes_mondrian": {"use": False, "use_interval": False, "name": "Conformal Prediction Mondrian"},
     }
 )
 
@@ -52,7 +52,11 @@ if dict_regressions["inductive_conformal_prediction"]["use"] or dict_regressions
     # can be installed with 'pip install nonconformist'
     from nonconformist.cp import IcpRegressor
     from nonconformist.nc import NcFactory, SignErrorErrFunc
-if dict_regressions["conformal_prediction_crepes"]["use_interval"] or dict_regressions["conformal_prediction_crepes_normalized"]["use_interval"]:
+if (
+    dict_regressions["conformal_prediction_crepes"]["use_interval"]
+    or dict_regressions["conformal_prediction_crepes_normalized"]["use_interval"]
+    or dict_regressions["conformal_prediction_crepes_mondrian"]["use_interval"]
+):
     from crepes import ConformalRegressor
     from crepes.fillings import sigma_knn, binning
 
@@ -110,6 +114,10 @@ def calculate_confidence_interval(values: np.ndarray):
     return confidence_interval_lower, confidence_interval_upper
 
 
+def get_regression_model():
+    return IsotonicRegression(y_min=y.min(), y_max=y.max(), increasing=increasing, out_of_bounds="clip")
+
+
 # Calculate regressions
 for key, reginfo in dict_regressions.items():
     if reginfo["use"]:
@@ -120,7 +128,7 @@ for key, reginfo in dict_regressions.items():
             lr = LinearRegression().fit(x_2d, y)
             y_pred = lr.predict(x_test_2d)
         elif key == "sklearn_isotonic":
-            ir = IsotonicRegression(y_min=y.min(), y_max=y.max(), increasing=increasing, out_of_bounds="clip").fit(x, y)
+            ir = get_regression_model().fit(x, y)
             y_pred = ir.predict(x_test)
         elif key == "isotonic_all":
             ir2linear_all = LpIsotonicRegression(N, increasing=increasing, curve_algo=PiecewiseLinearIsotonicCurve)
@@ -138,7 +146,7 @@ for key, reginfo in dict_regressions.items():
             gbr = GradientBoostingRegressor(loss="quantile", alpha=0.5).fit(x_2d, y)  # predicts median
             y_pred = gbr.predict(x_test_2d)
         elif key == "sklearn_isotonic_bagging":
-            br = BaggingRegressor(IsotonicRegression(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
+            br = BaggingRegressor(get_regression_model(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
             y_pred = br.predict(x_test_2d)
         elif (
             key == "inductive_conformal_prediction"
@@ -170,13 +178,17 @@ for key, reginfo in dict_regressions.items():
             x_calibrate_2d = x_2d[indices_calibrate, :]
 
             # create the regression model, nonconformity function and inductive conformal regressor
-            regression_model = IsotonicRegression(y_min=y.min(), y_max=y.max(), increasing=increasing, out_of_bounds="clip")
+            regression_model = get_regression_model()
             regression_model.fit(x_2d[indices_train, :], y[indices_train])
             prediction = regression_model.predict(x_test_2d)
 
             # get the difference in prediction and true values on the calibration set
             prediction_calibrated = regression_model.predict(x_calibrate_2d)
             residuals_calibrated = y[indices_calibrate] - prediction_calibrated
+
+            # generate difficulty estimates for the calibration and test set
+            sigmas_cal = sigma_knn(X=x_calibrate_2d, residuals=residuals_calibrated)
+            sigmas_test = sigma_knn(X=x_calibrate_2d, residuals=residuals_calibrated, X_test=x_test_2d)
 
         # check the type of interval and calculate accordingly
         if key == "sklearn_gradient_boosting":
@@ -190,6 +202,7 @@ for key, reginfo in dict_regressions.items():
 
         elif key == "sklearn_isotonic_bagging":
             # Bagging Regressor (based on https://stats.stackexchange.com/questions/183230/bootstrapping-confidence-interval-from-a-regression-prediction)
+            br = BaggingRegressor(get_regression_model(), n_estimators=round(N / 5), bootstrap=True).fit(x_2d, y)
             br_collection = np.array([m.predict(x_test_2d) for m in br.estimators_])  # yields 2D array with shape (run, x_test)
             y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
 
@@ -202,8 +215,7 @@ for key, reginfo in dict_regressions.items():
             assert len(indices_train) + len(indices_calibrate) == N
 
             # create the regression model, nonconformity function and inductive conformal regressor
-            regression_model = IsotonicRegression(y_min=y.min(), y_max=y.max(), increasing=increasing, out_of_bounds="clip")
-            nonconformity_function = NcFactory.create_nc(regression_model, err_func=SignErrorErrFunc())
+            nonconformity_function = NcFactory.create_nc(get_regression_model(), err_func=SignErrorErrFunc())
             inductive_conformal_regressor = IcpRegressor(nonconformity_function)
 
             # fit and calibrate the ICP
@@ -225,17 +237,25 @@ for key, reginfo in dict_regressions.items():
 
         elif key == "conformal_prediction_crepes_normalized":
             # fit a normalized conformal regressor
-            sigmas_cal = sigma_knn(X=x_calibrate_2d, residuals=residuals_calibrated)
             cr_norm = ConformalRegressor()
             cr_norm.fit(residuals=residuals_calibrated, sigmas=sigmas_cal)
-
-            # generate difficulty estimates for the test set
-            sigmas_test = sigma_knn(X=x_calibrate_2d, residuals=residuals_calibrated, X_test=x_test_2d)
 
             # get the prediction intervals for the test set
             prediction_interval = cr_norm.predict(y_hat=prediction, confidence=confidence_level, sigmas=sigmas_test)
             y_lower_err, y_upper_err = prediction_interval[:, 0], prediction_interval[:, 1]
-            print("hello")
+
+        elif key == "conformal_prediction_crepes_mondrian":
+            # fit a Mondrian conformal regressor
+            bins_cal, bin_thresholds = binning(values=sigmas_cal, bins=3)
+            cr_mond = ConformalRegressor()
+            cr_mond.fit(residuals=residuals_calibrated, bins=bins_cal)
+
+            # generate bins
+            bins_test = binning(values=sigmas_test, bins=bin_thresholds)
+
+            # get the prediction intervals for the test set
+            prediction_interval = cr_mond.predict(y_hat=prediction, confidence=confidence_level, bins=bins_test)
+            y_lower_err, y_upper_err = prediction_interval[:, 0], prediction_interval[:, 1]
 
         else:
             raise KeyError(f"Interval method key '{key}' unkown")
