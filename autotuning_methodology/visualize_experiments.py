@@ -596,8 +596,8 @@ if __name__ == "__main__":
         # take the CWD one level up
         import os
         os.chdir('../')
-        experiment_filepath = 'test_random_calculated'
-        # experiment_filepath = 'methodology_paper_example'
+        # experiment_filepath = 'test_random_calculated'
+        experiment_filepath = 'methodology_paper_example'
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
         experiment_filepath = get_args_from_cli()

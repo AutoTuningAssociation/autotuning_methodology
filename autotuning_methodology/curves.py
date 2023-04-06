@@ -5,6 +5,7 @@ from typing import Tuple
 import numpy as np
 from math import floor, ceil, sqrt
 import warnings
+from sklearn.isotonic import IsotonicRegression
 
 from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
@@ -194,9 +195,6 @@ class Curve(ABC):
 
         increasing = not self.minimization
         if package == "sklearn":
-            from sklearn.isotonic import IsotonicRegression
-            import warnings
-
             # if npoints != 1000:
             #     warnings.warn("npoints argument is impotent for sklearn package") # TODO look into what to do about the segments
             if power != 2:
@@ -205,6 +203,7 @@ class Curve(ABC):
             ir.fit(x, y)
             return ir.predict(x_new)
         elif package == "isotonic":
+            raise NotImplementedError(f"Support for isotonic package is deprecated")
             from isotonic.isotonic import LpIsotonicRegression
 
             ir = LpIsotonicRegression(npoints, increasing=increasing, power=power).fit(x, y)
@@ -502,122 +501,50 @@ class StochasticOptimizationAlgorithm(Curve):
         times, values, times_1D, values_1D, real_stopping_point_time = self._get_curve_over_time_values_in_range(time_range)
         num_fevals = values.shape[0]
 
-        # if a distribution is included
-        if dist is not None:
-            assert dist.ndim == 1
-            # for each value, get the index in the distribution
-            indices = get_indices_in_distribution(values_1D, dist)
-            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, npoints=num_fevals, package="sklearn")
-            indices_curve = np.array(np.round(indices_curve), dtype=int)
-            curve = dist[indices_curve]
-        else:
-            # obtain the curves
+        if dist is None:
             raise NotImplementedError()
 
-        # filter to only get the time range (for the binned error / confidence interval calculation)
-        range_mask = (time_range[0] <= times) & (times <= time_range[-1])
-        assert np.all(np.count_nonzero(range_mask, axis=0) > 1), "Not enough overlap in time range and time values"
-        masked_times = np.where(range_mask, times, np.nan)
-        masked_values = np.where(range_mask, values, np.nan)
-        assert masked_times.ndim == 2
-        assert masked_times.shape == masked_values.shape
+        assert dist.ndim == 1
+        # for each value, get the index in the distribution
+        indices = get_indices_in_distribution(values_1D, dist)
+        indices_min: int = np.min(indices)
+        indices_max: int = np.max(indices)
+        indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals)
+        indices_curve = np.array(np.round(indices_curve), dtype=int)
+        curve = dist[indices_curve]
+
+        # # filter to only get the time range (for the binned error / confidence interval calculation)
+        # range_mask = (time_range[0] <= times) & (times <= time_range[-1])
+        # assert np.all(np.count_nonzero(range_mask, axis=0) > 1), "Not enough overlap in time range and time values"
+        # masked_times = np.where(range_mask, times, np.nan)
+        # masked_values = np.where(range_mask, values, np.nan)
+        # assert masked_times.ndim == 2
+        # assert masked_times.shape == masked_values.shape
 
         # why can we not have a confidence interval in isotonic regression?
         # -> because we can not get multiple values (one for each repeat) at a single point in time like with index
-        # --> instead, we look up in each repeat the x-value closest to each x_test (x[i]) and its index (i)
-        # ---> for each repeat, we can now use the raw value y[i], which deviates by abs(y_test - y[i])
-        # ----> optionally, values closer to x can be given more importance by taking 1 - (abs(x_test - x[i]) / sum(abs(x_test - x[i]) for each repeat))
+        # --> instead, we ....
 
-        def index_of_nearest(array, value):
-            """Find in the array the indices of the values closest to the given value (or values)"""
-            idx = np.clip(np.searchsorted(array, value, side="left"), a_min=0, a_max=len(array) - 1)
-            idx = idx - (np.abs(value - array[np.max(idx - 1, 0)]) < np.abs(value - array[idx]))
-            return idx
+        # set data to correct shape and remove any NaN
+        no_nan_mask = ~(np.isnan(times_1D) | np.isnan(indices))
+        x: np.ndarray = times_1D[no_nan_mask]
+        y: np.ndarray = indices[no_nan_mask]
+        assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
+        N = x.shape[0]
 
-        # for each repeat, look up the index of the value closest to each time in the time range
-        closest_indices = np.full((masked_times.shape[1], time_range.shape[0]), np.NaN)
-        closest_indices_times = np.full_like(closest_indices, np.NaN)
-        closest_indices_values = np.full_like(closest_indices, np.NaN)
-        closest_indices_indices = np.full_like(closest_indices, np.NaN)
-        masked_indices = get_indices_in_distribution(masked_values, dist)
-        for repeat in range(masked_times.shape[1]):
-            closest_indices_at_repeat = index_of_nearest(masked_times[:, repeat], time_range)
-            closest_indices[repeat] = closest_indices_at_repeat
-            closest_indices_times[repeat] = masked_times[closest_indices_at_repeat, repeat]
-            closest_indices_values[repeat] = masked_values[closest_indices_at_repeat, repeat]
-            closest_indices_indices[repeat] = masked_indices[closest_indices_at_repeat, repeat]
+        # get the lower and upper error curves
+        prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="mondrian_conformal")
+        prediction_interval = np.clip(np.array(np.round(prediction_interval), dtype=int), a_min=0, a_max=N - 1)
+        curve_lower_err, curve_upper_err = dist[prediction_interval[:, 0]], dist[prediction_interval[:, 1]]
+        assert curve_lower_err.shape == curve_upper_err.shape
 
-        # transpose the arrays to allow correct iteration
-        closest_indices = closest_indices.transpose()
-        closest_indices_times = closest_indices_times.transpose()
-        closest_indices_values = closest_indices_values.transpose()
-        closest_indices_indices = closest_indices_indices.transpose()
-
-        # # get the weights of each raw value depending on its distance to time_range
-        # closest_indices_weights = np.empty_like(closest_indices)
-        # for i_time, time in enumerate(time_range):
-        #     times_at_repeat = closest_indices_times[i_time]
-        #     time_distance = np.abs(times_at_repeat - time)
-        #     time_distance_sum = np.nansum(time_distance)
-        #     # inverse the fractional distance to the time in time_range, so values closer to the time in time_range have proportionally more weight
-        #     closest_indices_weights[i_time] = 1 - (time_distance / time_distance_sum)
-        #     print(closest_indices_weights[i_time])
-        #     assert np.nansum(closest_indices_weights[i_time]) <= 1, f"{np.nansum(closest_indices_weights[i_time])=} should be at most 1"
-        #     # TODO natuurlijk klopt dit niet, want alles begint vanaf 0 distance...
-        # TODO in plaats daarvan zou je ook met een gewicht per segment kunnen rekenen
-
-        # get the confidence interval at each time in the time range
-        if confidence_level is None:
-            confidence_level = 0.95
-        curve_lower_err_indx, curve_upper_err_indx = self.get_confidence_interval(closest_indices_indices, confidence_level)
-        curve_lower_err = np.full_like(curve_lower_err_indx, np.NaN)
-        curve_upper_err = np.full_like(curve_upper_err_indx, np.NaN)
-        curve_lower_err_non_nan = ~np.isnan(curve_lower_err_indx)
-        curve_upper_err_non_nan = ~np.isnan(curve_upper_err_indx)
-        curve_lower_err[curve_lower_err_non_nan] = dist[np.array(curve_lower_err_indx[curve_lower_err_non_nan], dtype=int)]
-        curve_upper_err[curve_upper_err_non_nan] = dist[np.array(curve_upper_err_indx[curve_upper_err_non_nan], dtype=int)]
-
-        # # OLD WAY BELOW
-        # # bin the values to their closest point in low resolution time_range
-        # time_range_low_res = np.linspace(time_range[0], time_range[-1],
-        #                                  num=round(num_fevals / 10))    # should result in, on average, num_repeat observations per bin
-        # bins = [[] for _ in range(len(time_range_low_res))]
-        # for multi_index, value in np.ndenumerate(masked_values):
-        #     # for each element look up the index of the closest point in time_range, write the value to this bin
-        #     if not np.isnan(value):
-        #         index = (np.abs(time_range_low_res - masked_times[multi_index])).argmin()
-        #         bins[index].append(value)
-
-        # # calculate the confidence interval for each bin
-        # bins = list([np.array(bin) for bin in bins])
-        # if confidence_level is None:
-        #     # get the standard error, interpolate missing bins
-        #     curve_std: np.ndarray = np.full_like(time_range_low_res, np.nan)
-        #     for bin_index, bin in enumerate(bins):
-        #         # at least three non-zero values must be present to calculate the standard error
-        #         if np.count_nonzero(~np.isnan(bin)) >= 3:
-        #             curve_std[bin_index] = np.nanstd(bin)
-        #     # filter out where NaN
-        #     nan_mask = ~np.isnan(curve_std)
-        #     curve_std = curve_std[nan_mask]
-        #     time_range_low_res = time_range_low_res[nan_mask]
-        #     # interpolate missing bins
-        #     curve_std = np.interp(time_range, time_range_low_res, curve_std)
-        #     curve_lower_err = curve - curve_std
-        #     curve_upper_err = curve + curve_std
-        # else:
-        #     # calculate in bins, interpolate missing bins
-        #     # TODO make sure this is appropriate, calculating the confidence interval of the isotonic curve instead of the median
-        #     curve_lower_err, curve_upper_err = self.get_confidence_interval_jagged(bins, confidence_level)
-        #     curve_lower_err, curve_upper_err = np.interp(time_range, time_range_low_res,
-        #                                                  curve_lower_err), np.interp(time_range, time_range_low_res, curve_upper_err)
-        #     # alternative: calculate using get_confidence_interval, interpolate to time_range afterwards (cons: naive assumption that the times roughly match per function evaluation)
-        #     # curve_lower_err, curve_upper_err = self.get_confidence_interval(values, confidence_level)
-
-        # pad with NaN where outside the range, yielding an array.shape == fevals.shape
-        assert curve.shape == time_range.shape
+        # print(f"{self.display_name}: {np.median(curve - curve_lower_err)}, {np.median(curve_upper_err - curve)}")
+        # for t, e, i in zip(time_range, curve_lower_err, prediction[:, 0]):
+        #     print(f"{t}: {e} ({i})")
+        # exit(0)
 
         # from the real_stopping_point_time until the end of the time range, clip the values because with fewer than 50% of the repeats, as those the results can not be trusted
+        assert curve.shape == time_range.shape
         real_stopping_point_index = time_range.shape[0]
         if real_stopping_point_time < time_range[-1]:
             if real_stopping_point_time <= time_range[0]:
@@ -657,7 +584,6 @@ class StochasticOptimizationAlgorithm(Curve):
         for key_index in range(num_keys):
             split_time_per_feval[key_index] = np.mean(time_in_range_per_key[key_index], axis=1)
         assert split_time_per_feval.shape == (num_keys, fevals_range.shape[0]), f"{split_time_per_feval.shape} != {(num_keys, fevals_range.shape[0])}"
-
         return split_time_per_feval
 
     def get_split_times_at_time(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
@@ -749,3 +675,88 @@ class StochasticOptimizationAlgorithm(Curve):
         assert not np.isnan(confidence_interval_lower).any()
         assert not np.isnan(confidence_interval_upper).any()
         return confidence_interval_lower, confidence_interval_upper
+
+    def _get_prediction_interval_conformal(self, x_1d: np.ndarray, y_1d: np.ndarray, x_test_1d: np.ndarray, confidence_level: float,
+                                           method="inductive_conformal", train_fraction: float = 0.75) -> np.ndarray:
+        """ Calculates the prediction interval using various conformal methods """
+        methods = ['inductive_conformal', 'conformal', 'normalized_conformal', 'mondrian_conformal']
+        assert method in methods
+        assert 0 < train_fraction < 1
+
+        # divide data into training and calibration set (75%-25%)
+        N = x_1d.shape[0]
+        calibration_cutoff = round(N * train_fraction)
+        random_indices = np.random.permutation(N)
+        indices_train, indices_calibrate = random_indices[:calibration_cutoff], random_indices[calibration_cutoff:]
+        assert len(indices_train) + len(indices_calibrate) == N
+
+        # set the correct shape of the data
+        y = y_1d
+        y_train = y[indices_train]
+        y_cal = y[indices_calibrate]
+        to_2d = True
+        if to_2d:
+            x = x_1d.reshape(-1, 1)
+            x_test = x_test_1d.reshape(-1, 1)
+            x_train = x[indices_train, :]
+            x_cal = x[indices_calibrate, :]
+        else:
+            x = x_1d
+            x_test = x_test_1d
+            x_train = x[indices_train]
+            x_cal = x[indices_calibrate]
+
+        # create the regression model
+        regression_model = IsotonicRegression(increasing=not self.minimization, y_min=y.min(), y_max=y.max(), out_of_bounds="clip")
+
+        # get the prediction interval for each methods
+        if method == "inductive_conformal":
+            # Inductive Conformal Point Prediction (based on https://arxiv.org/pdf/2107.00363.pdf, page 16 & 17)
+            from nonconformist.cp import IcpRegressor
+            from nonconformist.nc import NcFactory, SignErrorErrFunc
+            # create the nonconformity function and inductive conformal regressor
+            nonconformity_function = NcFactory.create_nc(regression_model, err_func=SignErrorErrFunc())
+            inductive_conformal_regressor = IcpRegressor(nonconformity_function)
+
+            # fit and calibrate the ICP
+            inductive_conformal_regressor.fit(x_train, y_train)
+            inductive_conformal_regressor.calibrate(x_cal, y_cal)
+
+            # get the interval on the prediction
+            prediction_interval = inductive_conformal_regressor.predict(x_test, significance=1 - confidence_level)
+
+        else:
+            from crepes import ConformalRegressor
+            from crepes.fillings import sigma_knn, binning
+
+            # fit the regression model
+            regression_model.fit(x_train, y_train)
+            prediction = regression_model.predict(x_test)
+
+            # get the difference in prediction and true values on the calibration set
+            prediction_calibrated = regression_model.predict(x_cal)
+            residuals_calibrated = y_cal - prediction_calibrated
+
+            # generate difficulty estimates for the calibration and test set
+            sigmas_cal = sigma_knn(X=x_cal, residuals=residuals_calibrated)
+            sigmas_test = sigma_knn(X=x_cal, residuals=residuals_calibrated, X_test=x_test)
+
+            # get the prediction intervals using various methods
+            if method == "conformal":
+                cr = ConformalRegressor()
+                cr.fit(residuals=residuals_calibrated)
+                prediction_interval = cr.predict(y_hat=prediction, confidence=confidence_level)
+
+            elif method == "normalized_conformal":
+                cr_norm = ConformalRegressor()
+                cr_norm.fit(residuals=residuals_calibrated, sigmas=sigmas_cal)
+                prediction_interval = cr_norm.predict(y_hat=prediction, confidence=confidence_level, sigmas=sigmas_test)
+
+            elif method == "mondrian_conformal":
+                bins_cal, bin_thresholds = binning(values=sigmas_cal, bins=3)
+                cr_mond = ConformalRegressor()
+                cr_mond.fit(residuals=residuals_calibrated, bins=bins_cal)
+                bins_test = binning(values=sigmas_test, bins=bin_thresholds)    # generate bins to take the distance into account
+                prediction_interval = cr_mond.predict(y_hat=prediction, confidence=confidence_level, bins=bins_test)
+
+        return prediction_interval
