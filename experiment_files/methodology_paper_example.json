@@ -4,9 +4,11 @@
   "folder_id": "methodology_paper_evaluation",
   "kernel_path": "cached_data_used/kernels",
   "kernels": [
+    "pnpoly",
     "convolution"
   ],
   "GPUs": [
+    "RTX_2080_Ti",
     "RTX_3090"
   ],
   "minimization": true,
@@ -26,7 +28,6 @@
   ],
   "plot": {
     "plot_x_value_types": [
-      "time",
       "aggregated"
     ],
     "plot_y_value_types": [

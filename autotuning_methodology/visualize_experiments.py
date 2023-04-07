@@ -484,7 +484,7 @@ class Visualize:
         strategies_performance = [list() for _ in aggregation_data[0][1]]
         strategies_performance_lower_err = [list() for _ in aggregation_data[0][1]]
         strategies_performance_upper_err = [list() for _ in aggregation_data[0][1]]
-        strategies_performance_real_stopping_point_fraction = [-1 for _ in aggregation_data[0][1]]
+        strategies_performance_real_stopping_point_fraction = [-1.0 for _ in aggregation_data[0][1]]
         for random_baseline, strategies_curves, searchspace_stats, time_range in aggregation_data:
             dist = searchspace_stats.objective_performances_total_sorted
             for strategy_index, strategy_curve in enumerate(strategies_curves):
@@ -510,12 +510,12 @@ class Visualize:
         strategies_aggregated_performance: list[np.ndarray] = list()
         strategies_aggregated_lower_err: list[np.ndarray] = list()
         strategies_aggregated_upper_err: list[np.ndarray] = list()
-        strategies_aggregated_real_stopping_point_fraction: list[int] = list()
+        strategies_aggregated_real_stopping_point_fraction: list[float] = list()
         for index in range(len(strategies_performance)):
             strategies_aggregated_performance.append(np.mean(np.array(strategies_performance[index]), axis=0))
             strategies_aggregated_lower_err.append(np.mean(np.array(strategies_performance_lower_err[index]), axis=0))
             strategies_aggregated_upper_err.append(np.mean(np.array(strategies_performance_upper_err[index]), axis=0))
-            strategies_aggregated_real_stopping_point_fraction.append(round(np.mean(strategies_performance_real_stopping_point_fraction[index])))
+            strategies_aggregated_real_stopping_point_fraction.append(np.mean(strategies_performance_real_stopping_point_fraction[index]))
 
         return strategies_aggregated_performance, strategies_aggregated_lower_err, strategies_aggregated_upper_err, strategies_aggregated_real_stopping_point_fraction
 
@@ -534,15 +534,32 @@ class Visualize:
         # plot each strategy
         y_axis_size = strategies_performance[0].shape[0]
         time_range = np.arange(y_axis_size)
+        plot_errors = True
         print(f"\n-------")
         print(f"Quantification of aggregate performance across all search spaces:")
         for strategy_index, strategy_performance in enumerate(strategies_performance):
             displayname = self.strategies[strategy_index]["display_name"]
             color = self.colors[strategy_index]
             real_stopping_point_fraction = strategies_real_stopping_point_fraction[strategy_index]
-            real_stopping_point_index = real_stopping_point_fraction * time_range.shape[0]
+            real_stopping_point_index = round(real_stopping_point_fraction * time_range.shape[0])
+            if real_stopping_point_index <= 0:
+                warnings.warn(f"Stopping point index for {displayname} is at {real_stopping_point_index}")
+                continue
+
+            # plot the errors
+            if plot_errors:
+                strategy_lower_err = strategies_lower_err[strategy_index]
+                strategy_upper_err = strategies_upper_err[strategy_index]
+                ax.fill_between(time_range[:real_stopping_point_index], strategy_lower_err[:real_stopping_point_index],
+                                strategy_upper_err[:real_stopping_point_index], alpha=0.15, antialiased=True, color=color)
+                if real_stopping_point_index < time_range.shape[0] and real_stopping_point_index < len(strategies_lower_err) - 1:
+                    ax.fill_between(time_range[real_stopping_point_index:], strategies_lower_err[real_stopping_point_index:],
+                                    strategies_upper_err[real_stopping_point_index:], alpha=0.15, antialiased=True, color=color, ls='dashed')
+
+            # plot the curve
             ax.plot(time_range[:real_stopping_point_index], strategy_performance[:real_stopping_point_index], color=color, label=displayname)
-            ax.plot(time_range[real_stopping_point_index:], strategy_performance[real_stopping_point_index:], color=color, ls='dashed')
+            if real_stopping_point_index < time_range.shape[0]:
+                ax.plot(time_range[real_stopping_point_index:], strategy_performance[real_stopping_point_index:], color=color, ls='dashed')
             print(f" | performance of {displayname}: {round(np.mean(strategy_performance), 3)}")
 
         # set the axis
