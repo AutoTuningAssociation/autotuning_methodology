@@ -4,7 +4,7 @@
   "folder_id": "methodology_paper_evaluation",
   "kernel_path": "cached_data_used/kernels",
   "kernels": [
-    "pnpoly"
+    "convolution"
   ],
   "GPUs": [
     "RTX_3090"
@@ -26,10 +26,11 @@
   ],
   "plot": {
     "plot_x_value_types": [
-      "time"
+      "time",
+      "aggregated"
     ],
     "plot_y_value_types": [
-      "absolute",
+      "normalized",
       "baseline"
     ],
     "confidence_level": 0.95,
@@ -67,10 +68,14 @@
       "display_name": "Differential Evolution"
     },
     {
-      "name": "bayesian_optimization",
-      "strategy": "bayes_opt",
-      "display_name": "Bayesian Optimization",
-      "repeats": 7
+      "name": "greedy_ils",
+      "strategy": "greedy_ils",
+      "display_name": "Greedy ILS"
+    },
+    {
+      "name": "greedy_mls",
+      "strategy": "greedy_mls",
+      "display_name": "Greedy MLS"
     }
   ]
 }

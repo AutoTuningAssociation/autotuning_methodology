@@ -184,8 +184,7 @@ class Curve(ABC):
         """ Get the isotonic regressor """
         return IsotonicRegression(increasing=not self.minimization, y_min=y_min, y_max=y_max, out_of_bounds=out_of_bounds)
 
-    def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package="isotonic", npoints=1000, power=2, ymin=None,
-                           ymax=None) -> np.ndarray:
+    def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package="sklearn", npoints=1000, power=2, ymin=None, ymax=None) -> np.ndarray:
         """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'"""
         # check if the assumptions that the input arrays are numpy arrays holds
         assert isinstance(x, np.ndarray)
@@ -511,35 +510,26 @@ class StochasticOptimizationAlgorithm(Curve):
 
         assert dist.ndim == 1
         dist_size = dist.shape[0]
-        # for each value, get the index in the distribution
-        indices = get_indices_in_distribution(values_1D, dist)
-        indices_min: int = np.min(indices)
-        indices_max: int = np.max(indices)
-        indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals)
-        indices_curve = np.clip(np.array(np.round(indices_curve), dtype=int), a_min=0, a_max=dist_size - 1)
-        curve = dist[indices_curve]
 
-        # # filter to only get the time range (for the binned error / confidence interval calculation)
-        # range_mask = (time_range[0] <= times) & (times <= time_range[-1])
-        # assert np.all(np.count_nonzero(range_mask, axis=0) > 1), "Not enough overlap in time range and time values"
-        # masked_times = np.where(range_mask, times, np.nan)
-        # masked_values = np.where(range_mask, values, np.nan)
-        # assert masked_times.ndim == 2
-        # assert masked_times.shape == masked_values.shape
+        # # for each value, get the index in the distribution
+        # indices = get_indices_in_distribution(values_1D, dist)
+        # indices_min: int = np.min(indices)
+        # indices_max: int = np.max(indices)
+        # indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals)
+        # indices_curve = np.clip(np.array(np.round(indices_curve), dtype=int), a_min=0, a_max=dist_size - 1)
+        # curve = dist[indices_curve]
 
-        # why can we not have a confidence interval in isotonic regression?
-        # -> because we can not get multiple values (one for each repeat) at a single point in time like with index
-        # --> instead, we ....
-
-        # set data to correct shape and remove any NaN
-        no_nan_mask = ~(np.isnan(times_1D) | np.isnan(indices))
-        x: np.ndarray = times_1D[no_nan_mask]
-        y: np.ndarray = indices[no_nan_mask]
-        assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
+        # # set data to correct shape and remove any NaN
+        # no_nan_mask = ~(np.isnan(times_1D) | np.isnan(indices))
+        # x: np.ndarray = times_1D[no_nan_mask]
+        # y: np.ndarray = indices[no_nan_mask]
+        # assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
 
         # get the lower and upper error curves
         # prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="conformal")
-        prediction_interval = self._get_prediction_interval_bagging(x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats)
+        # prediction_interval = self._get_prediction_interval_bagging(x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats)
+        prediction_interval = self._get_prediction_interval_separated(times, get_indices_in_distribution(values, dist), time_range,
+                                                                      confidence_level=confidence_level)
 
         # round off the intervals and prediction in the correct way
         prediction_interval[:, 0] = np.floor(prediction_interval[:, 0])
@@ -691,6 +681,46 @@ class StochasticOptimizationAlgorithm(Curve):
         assert not np.isnan(confidence_interval_lower).any()
         assert not np.isnan(confidence_interval_upper).any()
         return confidence_interval_lower, confidence_interval_upper
+
+    def _get_prediction_interval_separated(self, times: np.ndarray, values: np.ndarray, time_range: np.ndarray, confidence_level: float) -> np.ndarray:
+        """ Calculates the prediction interval and isotonic regression mean by separating the runs """
+        assert times.shape == values.shape
+        assert values.ndim == 2
+        num_fevals = values.shape[0]
+        num_repeats = values.shape[1]
+
+        # predict an isotonic curve for the time range for each run
+        predictions = np.full((num_repeats, time_range.shape[0]), fill_value=np.NaN)
+        for run in range(num_repeats):
+            # get the data of this run
+            _x = times[:, run]
+            _y = values[:, run]
+            assert _x.shape[0] == _y.shape[0] == num_fevals
+
+            # filter NaN
+            no_nan_mask = ~np.isnan(_x) & ~np.isnan(_y)    # only keep indices where both the times and values are not NaN
+            _x = _x[no_nan_mask]
+            _y = _y[no_nan_mask]
+            assert _x.ndim == _y.ndim == 1
+            assert np.all(~np.isnan(_x))
+            assert np.all(~np.isnan(_y))
+            fraction_valid = _y.shape[0] / num_fevals
+            if fraction_valid < 0.2:
+                warnings.warn(f"{fraction_valid * 100}% data left after removing NaN")
+
+            # get the prediction
+            predictions[run] = self.get_isotonic_curve(_x, _y, time_range)
+
+        # extract the mean and prediction intervals
+        assert np.all(~np.isnan(predictions))
+        predictions = predictions.transpose()    # set to (time_range, num_repeats)
+        y_lower_err, y_upper_err = self.get_confidence_interval(predictions, confidence_level=confidence_level)
+        mean_prediction = np.median(predictions, axis=1)
+        assert y_lower_err.shape == y_upper_err.shape == mean_prediction.shape == time_range.shape, f"{y_lower_err.shape=} != {y_upper_err.shape=} != {mean_prediction.shape=} != {time_range.shape=}"
+
+        # combine the data and return as a prediction interval
+        prediction_interval = np.concatenate([y_lower_err, y_upper_err, mean_prediction]).reshape((3, -1)).transpose()
+        return prediction_interval
 
     def _get_prediction_interval_bagging(self, x_1d: np.ndarray, y_1d: np.ndarray, x_test_1d: np.ndarray, confidence_level: float,
                                          num_repeats: int) -> np.ndarray:
