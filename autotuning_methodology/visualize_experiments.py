@@ -90,7 +90,7 @@ class Visualize:
         print("Visualizing")
 
         # settings
-        minimization: bool = self.experiment.get("minimization", True)
+        self.minimization: bool = self.experiment.get("minimization", True)
         cutoff_percentile: float = self.experiment.get("cutoff_percentile")
         cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
         cutoff_type: str = self.experiment.get('cutoff_type', "fevals")
@@ -118,7 +118,7 @@ class Visualize:
                 title = title.replace('_', ' ')
 
                 # get the statistics
-                searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name, minimization=minimization,
+                searchspace_stats = SearchspaceStatistics(kernel_name=kernel_name, device_name=gpu_name, minimization=self.minimization,
                                                           objective_time_keys=objective_time_keys, objective_performance_keys=objective_performance_keys)
 
                 # get the cached strategy results as curves
@@ -407,9 +407,7 @@ class Visualize:
                     x_axis_range, x_type, dist=dist, confidence_level=confidence_level)
 
             # transform the curves as necessary and set ylims
-            if y_type == 'absolute':
-                ax.set_ylim(absolute_optimum, min(np.max(curve_real), median))
-            elif y_type == 'normalized':
+            if y_type == 'normalized':
                 curve_real, curve_lower_err_real, curve_upper_err_real = normalize_multiple([curve_real, curve_lower_err_real, curve_upper_err_real])
                 curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = normalize_multiple(
                     [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional])
@@ -468,7 +466,10 @@ class Visualize:
         ax.set_xlim(tuple([x_axis_range[0], x_axis_range[-1]]))
         ax.set_ylabel(self.y_metric_displayname[f"objective_{y_type}"])
         normalized_ylim_margin = 0.02
-        if y_type == 'normalized':
+        if y_type == 'absolute':
+            multiplier = 0.99 if self.minimization else 1.01
+            ax.set_ylim(absolute_optimum * multiplier, median)
+        elif y_type == 'normalized':
             ax.set_ylim((0.0, 1 + normalized_ylim_margin))
         elif y_type == 'baseline':
             ax.set_ylim((min(-normalized_ylim_margin, ylim_min - normalized_ylim_margin), 1 + normalized_ylim_margin))

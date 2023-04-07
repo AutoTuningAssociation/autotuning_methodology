@@ -121,7 +121,7 @@ def get_regression_model():
 
 
 def get_bagging_regressor():
-    n_estimators = max(round(np.sqrt(N) / 10), 3)
+    n_estimators = max(round(np.sqrt(N)), 3)
     max_samples = 1 - (
         n_estimators / N
     )  # The fraction of samples allowed to be used is inversely proportional to the number of estimators. This way, a higher the number of estimators (reducing the confidence interval), results in more variation among the estimators (increasing the confidence interval)
@@ -215,7 +215,7 @@ for key, reginfo in dict_regressions.items():
         elif key == "sklearn_isotonic_bagging" or key == "sklearn_isotonic_bagging_distance":
             # Bagging Regressor (based on https://stats.stackexchange.com/questions/183230/bootstrapping-confidence-interval-from-a-regression-prediction)
             br = get_bagging_regressor().fit(x_2d, y)
-            br_collection = np.array([m.predict(x_test_2d) for m in br.estimators_])  # yields 2D array with shape (run, x_test)
+            br_collection = np.array([est.predict(x_test_2d) for est in br.estimators_])  # yields 2D array with shape (run, x_test)
             if key == "sklearn_isotonic_bagging":
                 y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
             elif key == "sklearn_isotonic_bagging_distance":

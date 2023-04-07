@@ -6,6 +6,7 @@ import numpy as np
 from math import floor, ceil, sqrt
 import warnings
 from sklearn.isotonic import IsotonicRegression
+from sklearn.ensemble import BaggingRegressor
 
 from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
@@ -179,6 +180,10 @@ class Curve(ABC):
             return self._x_time, self._y
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
+    def get_isotonic_regressor(self, y_min: float, y_max: float, out_of_bounds: str = "clip") -> IsotonicRegression:
+        """ Get the isotonic regressor """
+        return IsotonicRegression(increasing=not self.minimization, y_min=y_min, y_max=y_max, out_of_bounds=out_of_bounds)
+
     def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package="isotonic", npoints=1000, power=2, ymin=None,
                            ymax=None) -> np.ndarray:
         """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'"""
@@ -193,20 +198,19 @@ class Curve(ABC):
         if y.ndim > 1:
             y = y.flatten()
 
-        increasing = not self.minimization
         if package == "sklearn":
             # if npoints != 1000:
             #     warnings.warn("npoints argument is impotent for sklearn package") # TODO look into what to do about the segments
             if power != 2:
                 warnings.warn("power argument is impotent for sklearn package")
-            ir = IsotonicRegression(increasing=increasing, y_min=ymin, y_max=ymax, out_of_bounds="clip")
+            ir = self.get_isotonic_regressor(y_min=ymin, y_max=ymax)
             ir.fit(x, y)
             return ir.predict(x_new)
         elif package == "isotonic":
             raise NotImplementedError(f"Support for isotonic package is deprecated")
             from isotonic.isotonic import LpIsotonicRegression
 
-            ir = LpIsotonicRegression(npoints, increasing=increasing, power=power).fit(x, y)
+            ir = LpIsotonicRegression(npoints, increasing=not self.minimization, power=power).fit(x, y)
             y_isotonic_regression = ir.predict_proba(x_new)
             # TODO check if you are not indadvertedly clipping too much here
             if ymin is not None or ymax is not None:
@@ -500,17 +504,19 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
         times, values, times_1D, values_1D, real_stopping_point_time = self._get_curve_over_time_values_in_range(time_range)
         num_fevals = values.shape[0]
+        num_repeats = values.shape[1]
 
         if dist is None:
             raise NotImplementedError()
 
         assert dist.ndim == 1
+        dist_size = dist.shape[0]
         # for each value, get the index in the distribution
         indices = get_indices_in_distribution(values_1D, dist)
         indices_min: int = np.min(indices)
         indices_max: int = np.max(indices)
         indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals)
-        indices_curve = np.array(np.round(indices_curve), dtype=int)
+        indices_curve = np.clip(np.array(np.round(indices_curve), dtype=int), a_min=0, a_max=dist_size - 1)
         curve = dist[indices_curve]
 
         # # filter to only get the time range (for the binned error / confidence interval calculation)
@@ -530,13 +536,23 @@ class StochasticOptimizationAlgorithm(Curve):
         x: np.ndarray = times_1D[no_nan_mask]
         y: np.ndarray = indices[no_nan_mask]
         assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
-        N = x.shape[0]
 
         # get the lower and upper error curves
-        prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="mondrian_conformal")
-        prediction_interval = np.clip(np.array(np.round(prediction_interval), dtype=int), a_min=0, a_max=N - 1)
+        # prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="conformal")
+        prediction_interval = self._get_prediction_interval_bagging(x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats)
+
+        # round off the intervals and prediction in the correct way
+        prediction_interval[:, 0] = np.floor(prediction_interval[:, 0])
+        prediction_interval[:, 1] = np.ceil(prediction_interval[:, 1])
+        prediction_interval = np.clip(np.array(np.round(prediction_interval), dtype=int), a_min=0, a_max=dist_size - 1)
+        if prediction_interval.shape[1] >= 3:
+            indices_curve = prediction_interval[:, 2]
+            curve = dist[indices_curve]
+        # # where the lower or upper error is equal to the prediction, increase the difference by one
+        # prediction_interval[:, 0] = np.where(prediction_interval[:, 0] == indices_curve, prediction_interval[:, 0], prediction_interval[:, 0] - 1)
+        # prediction_interval[:, 1] = np.where(prediction_interval[:, 1] == indices_curve, prediction_interval[:, 1], prediction_interval[:, 1] + 1)
         curve_lower_err, curve_upper_err = dist[prediction_interval[:, 0]], dist[prediction_interval[:, 1]]
-        assert curve_lower_err.shape == curve_upper_err.shape
+        assert curve_lower_err.shape == curve_upper_err.shape == curve.shape, f"{curve_lower_err.shape=} != {curve_upper_err.shape=} != {curve.shape=}"
 
         # print(f"{self.display_name}: {np.median(curve - curve_lower_err)}, {np.median(curve_upper_err - curve)}")
         # for t, e, i in zip(time_range, curve_lower_err, prediction[:, 0]):
@@ -676,6 +692,36 @@ class StochasticOptimizationAlgorithm(Curve):
         assert not np.isnan(confidence_interval_upper).any()
         return confidence_interval_lower, confidence_interval_upper
 
+    def _get_prediction_interval_bagging(self, x_1d: np.ndarray, y_1d: np.ndarray, x_test_1d: np.ndarray, confidence_level: float,
+                                         num_repeats: int) -> np.ndarray:
+        """ Calculates the prediction interval and isotonic regression mean using a bootstrap bagging method """
+        # prepare the data
+        x = x_1d.reshape(-1, 1)
+        x_test = x_test_1d.reshape(-1, 1)
+        y = y_1d
+
+        # set the parameters
+        # based on the number of repeats, where the number of estimators is equal to the number of repeats and the fraction of samples is inversely proportional to the square root of the number of estimators. This way, the reuse of data when bootstrapping is limited.
+        n_estimators = max(num_repeats, 3)
+        max_samples = 1 / np.sqrt(n_estimators)
+        # alternative parameters (with max_samples this way, on average each datum is used only once).
+        # n_estimators = max(round(np.sqrt(num_repeats)), 3)
+        # n_estimators = max(round(np.log2(num_repeats**2)), 3)
+        # max_samples = 1 / n_estimators
+
+        # do the bootstrap bagging
+        regression_model = self.get_isotonic_regressor(y_min=y.min(), y_max=y.max())
+        bagging_regressor = BaggingRegressor(regression_model, n_estimators=n_estimators, max_samples=max_samples, bootstrap=True)
+        br = bagging_regressor.fit(x, y)    # fit the data to the estimators
+        br_prediction = br.predict(x_test)
+        br_collection = np.array([est.predict(x_test) for est in br.estimators_])    # predict for each estimator; yields array with shape (run, x_test)
+
+        # get the prediction interval in the correct shape
+        y_lower_err, y_upper_err = self.get_confidence_interval(br_collection.transpose(), confidence_level=confidence_level)
+        prediction_interval = np.concatenate([y_lower_err, y_upper_err, br_prediction]).reshape((3, -1)).transpose()
+        assert prediction_interval.shape == (x_test.shape[0], 3), f"{prediction_interval.shape}"
+        return prediction_interval
+
     def _get_prediction_interval_conformal(self, x_1d: np.ndarray, y_1d: np.ndarray, x_test_1d: np.ndarray, confidence_level: float,
                                            method="inductive_conformal", train_fraction: float = 0.75) -> np.ndarray:
         """ Calculates the prediction interval using various conformal methods """
@@ -707,7 +753,7 @@ class StochasticOptimizationAlgorithm(Curve):
             x_cal = x[indices_calibrate]
 
         # create the regression model
-        regression_model = IsotonicRegression(increasing=not self.minimization, y_min=y.min(), y_max=y.max(), out_of_bounds="clip")
+        regression_model = self.get_isotonic_regressor(y_min=y.min(), y_max=y.max())
 
         # get the prediction interval for each methods
         if method == "inductive_conformal":
