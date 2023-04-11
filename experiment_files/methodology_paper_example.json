@@ -5,7 +5,8 @@
   "kernel_path": "cached_data_used/kernels",
   "kernels": [
     "pnpoly",
-    "convolution"
+    "convolution",
+    "gemm"
   ],
   "GPUs": [
     "RTX_2080_Ti",

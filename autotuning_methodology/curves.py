@@ -460,11 +460,11 @@ class StochasticOptimizationAlgorithm(Curve):
         # return the curves split in real and fictional
         return self._get_curve_split_real_fictional_parts(real_stopping_point_index + 1, fevals_range, curve, curve_lower_err, curve_upper_err)
 
-    def _get_curve_over_time_values_in_range(self, time_range: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+    def _get_curve_over_time_values_in_range(self, time_range: np.ndarray, return_1d=True) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
         """Get the valid times and values that are in the given range"""
+        # check and get the variables
         assert time_range.ndim == 1
         assert np.all(np.isfinite(time_range))
-
         times = self._x_time
         values = self._y
 
@@ -489,58 +489,70 @@ class StochasticOptimizationAlgorithm(Curve):
         values = np.where(range_mask_margin, values, np.nan)
         num_repeats = values.shape[1]
 
-        # remove all NaNs, yielding a 1D array (because iterations has no meaning for over time anyway, and isotonic regression requires a 1D array)
-        no_nan_mask = ~np.isnan(times) & ~np.isnan(values)    # only keep indices where both the times and values are not NaN
-        times_1D = times[no_nan_mask]
-        values_1D = values[no_nan_mask]
-        assert times_1D.ndim == 1
-        assert times_1D.shape == values_1D.shape
-        assert np.all(~np.isnan(times_1D))
-        assert np.all(~np.isnan(values_1D))
+        # remove columns that are completely NaN
+        no_nan_column_mask = ~np.all(np.isnan(values), axis=1)
+        times = times[no_nan_column_mask, :]
+        values = values[no_nan_column_mask, :]
 
-        return times, values, times_1D, values_1D, real_stopping_point_time
+        # return the correct values
+        if return_1d:
+            # remove all NaNs, yielding a 1D array (because iterations has no meaning for over time anyway, and isotonic regression requires a 1D array)
+            no_nan_mask = ~np.isnan(times) & ~np.isnan(values)    # only keep indices where both the times and values are not NaN
+            times_1D = times[no_nan_mask]
+            values_1D = values[no_nan_mask]
+            assert times_1D.ndim == 1
+            assert times_1D.shape == values_1D.shape
+            assert np.all(~np.isnan(times_1D))
+            assert np.all(~np.isnan(values_1D))
+            return times_1D, values_1D, real_stopping_point_time
+        else:
+            return times, values, real_stopping_point_time
 
-    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        times, values, times_1D, values_1D, real_stopping_point_time = self._get_curve_over_time_values_in_range(time_range)
-        num_fevals = values.shape[0]
-        num_repeats = values.shape[1]
-
+    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None, use_bagging=False):
+        # check the distribution
         if dist is None:
             raise NotImplementedError()
-
         assert dist.ndim == 1
         dist_size = dist.shape[0]
 
-        # # for each value, get the index in the distribution
-        # indices = get_indices_in_distribution(values_1D, dist)
-        # indices_min: int = np.min(indices)
-        # indices_max: int = np.max(indices)
-        # indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals)
-        # indices_curve = np.clip(np.array(np.round(indices_curve), dtype=int), a_min=0, a_max=dist_size - 1)
-        # curve = dist[indices_curve]
+        # use a bagging prediction / interval method or the seperated prediction / interval method
+        if use_bagging:
+            # get the curve within the time range
+            times_1D, values_1D, real_stopping_point_time = self._get_curve_over_time_values_in_range(time_range, return_1d=True)
+            num_fevals = values.shape[0]
+            num_repeats = values.shape[1]
 
-        # # set data to correct shape and remove any NaN
-        # no_nan_mask = ~(np.isnan(times_1D) | np.isnan(indices))
-        # x: np.ndarray = times_1D[no_nan_mask]
-        # y: np.ndarray = indices[no_nan_mask]
-        # assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
+            # for each value, get the index in the distribution
+            indices = get_indices_in_distribution(values_1D, dist)
+            indices_min: int = np.min(indices)
+            indices_max: int = np.max(indices)
+            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals)
+            indices_curve = np.clip(np.array(np.round(indices_curve), dtype=int), a_min=0, a_max=dist_size - 1)
+            curve = dist[indices_curve]
 
-        # get the lower and upper error curves
-        # prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="conformal")
-        # prediction_interval = self._get_prediction_interval_bagging(x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats)
-        prediction_interval = self._get_prediction_interval_separated(times, get_indices_in_distribution(values, dist), time_range,
-                                                                      confidence_level=confidence_level)
+            # set data to correct shape and remove any NaN
+            no_nan_mask = ~(np.isnan(times_1D) | np.isnan(indices))
+            x: np.ndarray = times_1D[no_nan_mask]
+            y: np.ndarray = indices[no_nan_mask]
+            assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
+
+            # get the lower and upper error curves
+            # prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="conformal")
+            prediction_interval = self._get_prediction_interval_bagging(x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats)
+        else:
+            times, values, real_stopping_point_time = self._get_curve_over_time_values_in_range(time_range, return_1d=False)
+            indices = get_indices_in_distribution(values, dist)
+            prediction_interval = self._get_prediction_interval_separated(times, indices, time_range, confidence_level=confidence_level)
 
         # round off the intervals and prediction in the correct way
         prediction_interval[:, 0] = np.floor(prediction_interval[:, 0])
         prediction_interval[:, 1] = np.ceil(prediction_interval[:, 1])
         prediction_interval = np.clip(np.array(np.round(prediction_interval), dtype=int), a_min=0, a_max=dist_size - 1)
+
+        # get the curves
         if prediction_interval.shape[1] >= 3:
             indices_curve = prediction_interval[:, 2]
             curve = dist[indices_curve]
-        # # where the lower or upper error is equal to the prediction, increase the difference by one
-        # prediction_interval[:, 0] = np.where(prediction_interval[:, 0] == indices_curve, prediction_interval[:, 0], prediction_interval[:, 0] - 1)
-        # prediction_interval[:, 1] = np.where(prediction_interval[:, 1] == indices_curve, prediction_interval[:, 1], prediction_interval[:, 1] + 1)
         curve_lower_err, curve_upper_err = dist[prediction_interval[:, 0]], dist[prediction_interval[:, 1]]
         assert curve_lower_err.shape == curve_upper_err.shape == curve.shape, f"{curve_lower_err.shape=} != {curve_upper_err.shape=} != {curve.shape=}"
 
@@ -705,8 +717,8 @@ class StochasticOptimizationAlgorithm(Curve):
             assert np.all(~np.isnan(_x))
             assert np.all(~np.isnan(_y))
             fraction_valid = _y.shape[0] / num_fevals
-            if fraction_valid < 0.2:
-                warnings.warn(f"{fraction_valid * 100}% data left after removing NaN")
+            if fraction_valid < 0.05:
+                warnings.warn(f"{round(fraction_valid * 100, 1)}% data left after removing NaN ({_y.shape[0]} / {num_fevals})")
 
             # get the prediction
             predictions[run] = self.get_isotonic_curve(_x, _y, time_range)
