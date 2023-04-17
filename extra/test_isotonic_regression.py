@@ -98,7 +98,7 @@ def calculate_confidence_interval(values: np.ndarray):
     nq = n * q
     base = z * sqrt(nq * (1 - q))
     lower_rank = max(floor(nq - base), 0)
-    upper_rank = min(ceil(nq + base), n - 1)
+    upper_rank = min(ceil(nq + base) + 1, n - 1)
     confidence_interval_lower = np.full(values.shape[0], np.nan)
     confidence_interval_upper = np.full(values.shape[0], np.nan)
 

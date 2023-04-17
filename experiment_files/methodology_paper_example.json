@@ -4,13 +4,10 @@
   "folder_id": "methodology_paper_evaluation",
   "kernel_path": "cached_data_used/kernels",
   "kernels": [
-    "pnpoly",
-    "convolution",
-    "gemm"
+    "pnpoly"
   ],
   "GPUs": [
-    "RTX_2080_Ti",
-    "RTX_3090"
+    "RTX_2080_Ti"
   ],
   "minimization": true,
   "resolution": 1e3,
@@ -29,6 +26,8 @@
   ],
   "plot": {
     "plot_x_value_types": [
+      "fevals",
+      "time",
       "aggregated"
     ],
     "plot_y_value_types": [
@@ -68,16 +67,6 @@
       "name": "differential_evolution",
       "strategy": "diff_evo",
       "display_name": "Differential Evolution"
-    },
-    {
-      "name": "greedy_ils",
-      "strategy": "greedy_ils",
-      "display_name": "Greedy ILS"
-    },
-    {
-      "name": "greedy_mls",
-      "strategy": "greedy_mls",
-      "display_name": "Greedy MLS"
     }
   ]
 }

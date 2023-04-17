@@ -460,7 +460,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # return the curves split in real and fictional
         return self._get_curve_split_real_fictional_parts(real_stopping_point_index + 1, fevals_range, curve, curve_lower_err, curve_upper_err)
 
-    def _get_curve_over_time_values_in_range(self, time_range: np.ndarray, return_1d=True) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+    def _get_curve_over_time_values_in_range(self, time_range: np.ndarray, return_1d=True) -> Tuple[np.ndarray, np.ndarray, float, int, int]:
         """Get the valid times and values that are in the given range"""
         # check and get the variables
         assert time_range.ndim == 1
@@ -494,6 +494,10 @@ class StochasticOptimizationAlgorithm(Curve):
         times = times[no_nan_column_mask, :]
         values = values[no_nan_column_mask, :]
 
+        # get the shape
+        num_fevals = values.shape[0]
+        num_repeats = values.shape[1]
+
         # return the correct values
         if return_1d:
             # remove all NaNs, yielding a 1D array (because iterations has no meaning for over time anyway, and isotonic regression requires a 1D array)
@@ -504,11 +508,11 @@ class StochasticOptimizationAlgorithm(Curve):
             assert times_1D.shape == values_1D.shape
             assert np.all(~np.isnan(times_1D))
             assert np.all(~np.isnan(values_1D))
-            return times_1D, values_1D, real_stopping_point_time
+            return times_1D, values_1D, real_stopping_point_time, num_fevals, num_repeats
         else:
-            return times, values, real_stopping_point_time
+            return times, values, real_stopping_point_time, num_fevals, num_repeats
 
-    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None, use_bagging=False):
+    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None, use_bagging=True):
         # check the distribution
         if dist is None:
             raise NotImplementedError()
@@ -518,9 +522,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # use a bagging prediction / interval method or the seperated prediction / interval method
         if use_bagging:
             # get the curve within the time range
-            times_1D, values_1D, real_stopping_point_time = self._get_curve_over_time_values_in_range(time_range, return_1d=True)
-            num_fevals = values.shape[0]
-            num_repeats = values.shape[1]
+            times_1D, values_1D, real_stopping_point_time, num_fevals, num_repeats = self._get_curve_over_time_values_in_range(time_range, return_1d=True)
 
             # for each value, get the index in the distribution
             indices = get_indices_in_distribution(values_1D, dist)
@@ -540,7 +542,7 @@ class StochasticOptimizationAlgorithm(Curve):
             # prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="conformal")
             prediction_interval = self._get_prediction_interval_bagging(x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats)
         else:
-            times, values, real_stopping_point_time = self._get_curve_over_time_values_in_range(time_range, return_1d=False)
+            times, values, real_stopping_point_time, _, _ = self._get_curve_over_time_values_in_range(time_range, return_1d=False)
             indices = get_indices_in_distribution(values, dist)
             prediction_interval = self._get_prediction_interval_separated(times, indices, time_range, confidence_level=confidence_level)
 
@@ -636,14 +638,14 @@ class StochasticOptimizationAlgorithm(Curve):
         # confidence interval using normal distribution assumption
         from statistics import NormalDist
 
-        distribution = NormalDist()    # TODO check if binomial is more appropriate (calculate according to book)
+        distribution = NormalDist()
         z = distribution.inv_cdf((1 + confidence_level) / 2.0)
         n = values.shape[1]
         q = 0.5
         nq = n * q
         base = z * sqrt(nq * (1 - q))
         lower_rank = max(floor(nq - base), 0)
-        upper_rank = min(ceil(nq + base), n - 1)
+        upper_rank = min(ceil(nq + base) + 1, n - 1)
         confidence_interval_lower = np.full(values.shape[0], np.nan)
         confidence_interval_upper = np.full(values.shape[0], np.nan)
 

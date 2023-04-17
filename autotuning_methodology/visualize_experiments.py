@@ -144,7 +144,7 @@ class Visualize:
                     # self.plot_split_times_comparison('fevals', fevals_range, searchspace_stats, objective_time_keys, title=title,
                     #                                  strategies_curves=[strategies_curves[0], strategies_curves[2]])
                     # self.plot_split_times_comparison('time', time_range, searchspace_stats, objective_time_keys, title=title,
-                    #                                  strategies_curves=[strategies_curves[0], strategies_curves[2]])
+                    #                                  strategies_curves=strategies_curves)
                     self.plot_split_times_bar_comparison('time', time_range, searchspace_stats, objective_time_keys, title=title,
                                                          strategies_curves=strategies_curves)
                 if compare_baselines is True or compare_split_times is True:
@@ -303,7 +303,8 @@ class Visualize:
         plt.show()
 
     def plot_split_times_bar_comparison(self, x_type: str, fevals_or_time_range: np.ndarray, searchspace_stats: SearchspaceStatistics,
-                                        objective_time_keys: list, title: str = None, strategies_curves: list[Curve] = list()):
+                                        objective_time_keys: list[str], title: str = None, strategies_curves: list[Curve] = list(), print_table_format=True,
+                                        print_skip=['verification_time']):
         """ Plots a comparison of the average split times for strategies over the given range """
         fig, ax = plt.subplots(dpi=200)
         width = 0.5
@@ -311,17 +312,41 @@ class Visualize:
 
         # get a dictionary of {time_key: [array_average_time_per_strategy]}
         data_dict = dict.fromkeys(objective_time_keys)
+        data_table = list(list(list() for _ in range(len(objective_time_keys) - len(print_skip))) for _ in range(len(strategies_curves) + 1))
         for objective_time_key in objective_time_keys:
             data_dict[objective_time_key] = np.full((len(strategies_curves)), np.NaN)
         for strategy_index, strategy_curve in enumerate(strategies_curves):
+            print_skip_counter = 0
             strategy_label_list.append(strategy_curve.display_name)
             strategy_split_times = strategy_curve.get_split_times(fevals_or_time_range, x_type, searchspace_stats)
             # print(f"{strategy_curve.display_name}: ({strategy_split_times.shape})")
             for objective_time_key_index, objective_time_key in enumerate(objective_time_keys):
                 key_split_times = strategy_split_times[objective_time_key_index]
                 key_split_times = key_split_times[key_split_times > 0]
-                data_dict[objective_time_key][strategy_index] = np.median(key_split_times)
+                split_time = max(np.median(key_split_times), 0.0)
+                split_time = 0.0 if np.isnan(split_time) else split_time
+                data_dict[objective_time_key][strategy_index] = split_time
                 # print(f"    {objective_time_key}: {key_split_times[key_split_times > 0].shape}, {np.mean(key_split_times)}, {np.median(key_split_times)}")
+                if objective_time_key not in print_skip:
+                    if strategy_index == 0:
+                        data_table[0][objective_time_key_index - print_skip_counter] = objective_time_key.replace('_', ' ')
+                    data_table[strategy_index + 1][objective_time_key_index - print_skip_counter] = str("%.3g" % split_time)
+                else:
+                    print_skip_counter += 1
+
+        # print in table format
+        if print_table_format:
+            print("")
+            num_times = len(data_table[0])
+            print("\\begin{tabularx}{\linewidth}{l" + '|X' * num_times + "}")
+            print("\hline")
+            header = '} & \\textbf{'.join(data_table[0])
+            print("\\textbf{Algorithm} & \\textbf{" + header + "} \\" + '\\')
+            print("\hline")
+            for strategy_index in range(len(strategy_label_list)):
+                print(f"    {strategy_label_list[strategy_index]} & {' & '.join(data_table[strategy_index + 1])} \\\\\hline")
+            print("\end{tabularx}")
+            exit(0)
 
         # plot the bars
         bottom = np.zeros(len(strategies_curves))
@@ -469,8 +494,8 @@ class Visualize:
         if y_type == 'absolute':
             multiplier = 0.99 if self.minimization else 1.01
             ax.set_ylim(absolute_optimum * multiplier, median)
-        elif y_type == 'normalized':
-            ax.set_ylim((0.0, 1 + normalized_ylim_margin))
+        # elif y_type == 'normalized':
+        #     ax.set_ylim((0.0, 1 + normalized_ylim_margin))
         elif y_type == 'baseline':
             ax.set_ylim((min(-normalized_ylim_margin, ylim_min - normalized_ylim_margin), 1 + normalized_ylim_margin))
 
@@ -484,7 +509,7 @@ class Visualize:
         strategies_performance = [list() for _ in aggregation_data[0][1]]
         strategies_performance_lower_err = [list() for _ in aggregation_data[0][1]]
         strategies_performance_upper_err = [list() for _ in aggregation_data[0][1]]
-        strategies_performance_real_stopping_point_fraction = [-1.0 for _ in aggregation_data[0][1]]
+        strategies_performance_real_stopping_point_fraction = [list() for _ in range(len(aggregation_data[0][1]))]
         for random_baseline, strategies_curves, searchspace_stats, time_range in aggregation_data:
             dist = searchspace_stats.objective_performances_total_sorted
             for strategy_index, strategy_curve in enumerate(strategies_curves):
@@ -504,7 +529,7 @@ class Visualize:
                 strategies_performance[strategy_index].append(curve)
                 strategies_performance_lower_err[strategy_index].append(curve_lower_err)
                 strategies_performance_upper_err[strategy_index].append(curve_upper_err)
-                strategies_performance_real_stopping_point_fraction[strategy_index] = real_stopping_point_index / x_axis_range.shape[0]
+                strategies_performance_real_stopping_point_fraction[strategy_index].append(real_stopping_point_index / x_axis_range.shape[0])
 
         # for each strategy, get the mean performance per step in time_range
         strategies_aggregated_performance: list[np.ndarray] = list()
@@ -515,7 +540,7 @@ class Visualize:
             strategies_aggregated_performance.append(np.mean(np.array(strategies_performance[index]), axis=0))
             strategies_aggregated_lower_err.append(np.mean(np.array(strategies_performance_lower_err[index]), axis=0))
             strategies_aggregated_upper_err.append(np.mean(np.array(strategies_performance_upper_err[index]), axis=0))
-            strategies_aggregated_real_stopping_point_fraction.append(np.mean(strategies_performance_real_stopping_point_fraction[index]))
+            strategies_aggregated_real_stopping_point_fraction.append(np.median(strategies_performance_real_stopping_point_fraction[index]))
 
         return strategies_aggregated_performance, strategies_aggregated_lower_err, strategies_aggregated_upper_err, strategies_aggregated_real_stopping_point_fraction
 
