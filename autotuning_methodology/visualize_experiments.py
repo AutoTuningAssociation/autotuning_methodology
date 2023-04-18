@@ -173,7 +173,7 @@ class Visualize:
                         raise ValueError(f"Invalid {x_type=}")
 
                     # create the figure and plots
-                    fig, axs = plt.subplots(nrows=len(plot_y_value_types), ncols=1, figsize=(9, 3 * len(plot_y_value_types)), sharex=True, dpi=300)
+                    fig, axs = plt.subplots(nrows=len(plot_y_value_types), ncols=1, figsize=(9, 3.4 * len(plot_y_value_types)), sharex=True, dpi=300)
                     if not hasattr(axs, "__len__"):    # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
                         axs = [axs]
                     fig.canvas.manager.set_window_title(title)
@@ -489,7 +489,7 @@ class Visualize:
 
         # finalize the plot
         ax.set_xlim(tuple([x_axis_range[0], x_axis_range[-1]]))
-        ax.set_ylabel(self.y_metric_displayname[f"objective_{y_type}"])
+        ax.set_ylabel(self.y_metric_displayname[f"objective_{y_type}"], fontsize='large')
         normalized_ylim_margin = 0.02
         if y_type == 'absolute':
             multiplier = 0.99 if self.minimization else 1.01
@@ -590,8 +590,8 @@ class Visualize:
         # set the axis
         cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
         cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
-        ax.set_xlabel(f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)")
-        ax.set_ylabel(self.y_metric_displayname["aggregate_objective"])
+        ax.set_xlabel(f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)", fontsize='large')
+        ax.set_ylabel(self.y_metric_displayname["aggregate_objective"], fontsize='large')
         num_ticks = 11
         ax.set_xticks(
             np.linspace(0, y_axis_size, num_ticks),
