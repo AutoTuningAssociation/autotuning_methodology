@@ -721,6 +721,6 @@ if __name__ == "__main__":
         experiment_filepath = "methodology_paper_example"
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
-        experiment_filepath = get_args_from_cli()
+        experiment_filepath = get_args_from_cli(None)
 
     Visualize(experiment_filepath, save_figs=not is_notebook)
