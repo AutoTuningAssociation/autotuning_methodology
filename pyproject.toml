@@ -1,0 +1,52 @@
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core >=3.8.0,<4"]
+
+[project]   # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
+name = "autotuning_methodology"
+version = "0.2.0"
+authors = [
+    {name = "Floris-Jan Willemsen", email = "fjwillemsen97@gmail.com"},
+]
+description = "Software package easing implementation of the guidelines of the 2023 paper 'A Methodology for Comparing Auto-Tuning Optimization Algorithms'."
+keywords = ["autotuning", "auto-tuning", "methodology", "scientific"]
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.6"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]       # https://pypi.org/classifiers/
+dependencies = [
+    "numpy >= 1.22.4",
+    "scikit-learn >= 1.0.2",
+    "matplotlib >= 3.7.1",
+    "yappi >= 1.4.0",
+    "progressbar2 >= 4.2.0",
+    "jsonschema >= 4.17.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pylint >=2.14.4",
+    "toml >= 0.10.2",
+    "black >= 23.3.0",
+]
+test = [
+    "pytest >= 7.3.1",
+    "pytest-cov >= 4.0.0",
+]
+
+[project.urls]
+repository = "https://github.com/fjwillemsen/autotuning_methodology"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=src --cov-report html --cov-report term-missing --cov-fail-under 90"
+testpaths = [
+    "tests/unit",
+    "tests/integration",
+]

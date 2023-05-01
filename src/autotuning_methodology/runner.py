@@ -7,7 +7,6 @@ from typing import Tuple
 import time as python_time
 import warnings
 import yappi
-from cProfile import label
 
 from autotuning_methodology.caching import ResultsDescription
 
