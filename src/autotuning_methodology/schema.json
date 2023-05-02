@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/experiments/v0.1.1.schema.json",
+  "version": "0.1.2",
+  "title": "Experiment",
+  "description": "An experiment configuration file",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "Version number of the experiment file standard",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name of the experiment",
+      "type": "string"
+    },
+    "folder_id": {
+      "description": "Unique ID of the folder to store the results of this experiment in",
+      "type": "string"
+    },
+    "kernels": {
+      "description": "Kernels to optimize",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "GPUs": {
+      "description": "GPUs to optimize on",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "minimization": {
+      "description": "Direction of optimization (minimize or maximize)",
+      "type": "boolean",
+      "default": true
+    },
+    "resolution": {
+      "description": "The resolution of the time range",
+      "type": "integer",
+      "minimum": 2
+    },
+    "cutoff_percentile": {
+      "description": "Fraction of difference between median and absolute optimum at which to stop the time range",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    },
+    "cutoff_percentile_start": {
+      "description": "Fraction of difference between median and absolute optimum at which to start the time range",
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMaximum": 1
+    },
+    "cutoff_type": {
+      "description": "Whether to base the cutoff on function evaluations or time",
+      "type": "string",
+      "enum": [
+        "fevals",
+        "time"
+      ]
+    },
+    "plot": {
+      "type": "object",
+      "properties": {
+        "plot_x_value_types": {
+          "description": "Types of value on the x-axis",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "fevals",
+              "time",
+              "aggregated"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "plot_y_value_types": {
+          "description": "Types of value on the y-axis (absolute values, median-absolute normalized, improvement over baseline)",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "absolute",
+              "scatter",
+              "normalized",
+              "baseline"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "confidence_level": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "compare_baselines": {
+          "type": "boolean",
+          "default": false
+        },
+        "compare_split_times": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "plot_x_value_types",
+        "plot_y_value_types",
+        "confidence_level"
+      ]
+    }
+  },
+  "required": [
+    "version",
+    "name",
+    "folder_id",
+    "kernels",
+    "GPUs",
+    "minimization",
+    "resolution",
+    "cutoff_percentile",
+    "cutoff_percentile_start",
+    "cutoff_type",
+    "plot"
+  ]
+}

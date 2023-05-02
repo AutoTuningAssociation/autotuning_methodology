@@ -1,9 +1,11 @@
 import pytest
 from pathlib import Path
-from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
+import json
+from jsonschema import validate
+from autotuning_methodology.experiments import execute_experiment, get_args_from_cli, get_experiment_schema_filepath, ResultsDescription
 
 mockfiles_path = Path("../tests/autotuning_methodology/integration/mockfiles/")
-cached_visualization_path = Path("cached_data_used/visualizations/test_run_experiment/mocktest_kernel_convolution/mock_GPU_random_sample_100_iter.npz")
+cached_visualization_path = Path("cached_data_used/visualizations/test_run_experiment/mocktest_kernel_convolution/mock_GPU_random_sample_10_iter.npz")
 
 
 def test_CLI_input():
@@ -46,15 +48,34 @@ def test_run_experiment_bad_kernel_path():
 def test_run_experiment():
     """Run a dummy experiment"""
     if cached_visualization_path.exists():
-        # os.remove  # TODO
+        cached_visualization_path.unlink()
     assert not cached_visualization_path.exists()
     experiment_filepath = str(mockfiles_path / "test.json")
-    results = execute_experiment(experiment_filepath, profiling=False)
-    print(results)
-    assert False
-    # with pytest.raises()
+    experiment, strategies, results_descriptions = execute_experiment(experiment_filepath, profiling=False)
+    validate_experiment_results(experiment, strategies, results_descriptions)
 
 
 def test_cached_experiment():
     """Retrieve a cached experiment"""
     assert cached_visualization_path.exists()
+    experiment_filepath = str(mockfiles_path / "test.json")
+    experiment, strategies, results_descriptions = execute_experiment(experiment_filepath, profiling=False)
+    validate_experiment_results(experiment, strategies, results_descriptions)
+
+
+def validate_experiment_results(experiment, strategies, results_descriptions):
+    # validate the types
+    assert isinstance(experiment, dict)
+    assert isinstance(strategies, list)
+    assert isinstance(results_descriptions, dict)
+
+    # validate the contents
+    schemafilepath = get_experiment_schema_filepath()
+    with open(schemafilepath) as schemafile:
+        schema = json.load(schemafile)
+        validate(instance=experiment, schema=schema)
+    kernel_name = experiment["kernels"][0]
+    gpu_name = experiment["GPUs"][0]
+    assert len(strategies) == 1
+    strategy_name = strategies[0]["name"]
+    assert isinstance(results_descriptions[gpu_name][kernel_name][strategy_name], ResultsDescription)

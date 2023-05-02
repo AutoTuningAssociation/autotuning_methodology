@@ -25,6 +25,13 @@ def get_args_from_cli(args) -> str:
     return filepath
 
 
+def get_experiment_schema_filepath() -> Path:
+    """Get the filepath to the JSON schema for experiment files"""
+    schemafilepath = Path("src/autotuning_methodology/schema.json")
+    assert schemafilepath.exists(), f"Path to schema.json does not exist, attempted path: {schemafilepath}"
+    return schemafilepath
+
+
 def get_experiment(filename: str) -> dict:
     """Validates and gets the experiment from the .json file"""
     folder_name = "experiment_files"
@@ -32,14 +39,12 @@ def get_experiment(filename: str) -> dict:
     extension = ".json"
     if not filename.endswith(extension):
         filename = filename + extension
-    path = filename
     if not filename.startswith(folder_name + "/"):
         path = folder / filename
     else:
-        path = Path(path)
+        path = Path(filename)
     assert path.exists(), f"Path to experiment file does not exist, attempted path: {path}"
-    schemafilepath = folder / "schema.json"
-    assert schemafilepath.exists(), f"Path to schema.json does not exist, attempted path: {schemafilepath}"
+    schemafilepath = get_experiment_schema_filepath()
     with open(path) as file, open(schemafilepath) as schemafile:
         schema = json.load(schemafile)
         experiment = json.load(file)

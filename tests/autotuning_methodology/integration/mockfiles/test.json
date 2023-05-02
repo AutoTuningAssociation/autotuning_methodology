@@ -37,7 +37,7 @@
     "compare_split_times": false
   },
   "strategy_defaults": {
-    "repeats": 100,
+    "repeats": 10,
     "minimum_number_of_evaluations": 20,
     "stochastic": true,
     "record_data": [
@@ -47,10 +47,10 @@
   },
   "strategies": [
     {
-      "name": "random_sample_100_iter",
+      "name": "random_sample_10_iter",
       "strategy": "random_sample",
-      "display_name": "Random sampling 100 iters",
-      "repeats": 5
+      "display_name": "Random sampling 10 iters",
+      "repeats": 3
     }
   ]
 }
