@@ -241,7 +241,7 @@ class Curve(ABC):
             ir.fit(x, y)
             return ir.predict(x_new)
         elif package == "isotonic":
-            raise NotImplementedError(f"Support for isotonic package is deprecated")
+            raise NotImplementedError("Support for isotonic package is deprecated")
             from isotonic.isotonic import LpIsotonicRegression
 
             ir = LpIsotonicRegression(npoints, increasing=not self.minimization, power=power).fit(x, y)

@@ -1,4 +1,3 @@
-from copy import deepcopy
 import time
 import math
 import torch
@@ -21,7 +20,8 @@ observation_noise = 1e-3
 # rmin, rmax = 0, 1
 
 # Objective function is the multimodal sin(x) + sin(10 / 3 * x)
-objective = lambda x: math.sin(x) + math.sin((10.0 / 3.0) * x)
+def objective(x):
+    return math.sin(x) + math.sin(10.0 / 3.0 * x)
 rmin, rmax = -2.7, 7.5
 
 
@@ -41,14 +41,18 @@ test_x = torch.linspace(rmin, rmax, 500)
 mean_x, std_x = train_x.mean(), train_x.std()
 train_x = (train_x - mean_x) / std_x
 test_x = (test_x - mean_x) / std_x
-scale_input = lambda x: (x - mean_x) / std_x
-unscale_input = lambda x: x * std_x + mean_x
+def scale_input(x):
+    return (x - mean_x) / std_x
+def unscale_input(x):
+    return x * std_x + mean_x
 
 # mean normalization of outputs
 mean_y, std_y = train_y.mean(), train_y.std()
 train_y = (train_y - mean_y) / std_y
-scale_output = lambda x: (x - mean_y) / std_y
-unscale_output = lambda x: x * std_y + mean_y
+def scale_output(x):
+    return (x - mean_y) / std_y
+def unscale_output(x):
+    return x * std_y + mean_y
 
 
 # Put on the GPU if applicable

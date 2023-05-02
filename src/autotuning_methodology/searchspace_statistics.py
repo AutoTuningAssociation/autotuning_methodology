@@ -81,8 +81,8 @@ class SearchspaceStatistics:
 
     def number_of_function_evaluations_to_cutoff_point(self, cutoff_percentile: float) -> int:
         """Calculate the number of function evaluations to reach the cutoff point"""
-        objective_performance_target = self.cutoff_point_objective_performance(cutoff_percentile)
-        inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
+        self.cutoff_point_objective_performance(cutoff_percentile)
+        self.objective_performances_total_sorted[::-1]
 
     def cutoff_point(self, cutoff_percentile: float) -> Tuple[float, int]:
         """Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point)"""

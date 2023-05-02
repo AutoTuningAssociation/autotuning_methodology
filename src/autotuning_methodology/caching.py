@@ -106,7 +106,7 @@ class ResultsDescription:
     def __write_to_file(self, arrays: Dict):
         """Write the resultsdescription and the accompanying numpy arrays to file"""
         if self.__stored is True:
-            raise ValueError(f"Do not overwrite a ResultsDescription")
+            raise ValueError("Do not overwrite a ResultsDescription")
         filepath = self.__get_cache_filepath()
         if not filepath.exists():
             filepath.mkdir(parents=True, exist_ok=False)

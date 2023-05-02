@@ -5,7 +5,6 @@ import numpy
 import kernel_tuner
 from kernel_tuner.file_utils import store_output_file, store_metadata_file
 from collections import OrderedDict
-import gc
 
 
 def tune(device_name: str, strategy="mls", strategy_options=None, verbose=True, quiet=False, simulation_mode=True):

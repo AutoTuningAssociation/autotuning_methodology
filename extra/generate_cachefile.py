@@ -5,11 +5,8 @@
 import itertools
 import time
 import json
-from random import randint
-from random import uniform as randuni
-from collections import OrderedDict
 import numpy as np
-from math import sin, cos, pi, sqrt, ceil
+from math import sin, cos, ceil
 from typing import Tuple
 
 import progressbar
@@ -168,7 +165,7 @@ if __name__ == "__main__":
             searchspace_pruned = list()
             for param_config in progressbar.progressbar(searchspace, redirect_stdout=True):
                 param_config_keystring = keystring(param_config)
-                if not param_config_keystring in tuning_options.cache:
+                if param_config_keystring not in tuning_options.cache:
                     searchspace_pruned.append(param_config)
             searchspace = searchspace_pruned
 

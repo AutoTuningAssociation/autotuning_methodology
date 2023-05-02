@@ -72,7 +72,7 @@ def get_strategies(experiment: dict) -> dict:
     # augment the strategies with the defaults
     for strategy in strategies:
         for default in strategy_defaults:
-            if not default in strategy:
+            if default not in strategy:
                 strategy[default] = strategy_defaults[default]
     return strategies
 
@@ -129,7 +129,7 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
                 print(f" | - | using strategy '{strategy['display_name']}'")
 
                 # setup the results description
-                if not "options" in strategy:
+                if "options" not in strategy:
                     strategy["options"] = dict()
                 cutoff_margin = 1.1  # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
 

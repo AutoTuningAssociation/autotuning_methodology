@@ -3,7 +3,7 @@ from math import ceil
 import numpy as np
 from typing import Callable
 
-from autotuning_methodology.curves import Curve, get_indices_in_distribution, get_indices_in_array
+from autotuning_methodology.curves import Curve, get_indices_in_array
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
 from autotuning_methodology.curves import Curve, StochasticOptimizationAlgorithm
-from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline, RandomSearchSimulatedBaseline
+from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 # The kernel information per device and device information for visualization purposes
@@ -280,7 +280,7 @@ class Visualize:
     ):
         """Plots a comparison of baselines on a time range, optionally also compares against strategies listed in strategies_curves"""
         dist = searchspace_stats.objective_performances_total_sorted
-        fig = plt.figure(figsize=(8, 5), dpi=300)
+        plt.figure(figsize=(8, 5), dpi=300)
 
         # list the baselines to test
         baselines: list[Baseline] = list()
@@ -369,10 +369,10 @@ class Visualize:
             ax.set_xlim(fevals_or_time_range[0], fevals_or_time_range[-1])
             # plot the mean
             mean = np.mean(np.sum(split_times, axis=0))
-            ax.axhline(y=mean, label=f"Mean sum")
+            ax.axhline(y=mean, label="Mean sum")
             if isinstance(line, Baseline):
                 average_time_per_feval_used = searchspace_stats.get_time_per_feval(line.time_per_feval_operator)
-                ax.axhline(y=average_time_per_feval_used, label=f"Average used")
+                ax.axhline(y=average_time_per_feval_used, label="Average used")
                 print(f"{title} mean: {round(mean, 3)}, average used: {round(average_time_per_feval_used, 3)}")
             else:
                 print(f"{title} mean: {round(mean, 3)}")
@@ -743,8 +743,8 @@ class Visualize:
         y_axis_size = strategies_performance[0].shape[0]
         time_range = np.arange(y_axis_size)
         plot_errors = True
-        print(f"\n-------")
-        print(f"Quantification of aggregate performance across all search spaces:")
+        print("\n-------")
+        print("Quantification of aggregate performance across all search spaces:")
         for strategy_index, strategy_performance in enumerate(strategies_performance):
             displayname = self.strategies[strategy_index]["display_name"]
             color = self.colors[strategy_index]

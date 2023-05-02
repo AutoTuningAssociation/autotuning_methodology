@@ -1,6 +1,4 @@
-from imp import reload
 import json
-import time
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.patches as patches
@@ -192,7 +190,6 @@ def plot_parallel_coordinates(subfigure, hyperparams: dict, isnumeric: list, one
     host.xaxis.tick_top()
     host.set_title("Parallel Coordinates Plot")
 
-    colors = plt.cm.tab10.colors
     for j in range(len(ys)):
         # to just draw straight lines between the axes:
         # host.plot(range(ys.shape[1]), zs[j,:], c=colors[(category[j] - 1) % len(colors) ])
@@ -332,7 +329,8 @@ while True:
         scaled_cmap = cmap(y_valid)
     else:
         diff = y_valid_max - y_valid_min
-        rescale = lambda v: (v - y_valid_min) / diff
+        def rescale(v):
+            return (v - y_valid_min) / diff
         scaled_cmap = cmap(rescale(y_valid))
 
     # obtain the hyperparameters for a parallel coordinates plot

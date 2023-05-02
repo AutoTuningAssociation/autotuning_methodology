@@ -22,7 +22,8 @@ test_x = torch.linspace(0, 1, 51, device=device)
 
 # True function is sin(2*pi*x) with Gaussian noise
 train_y = torch.sin(train_x * (2 * math.pi)) + torch.randn_like(train_x) * math.sqrt(0.04)
-objective = lambda x: math.sin(x * (2 * math.pi)) + random.random() * math.sqrt(0.04)
+def objective(x):
+    return math.sin(x * (2 * math.pi)) + random.random() * math.sqrt(0.04)
 
 
 # initialize likelihood and model
