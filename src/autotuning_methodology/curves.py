@@ -1,9 +1,10 @@
 """ Code for curve generation """
 
+from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+
 import warnings
 from abc import ABC, abstractmethod
 from math import ceil, floor, sqrt
-from typing import Tuple
 
 import numpy as np
 from sklearn.ensemble import BaggingRegressor
@@ -217,7 +218,7 @@ class Curve(ABC):
         padding = (padding_start, padding_end)
         return padding
 
-    def get_scatter_data(self, x_type: str) -> Tuple[np.ndarray, np.ndarray]:
+    def get_scatter_data(self, x_type: str) -> tuple[np.ndarray, np.ndarray]:
         if x_type == "fevals":
             return self._x_fevals, self._y
         elif x_type == "time":
@@ -278,7 +279,7 @@ class Curve(ABC):
 class DeterministicOptimizationAlgorithm(Curve):
     def get_curve(
         self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         return tuple([super().get_curve(range, x_type, dist, confidence_level), None, None])
 
     def get_curve_over_fevals(
@@ -311,7 +312,7 @@ class StochasticOptimizationAlgorithm(Curve):
         curve: np.ndarray,
         curve_lower_err: np.ndarray,
         curve_upper_err: np.ndarray,
-    ) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Split the provided curves based on the real_stopping_point_index.
         Return real_stopping_point_index and the real and fictional part for each curve.
@@ -441,7 +442,7 @@ class StochasticOptimizationAlgorithm(Curve):
             raise ValueError(f"No overlap in data and given {fevals_range=}")
         return matching_indices_mask
 
-    def _get_curve_over_fevals_values_in_range(self, fevals_range: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def _get_curve_over_fevals_values_in_range(self, fevals_range: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Get the valid fevals and values that are in the given range"""
         target_index: int = fevals_range[-1] - 1
 
@@ -577,7 +578,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def _get_curve_over_time_values_in_range(
         self, time_range: np.ndarray, return_1d=True
-    ) -> Tuple[np.ndarray, np.ndarray, float, int, int]:
+    ) -> tuple[np.ndarray, np.ndarray, float, int, int]:
         """Get the valid times and values that are in the given range"""
         # check and get the variables
         assert time_range.ndim == 1
@@ -784,7 +785,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def get_confidence_interval(
         self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Calculates the non-parametric confidence interval at each function evaluation
         for repeated function evaluations, assumed to be IID.
@@ -824,7 +825,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def get_confidence_interval_jagged(
         self, bins: list[np.ndarray], confidence_level: float
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Calculates the non-parametric confidence interval at each function evaluation for jagged bins,
         assumed to be IID, slower than get_confidence_interval().

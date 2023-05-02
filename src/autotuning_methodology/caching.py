@@ -3,7 +3,6 @@
 from __future__ import annotations  # for referring to class within own method
 
 from pathlib import Path
-from typing import Dict
 
 import numpy as np
 
@@ -107,7 +106,7 @@ class ResultsDescription:
         self.__stored = full_filepath.exists() and np.DataSource().exists(full_filepath)
         return self.__stored
 
-    def __write_to_file(self, arrays: Dict):
+    def __write_to_file(self, arrays: dict):
         """Write the resultsdescription and the accompanying numpy arrays to file"""
         if self.__stored is True:
             raise ValueError("Do not overwrite a ResultsDescription")
@@ -117,7 +116,7 @@ class ResultsDescription:
         self.__stored = True
         np.savez_compressed(self.__get_cache_full_filepath(), resultsdescription=self, **arrays)
 
-    def set_results(self, arrays: Dict):
+    def set_results(self, arrays: dict):
         """Set and cache the results"""
         return self.__write_to_file(arrays)
 

@@ -1,9 +1,10 @@
 """ Interface to run an experiment on the auto-tuning frameworks """
 
+from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+
 import json
 import time as python_time
 import warnings
-from typing import Tuple
 
 import numpy as np
 import progressbar
@@ -40,7 +41,7 @@ def is_valid_config_result(config: dict) -> bool:
 def get_results_and_metadata(
     filename_results: str = "cached_data_used/last_run/_tune_configuration-results.json",
     filename_metadata: str = "cached_data_used/last_run/_tune_configuration-metadata.json",
-) -> Tuple[list, list]:
+) -> tuple[list, list]:
     """
     Load the results and metadata files in accordance with the defined standards.
     Returns the metadata, result and filtered result lists.
@@ -54,7 +55,7 @@ def get_results_and_metadata(
 
 def tune(
     kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool
-) -> Tuple[list, list, int]:
+) -> tuple[list, list, int]:
     """Execute a strategy, return the metadata, result, runtime; optionally collect profiling statistics"""
 
     def tune_with_kerneltuner():

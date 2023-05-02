@@ -1,7 +1,8 @@
 """ Visualize the results of the experiments """
 
+from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+
 import warnings
-from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +19,7 @@ marker_variatons = ["v", "s", "*", "1", "2", "d", "P", "X"]
 objective_time_keys_values = ["compilation", "benchmark", "framework", "search_algorithm", "validation"]
 
 
-def calculate_lower_upper_error(observations: list) -> Tuple[float, float]:
+def calculate_lower_upper_error(observations: list) -> tuple[float, float]:
     """Calculate the lower and upper error by the mean of the values below and above the median respectively"""
     observations.sort()
     middle_index = len(observations) // 2
@@ -514,7 +515,7 @@ class Visualize:
                 return None
             return (curve - median) / optimum_median_difference
 
-        def normalize_multiple(curves: list) -> Tuple:
+        def normalize_multiple(curves: list) -> tuple:
             """Normalize multiple curves at once"""
             return tuple(normalize(curve) for curve in curves)
 
@@ -675,7 +676,7 @@ class Visualize:
         self,
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
         confidence_level: float,
-    ) -> Tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray], list[int]]:
+    ) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray], list[int]]:
         """Get the aggregated relative performances of each strategy"""
         # for each strategy, collect the relative performance in each search space
         strategies_performance = [list() for _ in aggregation_data[0][1]]
@@ -885,5 +886,6 @@ if __name__ == "__main__":
     else:
         experiment_filepath = get_args_from_cli(None)
 
+    Visualize(experiment_filepath, save_figs=not is_notebook)
     Visualize(experiment_filepath, save_figs=not is_notebook)
     Visualize(experiment_filepath, save_figs=not is_notebook)

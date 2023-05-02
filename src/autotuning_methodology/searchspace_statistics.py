@@ -1,9 +1,11 @@
 """ Code for obtaining search space statistics """
 
+
+from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+
 import json
 from math import ceil, floor
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 
@@ -84,7 +86,7 @@ class SearchspaceStatistics:
         self.cutoff_point_objective_performance(cutoff_percentile)
         self.objective_performances_total_sorted[::-1]
 
-    def cutoff_point(self, cutoff_percentile: float) -> Tuple[float, int]:
+    def cutoff_point(self, cutoff_percentile: float) -> tuple[float, int]:
         """Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point)"""
         objective_performance_at_cutoff_point = self.objective_performance_at_cutoff_point(cutoff_percentile)
         inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
@@ -103,7 +105,7 @@ class SearchspaceStatistics:
         fevals_to_cutoff_point = ceil(i / (N + 1 - i))
         return objective_performance_at_cutoff_point, fevals_to_cutoff_point
 
-    def cutoff_point_fevals_time(self, cutoff_percentile: float) -> Tuple[float, int, float]:
+    def cutoff_point_fevals_time(self, cutoff_percentile: float) -> tuple[float, int, float]:
         """
         Calculate the cutoff point.
         Returns (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point).
@@ -333,7 +335,7 @@ class SearchspaceStatistics:
         """Get the standard deviation of total time"""
         return np.std(self.objective_times_total_sorted)
 
-    def total_time_quartiles(self) -> Tuple[float, float]:
+    def total_time_quartiles(self) -> tuple[float, float]:
         """Get the quartiles (25th and 75th percentiles) of total time"""
         q25, q75 = np.percentile(self.objective_times_total_sorted, [25, 75])
         return tuple([q25, q75])
@@ -396,4 +398,5 @@ def test():
 
 
 if __name__ == "__main__":
+    test()
     test()

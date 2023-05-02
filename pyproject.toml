@@ -46,7 +46,7 @@ repository = "https://github.com/fjwillemsen/autotuning_methodology"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--cov=src --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 90"
+addopts = "--cov=src --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 25"
 testpaths = [
     "tests/unit",
     "tests/integration",

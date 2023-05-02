@@ -1,12 +1,13 @@
 """ Main experiments code """
 
+from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+
 import json
 import sys
 from argparse import ArgumentParser
 from importlib import import_module
 from math import ceil
 from pathlib import Path
-from typing import Tuple
 
 from jsonschema import validate
 
@@ -80,7 +81,7 @@ def get_strategies(experiment: dict) -> dict:
     return strategies
 
 
-def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict]:
+def execute_experiment(filepath: str, profiling: bool) -> tuple[dict, dict, dict]:
     """Executes the experiment by retrieving it from the cache or running it"""
     experiment = get_experiment(filepath)
     print(f"Starting experiment '{experiment['name']}'")
