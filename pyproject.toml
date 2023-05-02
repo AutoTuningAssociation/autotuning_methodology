@@ -12,7 +12,7 @@ description = "Software package easing implementation of the guidelines of the 2
 keywords = ["autotuning", "auto-tuning", "methodology", "scientific"]
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.6"
+requires-python = ">=3.7"
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -36,6 +36,7 @@ dev = [
     "black >= 23.3.0",
 ]
 test = [
+    "ruff >= 0.0.263",
     "pytest >= 7.3.1",
     "pytest-cov >= 4.0.0",
 ]
@@ -50,3 +51,16 @@ testpaths = [
     "tests/unit",
     "tests/integration",
 ]
+
+[tool.black]
+line-length = 120
+[tool.ruff]
+line-length = 120
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+]
+# target-version = "py37"   # inferred from project.requires-python
+
+[tool.ruff.pydocstyle]
+convention = "google"
