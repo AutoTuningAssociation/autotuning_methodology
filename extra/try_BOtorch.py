@@ -33,10 +33,11 @@ fit_gpytorch_model(mll)
 # Initialize plot
 fig, ax = plt.subplots(1, 1, figsize=(4, 3))
 ax.set_ylim([-3, 3])
-ax.legend(['Observed Data', 'Mean', 'Confidence'])
+ax.legend(["Observed Data", "Mean", "Confidence"])
+
 
 def animate(i: int):
-    """ Function that draws each frame of the animation """
+    """Function that draws each frame of the animation"""
     global train_x, train_y
 
     # Do one evaluation
@@ -57,11 +58,12 @@ def animate(i: int):
     # Update the animation
     ax.clear()
     # Plot training data as black stars
-    ax.plot(train_x.cpu().numpy(), train_y.cpu().numpy(), 'k*')
+    ax.plot(train_x.cpu().numpy(), train_y.cpu().numpy(), "k*")
     # Plot predictive means as blue line
-    ax.plot(test_x.cpu().numpy(), observed_pred.mean.cpu().numpy(), 'b')
+    ax.plot(test_x.cpu().numpy(), observed_pred.mean.cpu().numpy(), "b")
     # Shade between the lower and upper confidence bounds
     ax.fill_between(test_x.cpu().numpy(), lower.cpu().numpy(), upper.cpu().numpy(), alpha=0.5)
+
 
 timer_start = time.perf_counter()
 ani = FuncAnimation(fig, animate, frames=1000, interval=0, repeat=False)

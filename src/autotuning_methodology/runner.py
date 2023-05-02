@@ -1,11 +1,12 @@
 """ Interface to run an experiment on the auto-tuning frameworks """
 
-import numpy as np
 import json
-import progressbar
-from typing import Tuple
 import time as python_time
 import warnings
+from typing import Tuple
+
+import numpy as np
+import progressbar
 import yappi
 
 from autotuning_methodology.caching import ResultsDescription
@@ -19,7 +20,9 @@ def is_invalid_objective_performance(objective_performance: float) -> bool:
     if any(str(objective_performance) == error_type_string for error_type_string in error_types_strings):
         return True
     if not isinstance(objective_performance, (int, float)):
-        raise ValueError(f"Objective value should be of type float, but is of type {type(objective_performance)} with value {objective_performance}")
+        raise ValueError(
+            f"Objective value should be of type float, but is of type {type(objective_performance)} with value {objective_performance}"
+        )
     return np.isnan(objective_performance) or objective_performance == kernel_tuner_error_value
 
 
@@ -34,7 +37,8 @@ def is_valid_config_result(config: dict) -> bool:
 
 
 def get_results_and_metadata(
-    filename_results: str = "cached_data_used/last_run/_tune_configuration-results.json", filename_metadata: str = "cached_data_used/last_run/_tune_configuration-metadata.json"
+    filename_results: str = "cached_data_used/last_run/_tune_configuration-results.json",
+    filename_metadata: str = "cached_data_used/last_run/_tune_configuration-metadata.json",
 ) -> Tuple[list, list]:
     """Load the results and metadata files in accordance with the defined standards, return the metadata, result and filtered result lists"""
     with open(filename_results, "r") as file_results:
@@ -44,7 +48,9 @@ def get_results_and_metadata(
     return metadata, results
 
 
-def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool) -> Tuple[list, list, int]:
+def tune(
+    kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool
+) -> Tuple[list, list, int]:
     """Execute a strategy, return the metadata, result, runtime; optionally collect profiling statistics"""
 
     def tune_with_kerneltuner():
@@ -54,7 +60,12 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
             yappi.start()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            res, env = kernel.tune(device_name=device_name, strategy=strategy["strategy"], strategy_options=strategy["options"], **tune_options)
+            res, env = kernel.tune(
+                device_name=device_name,
+                strategy=strategy["strategy"],
+                strategy_options=strategy["options"],
+                **tune_options,
+            )
         if profiling:
             yappi.stop()
         metadata, results = get_results_and_metadata()
@@ -63,7 +74,7 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
             if len(results) < max_fevals * 0.1:
                 warnings.warn(f"Much fewer configurations were returned ({len(res)}) than the requested {max_fevals}")
             if len(results) < 2:
-                raise ValueError(f"Less than two configurations were returned")
+                raise ValueError("Less than two configurations were returned")
         return metadata, results
 
     def tune_with_BAT():
@@ -84,7 +95,9 @@ def tune(kernel, kernel_name: str, device_name: str, strategy: dict, tune_option
     return metadata, results, total_time_ms
 
 
-def collect_results(kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, error_value) -> ResultsDescription:
+def collect_results(
+    kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, error_value
+) -> ResultsDescription:
     """Executes optimization algorithms to capture optimization algorithm behaviour"""
     min_num_evals: int = strategy["minimum_number_of_evaluations"]
     # TODO put the tune options in the .json in strategy_defaults?
@@ -119,11 +132,19 @@ def collect_results(kernel, strategy: dict, results_description: ResultsDescript
     ):
         attempt = 0
         only_invalid = True
+        len_res: int = -1
         while only_invalid or len_res < min_num_evals:
             if attempt > 0:
                 report_multiple_attempts(rep, len_res, strategy["repeats"])
-            metadata, results, total_time_ms = tune(kernel, results_description.kernel_name, results_description.device_name, strategy, tune_options, profiling)
-            len_res: int = len(results)
+            metadata, results, total_time_ms = tune(
+                kernel,
+                results_description.kernel_name,
+                results_description.device_name,
+                strategy,
+                tune_options,
+                profiling,
+            )
+            len_res = len(results)
             # check if there are only invalid configs in the first min_num_evals, if so, try again
             temp_res_filtered = list(filter(lambda config: is_valid_config_result(config), results))
             only_invalid = len(temp_res_filtered) < 1
@@ -167,7 +188,9 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
     objective_performance_best_results = get_nan_array()
     objective_performance_stds = get_nan_array()
     objective_time_results_per_key = np.full((len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan)
-    objective_performance_results_per_key = np.full((len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan)
+    objective_performance_results_per_key = np.full(
+        (len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan
+    )
 
     # combine the results
     opt_func = np.nanmin if results_description.minimization is True else np.nanmax
@@ -176,11 +199,13 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         objective_performance_best = np.nan
         for evaluation_index, evaluation in enumerate(repeat):
             # set the number of function evaluations
-            fevals_results[evaluation_index, repeat_index] = evaluation_index + 1  # number of function evaluations are counted from 1 instead of 0
+            fevals_results[evaluation_index, repeat_index] = (
+                evaluation_index + 1
+            )  # number of function evaluations are counted from 1 instead of 0
 
             # in case of an invalid config, there is nothing to be registered
             if str(evaluation["invalidity"]) == "constraints":
-                warnings.warn(f"Invalid config found, this should have been caught by the framework constraints")
+                warnings.warn("Invalid config found, this should have been caught by the framework constraints")
                 continue
 
             # TODO continue here with implementing switch in output format
@@ -188,7 +213,9 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
             objective_times_list = list()
             for key_index, key in enumerate(objective_time_keys):
                 evaluation_times = evaluation["times"]
-                assert key in evaluation_times, f"Objective time key {key} not in evaluation['times'] ({evaluation_times})"
+                assert (
+                    key in evaluation_times
+                ), f"Objective time key {key} not in evaluation['times'] ({evaluation_times})"
                 value = evaluation_times[key]
                 if value is not None and not is_invalid_objective_time(value):
                     value = value / 1000  # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
@@ -206,8 +233,12 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
             for key_index, key in enumerate(objective_performance_keys):
                 evaluation_measurements = evaluation["measurements"]
                 measurements = list(filter(lambda m: m["name"] == key, evaluation_measurements))
-                assert len(measurements) > 0, f"Objective performance key name {key} not in evaluation['measurements'] ({evaluation_measurements})"
-                assert len(measurements) == 1, f"Objective performance key name {key} multiply defined in evaluation['measurements'] ({evaluation_measurements})"
+                assert (
+                    len(measurements) > 0
+                ), f"Objective performance key name {key} not in evaluation['measurements'] ({evaluation_measurements})"
+                assert (
+                    len(measurements) == 1
+                ), f"Objective performance key name {key} multiply defined in evaluation['measurements'] ({evaluation_measurements})"
                 value = measurements[0]["value"]
                 if value is not None and not is_invalid_objective_performance(value):
                     objective_performance_results_per_key[key_index, evaluation_index, repeat_index] = value
@@ -233,4 +264,5 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         "objective_time_results_per_key": objective_time_results_per_key,
         "objective_performance_results_per_key": objective_performance_results_per_key,
     }
+    return results_description.set_results(numpy_arrays)
     return results_description.set_results(numpy_arrays)

@@ -44,7 +44,9 @@ class Baseline(ABC):
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     @abstractmethod
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         """Get the times at each function eval in the range split into objective_time_keys"""
         raise NotImplementedError()
 
@@ -54,7 +56,9 @@ class Baseline(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
+    def get_standardised_curves(
+        self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str
+    ) -> tuple[np.ndarray]:
         """Substract the baseline curve from the provided strategy curves, yielding standardised strategy curves"""
         absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
         random_curve = self.get_curve(range, x_type)
@@ -74,7 +78,9 @@ class Baseline(ABC):
         return self.get_standardised_curves(range, [strategy_curve], x_type)[0]
 
     @abstractmethod
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         """Get the times at each function eval in the range split into objective_time_keys"""
         raise NotImplementedError()
 
@@ -100,7 +106,9 @@ class StochasticCurveBasedBaseline(Baseline):
     def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics):
         return super().get_split_times(range, x_type, searchspace_stats)
 
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         return super().get_split_times_at_feval(fevals_range, searchspace_stats)
 
     def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
@@ -109,15 +117,22 @@ class StochasticCurveBasedBaseline(Baseline):
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
 
-    def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
+    def get_standardised_curves(
+        self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str
+    ) -> tuple[np.ndarray]:
         return super().get_standardised_curves(range, strategy_curves, x_type)
 
 
 class RandomSearchCalculatedBaseline(Baseline):
     """Baseline object using calculated random search without replacement"""
 
-    def __init__(self, searchspace_stats: SearchspaceStatistics, include_nan=False, time_per_feval_operator: str = "mean_per_feval",
-                 simulate: bool = False) -> None:
+    def __init__(
+        self,
+        searchspace_stats: SearchspaceStatistics,
+        include_nan=False,
+        time_per_feval_operator: str = "mean_per_feval",
+        simulate: bool = False,
+    ) -> None:
         self.searchspace_stats = searchspace_stats
         self.time_per_feval_operator = time_per_feval_operator
         self.simulate = simulate
@@ -206,13 +221,17 @@ class RandomSearchCalculatedBaseline(Baseline):
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
 
-    def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
+    def get_standardised_curves(
+        self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str
+    ) -> tuple[np.ndarray]:
         return super().get_standardised_curves(range, strategy_curves, x_type)
 
     def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         return super().get_split_times(range, x_type, searchspace_stats)
 
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         random_curve = self.get_curve_over_fevals(fevals_range)
         index_at_feval = get_indices_in_array(random_curve, searchspace_stats.objective_performances_total)
         assert not np.all(np.isnan(index_at_feval))
@@ -233,16 +252,32 @@ class RandomSearchCalculatedBaseline(Baseline):
 class RandomSearchSimulatedBaseline(Baseline):
     """Baseline object using simulated random search"""
 
-    def __init__(self, searchspace_stats: SearchspaceStatistics, repeats: int = 500, limit_fevals: int = None, index=True, flatten=True, index_avg='mean',
-                 performance_avg='mean') -> None:
+    def __init__(
+        self,
+        searchspace_stats: SearchspaceStatistics,
+        repeats: int = 500,
+        limit_fevals: int = None,
+        index=True,
+        flatten=True,
+        index_avg="mean",
+        performance_avg="mean",
+    ) -> None:
         self.searchspace_stats = searchspace_stats
         self.label = f"Simulated baseline, {repeats} repeats ({'index' if index else 'performance'}, {'flattened' if flatten else 'accumulated'}{'' if index_avg == 'mean' else ', index-median'}{'' if performance_avg == 'mean' else ', performance-median'})"
         self.use_index = index
-        index_average_func = np.nanmean if index_avg == 'mean' else np.nanmedian
-        performance_average_func = np.nanmean if performance_avg == 'mean' else np.nanmedian
+        index_average_func = np.nanmean if index_avg == "mean" else np.nanmedian
+        performance_average_func = np.nanmean if performance_avg == "mean" else np.nanmedian
         self._simulate(repeats, limit_fevals, index, flatten, index_average_func, performance_average_func)
 
-    def _simulate(self, repeats: int, limit_fevals: int, index: bool, flatten: bool, index_average_func: Callable, performance_average_func: Callable):
+    def _simulate(
+        self,
+        repeats: int,
+        limit_fevals: int,
+        index: bool,
+        flatten: bool,
+        index_average_func: Callable,
+        performance_average_func: Callable,
+    ):
         """Simulate running random search over half of the search space or limit_fevals [repeats] times"""
         opt_func = np.fmin if self.searchspace_stats.minimization else np.fmax
         time_array = self.searchspace_stats.objective_times_total
@@ -260,7 +295,9 @@ class RandomSearchSimulatedBaseline(Baseline):
         for repeat_index in range(repeats):
             indices_chosen = np.random.choice(indices, size=size, replace=False)
             times_at_feval[repeat_index] = np.nancumsum(time_array[indices_chosen])
-            best_indices_at_feval[repeat_index] = np.fmin.accumulate(indices_chosen)    # NaN sorted to end, so lower index is better
+            best_indices_at_feval[repeat_index] = np.fmin.accumulate(
+                indices_chosen
+            )  # NaN sorted to end, so lower index is better
             best_performances_at_feval[repeat_index] = opt_func.accumulate(performance_array[indices_chosen])
         assert times_at_feval.shape == best_performances_at_feval.shape == best_indices_at_feval.shape == target_shape
 
@@ -269,7 +306,7 @@ class RandomSearchSimulatedBaseline(Baseline):
         self.performance_at_feval: np.ndarray = performance_average_func(best_performances_at_feval, axis=0)
         if not flatten:
             self.time_at_feval: np.ndarray = np.nanmean(times_at_feval, axis=0)
-            assert self.time_at_feval.shape == self.index_at_feval.shape == self.performance_at_feval.shape == (size, )
+            assert self.time_at_feval.shape == self.index_at_feval.shape == self.performance_at_feval.shape == (size,)
 
         # prepare isotonic regression
         from sklearn.isotonic import IsotonicRegression
@@ -293,7 +330,9 @@ class RandomSearchSimulatedBaseline(Baseline):
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
         if self.use_index:
-            return self.searchspace_stats.objective_performances_total_sorted_nan[np.array(np.round(self.index_at_feval[fevals_range]), dtype=int)]
+            return self.searchspace_stats.objective_performances_total_sorted_nan[
+                np.array(np.round(self.index_at_feval[fevals_range]), dtype=int)
+            ]
         else:
             assert self.y_array.ndim == 1
             return self.y_array[fevals_range]
@@ -302,12 +341,16 @@ class RandomSearchSimulatedBaseline(Baseline):
         predicted_y_values = self._ir.predict(time_range)
         if not self.use_index:
             return predicted_y_values
-        return self.searchspace_stats.objective_performances_total_sorted_nan[np.array(np.round(predicted_y_values), dtype=int)]
+        return self.searchspace_stats.objective_performances_total_sorted_nan[
+            np.array(np.round(predicted_y_values), dtype=int)
+        ]
 
     def get_standardised_curve(self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str) -> np.ndarray:
         return super().get_standardised_curve(range, strategy_curve, x_type)
 
-    def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple[np.ndarray]:
+    def get_standardised_curves(
+        self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str
+    ) -> tuple[np.ndarray]:
         return super().get_standardised_curves(range, strategy_curves, x_type)
 
     def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
@@ -316,5 +359,7 @@ class RandomSearchSimulatedBaseline(Baseline):
     def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         return super().get_split_times_at_time(fevals_range, searchspace_stats)
 
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         return super().get_split_times_at_feval(fevals_range, searchspace_stats)

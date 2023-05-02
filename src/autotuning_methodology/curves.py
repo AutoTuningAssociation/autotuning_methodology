@@ -12,15 +12,18 @@ from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
-def get_indices_in_distribution(draws: np.ndarray, dist: np.ndarray, sorter=None, skip_draws_check: bool = False, skip_dist_check: bool = False) -> np.ndarray:
+def get_indices_in_distribution(
+    draws: np.ndarray, dist: np.ndarray, sorter=None, skip_draws_check: bool = False, skip_dist_check: bool = False
+) -> np.ndarray:
     """For each draw, get the index (position) in the ascendingly sorted distribution, returns an array of type float of the same shape as draws, NaN where not found in dist. For unsorted dists, use get_indices_in_array()"""
     assert dist.ndim == 1, f"distribution can not have more than one dimension, has {dist.ndim}"
 
     # check whether the distribution is correctly ordered
     if not skip_dist_check:
         strictly_ascending_sort = dist[:-1] <= dist[1:]
-        assert np.all(strictly_ascending_sort
-                      ), f"Distribution is not sorted ascendingly, {np.count_nonzero(~strictly_ascending_sort)} violations in {len(dist)} values: {dist}"
+        assert np.all(
+            strictly_ascending_sort
+        ), f"Distribution is not sorted ascendingly, {np.count_nonzero(~strictly_ascending_sort)} violations in {len(dist)} values: {dist}"
 
     # check whether each value of draws (excluding NaN) is in dist
     if not skip_draws_check:
@@ -75,11 +78,21 @@ class Curve(ABC):
 
         # result data
         results = results_description.get_results()
-        self._x_fevals = results.fevals_results    # the time per objective value in number of function evaluations since start (1d if deterministic, 2d if stochastic)
-        self._x_time = results.objective_time_results    # the time per objective value in seconds since start the raw x-axis (1d if deterministic, 2d if stochastic)
-        self._x_time_per_key = results.objective_time_results_per_key    # the time per objective time key (2d if deterministic, 3d if stochastic)
-        self._y = results.objective_performance_best_results    # the objective performances (1d if deterministic, 2d if stochastic)
-        self._y_per_key = results.objective_performance_results_per_key    # the performance per objective time key (2d if deterministic, 3d if stochastic)
+        self._x_fevals = (
+            results.fevals_results
+        )  # the time per objective value in number of function evaluations since start (1d if deterministic, 2d if stochastic)
+        self._x_time = (
+            results.objective_time_results
+        )  # the time per objective value in seconds since start the raw x-axis (1d if deterministic, 2d if stochastic)
+        self._x_time_per_key = (
+            results.objective_time_results_per_key
+        )  # the time per objective time key (2d if deterministic, 3d if stochastic)
+        self._y = (
+            results.objective_performance_best_results
+        )  # the objective performances (1d if deterministic, 2d if stochastic)
+        self._y_per_key = (
+            results.objective_performance_results_per_key
+        )  # the performance per objective time key (2d if deterministic, 3d if stochastic)
 
         # complete initialisation
         self.check_attributes()
@@ -103,19 +116,25 @@ class Curve(ABC):
         # assert values
         if self.stochastic is False:
             assert self._x_fevals.ndim == 1
-            assert self._x_fevals[0] == 1    # the first function evaluation must be 1
+            assert self._x_fevals[0] == 1  # the first function evaluation must be 1
             assert self._x_time.ndim == 1
             assert self._x_time_per_key.ndim == 2
             assert self._y.ndim == 1
             assert self._y_per_key.ndim == 2
         else:
             assert self._x_fevals.ndim == 2
-            assert all(self._x_fevals[0] == 1)    # the first function evaluation must be 1
+            assert all(self._x_fevals[0] == 1)  # the first function evaluation must be 1
             assert self._x_time.ndim == 2
             assert self._x_time_per_key.ndim == 3
             assert self._y.ndim == 2
             assert self._y_per_key.ndim == 3
-        assert self._x_fevals.shape == self._x_time.shape == self._x_time_per_key.shape[1:] == self._y.shape == self._y_per_key.shape[1:]
+        assert (
+            self._x_fevals.shape
+            == self._x_time.shape
+            == self._x_time_per_key.shape[1:]
+            == self._y.shape
+            == self._y_per_key.shape[1:]
+        )
 
     @abstractmethod
     def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
@@ -146,7 +165,9 @@ class Curve(ABC):
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     @abstractmethod
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         """Get the times at each function eval in the range split into objective_time_keys"""
         raise NotImplementedError()
 
@@ -165,7 +186,9 @@ class Curve(ABC):
         if len(indices) == len(target_array):
             return (0, 0)
         if len(indices) > len(target_array):
-            raise ValueError(f"Length of indices ({len(indices)}) should be the less then or equal to length of target_array ({len(target_array)})")
+            raise ValueError(
+                f"Length of indices ({len(indices)}) should be the less then or equal to length of target_array ({len(target_array)})"
+            )
         # check whether array is consecutively in target_array
         assert (array[~np.isnan(array)] == target_array[indices]).all()
         padding_start = indices[0]
@@ -181,10 +204,22 @@ class Curve(ABC):
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     def get_isotonic_regressor(self, y_min: float, y_max: float, out_of_bounds: str = "clip") -> IsotonicRegression:
-        """ Get the isotonic regressor """
-        return IsotonicRegression(increasing=not self.minimization, y_min=y_min, y_max=y_max, out_of_bounds=out_of_bounds)
+        """Get the isotonic regressor"""
+        return IsotonicRegression(
+            increasing=not self.minimization, y_min=y_min, y_max=y_max, out_of_bounds=out_of_bounds
+        )
 
-    def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, package="sklearn", npoints=1000, power=2, ymin=None, ymax=None) -> np.ndarray:
+    def get_isotonic_curve(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        x_new: np.ndarray,
+        package="sklearn",
+        npoints=1000,
+        power=2,
+        ymin=None,
+        ymax=None,
+    ) -> np.ndarray:
         """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'"""
         # check if the assumptions that the input arrays are numpy arrays holds
         assert isinstance(x, np.ndarray)
@@ -219,20 +254,27 @@ class Curve(ABC):
 
 
 class DeterministicOptimizationAlgorithm(Curve):
-
-    def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_curve(
+        self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         return tuple([super().get_curve(range, x_type, dist, confidence_level), None, None])
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> np.ndarray:
+    def get_curve_over_fevals(
+        self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None
+    ) -> np.ndarray:
         return super().get_curve_over_fevals(fevals_range, dist, confidence_level)
 
-    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None) -> np.ndarray:
+    def get_curve_over_time(
+        self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None
+    ) -> np.ndarray:
         return super().get_curve_over_time(time_range, dist, confidence_level)
 
     def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics):
         return super().get_split_times(range, x_type, searchspace_stats)
 
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         return super().get_split_times_at_feval(fevals_range, searchspace_stats)
 
     def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
@@ -240,10 +282,14 @@ class DeterministicOptimizationAlgorithm(Curve):
 
 
 class StochasticOptimizationAlgorithm(Curve):
-
     def _get_curve_split_real_fictional_parts(
-            self, real_stopping_point_index: int, x_axis_range: np.ndarray, curve: np.ndarray, curve_lower_err: np.ndarray,
-            curve_upper_err: np.ndarray) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        self,
+        real_stopping_point_index: int,
+        x_axis_range: np.ndarray,
+        curve: np.ndarray,
+        curve_lower_err: np.ndarray,
+        curve_upper_err: np.ndarray,
+    ) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Split the provided curves based on the real_stopping_point_index, return real_stopping_point_index and the real and fictional part for each curve"""
         # select the parts of the data that are real
         x_axis_range_real = x_axis_range[:real_stopping_point_index]
@@ -252,8 +298,12 @@ class StochasticOptimizationAlgorithm(Curve):
         curve_upper_err_real = curve_upper_err[:real_stopping_point_index]
 
         # select the parts of the data that are fictional
-        x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = np.ndarray([]), np.ndarray([]), np.ndarray(
-            []), np.ndarray([])
+        x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = (
+            np.ndarray([]),
+            np.ndarray([]),
+            np.ndarray([]),
+            np.ndarray([]),
+        )
         target_index = x_axis_range.shape[0] - 1
         if real_stopping_point_index <= target_index:
             x_axis_range_fictional = x_axis_range[real_stopping_point_index:]
@@ -305,38 +355,60 @@ class StochasticOptimizationAlgorithm(Curve):
         curve_upper_err_fictional,
     ):
         """Asserts that the real and fictional results add up correctly"""
-        assert (x_axis_range.shape == curve.shape == curve_lower_err.shape ==
-                curve_upper_err.shape), f"Shapes must be equal: {x_axis_range.shape=}, {curve.shape=}, {curve_lower_err.shape=}, {curve_upper_err.shape=}"
-        assert (x_axis_range_real.shape == curve_real.shape == curve_lower_err_real.shape == curve_upper_err_real.shape
-                ), f"Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=}, {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"
         assert (
-            x_axis_range_fictional.shape == curve_fictional.shape == curve_lower_err_fictional.shape == curve_upper_err_fictional.shape
+            x_axis_range.shape == curve.shape == curve_lower_err.shape == curve_upper_err.shape
+        ), f"Shapes must be equal: {x_axis_range.shape=}, {curve.shape=}, {curve_lower_err.shape=}, {curve_upper_err.shape=}"
+        assert (
+            x_axis_range_real.shape == curve_real.shape == curve_lower_err_real.shape == curve_upper_err_real.shape
+        ), f"Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=}, {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"
+        assert (
+            x_axis_range_fictional.shape
+            == curve_fictional.shape
+            == curve_lower_err_fictional.shape
+            == curve_upper_err_fictional.shape
         ), f"Shapes must be equal: {x_axis_range_fictional.shape=}, {curve_fictional.shape=}, {curve_lower_err_fictional.shape=} {curve_upper_err_fictional.shape=}"
         if x_axis_range_fictional.ndim > 0:
             # if there is a fictional part, ensure that all the expected data is in the combined real and fictional parts
             x_axis_range_combined = np.concatenate([x_axis_range_real, x_axis_range_fictional])
-            assert x_axis_range.shape == x_axis_range_combined.shape, f"The shapes of {x_axis_range.shape=} and {x_axis_range_combined.shape=} do not match"
-            assert np.array_equal(x_axis_range, np.concatenate([x_axis_range_real, x_axis_range_fictional]), equal_nan=True)
+            assert (
+                x_axis_range.shape == x_axis_range_combined.shape
+            ), f"The shapes of {x_axis_range.shape=} and {x_axis_range_combined.shape=} do not match"
+            assert np.array_equal(
+                x_axis_range, np.concatenate([x_axis_range_real, x_axis_range_fictional]), equal_nan=True
+            )
             assert np.array_equal(curve, np.concatenate([curve_real, curve_fictional]), equal_nan=True)
-            assert np.array_equal(curve_lower_err, np.concatenate([curve_lower_err_real, curve_lower_err_fictional]), equal_nan=True)
-            assert np.array_equal(curve_upper_err, np.concatenate([curve_upper_err_real, curve_upper_err_fictional]), equal_nan=True)
+            assert np.array_equal(
+                curve_lower_err, np.concatenate([curve_lower_err_real, curve_lower_err_fictional]), equal_nan=True
+            )
+            assert np.array_equal(
+                curve_upper_err, np.concatenate([curve_upper_err_real, curve_upper_err_fictional]), equal_nan=True
+            )
         else:
             # if there is no fictional part, ensure that all the expected data is in the real part
-            assert x_axis_range.shape == x_axis_range_real.shape, f"The shapes of {x_axis_range.shape=} and {x_axis_range_real.shape=} do not match"
-            assert np.array_equal(x_axis_range, x_axis_range_real, equal_nan=True), f"Unequal arrays: {x_axis_range}, {x_axis_range_real}"
+            assert (
+                x_axis_range.shape == x_axis_range_real.shape
+            ), f"The shapes of {x_axis_range.shape=} and {x_axis_range_real.shape=} do not match"
+            assert np.array_equal(
+                x_axis_range, x_axis_range_real, equal_nan=True
+            ), f"Unequal arrays: {x_axis_range}, {x_axis_range_real}"
             assert np.array_equal(curve, curve_real, equal_nan=True), f"Unequal arrays: {curve}, {curve_real}"
-            assert np.array_equal(curve_lower_err, curve_lower_err_real, equal_nan=True), f"Unequal arrays: {curve_lower_err}, {curve_lower_err_real}"
-            assert np.array_equal(curve_upper_err, curve_upper_err_real, equal_nan=True), f"Unequal arrays: {curve_upper_err}, {curve_upper_err_real}"
+            assert np.array_equal(
+                curve_lower_err, curve_lower_err_real, equal_nan=True
+            ), f"Unequal arrays: {curve_lower_err}, {curve_lower_err_real}"
+            assert np.array_equal(
+                curve_upper_err, curve_upper_err_real, equal_nan=True
+            ), f"Unequal arrays: {curve_upper_err}, {curve_upper_err_real}"
 
     def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
         return super().get_curve(range, x_type, dist, confidence_level)
 
     def _get_matching_feval_indices_in_range(self, fevals_range: np.ndarray) -> np.ndarray:
-        """ Get a mask of where the fevals range matches with the data """
+        """Get a mask of where the fevals range matches with the data"""
         assert fevals_range.ndim == 1
         assert np.all(np.isfinite(fevals_range))
-        matching_indices_mask = np.array([np.isin(x_column, fevals_range, assume_unique=True)
-                                          for x_column in self._x_fevals.T]).transpose()    # get the indices of the matching feval range per repeat (column)
+        matching_indices_mask = np.array(
+            [np.isin(x_column, fevals_range, assume_unique=True) for x_column in self._x_fevals.T]
+        ).transpose()  # get the indices of the matching feval range per repeat (column)
         if np.all(~matching_indices_mask):
             raise ValueError(f"No overlap in data and given {fevals_range=}")
         return matching_indices_mask
@@ -346,13 +418,19 @@ class StochasticOptimizationAlgorithm(Curve):
         target_index: int = fevals_range[-1] - 1
 
         # filter to only get data in the fevals range
-        matching_indices_mask = self._get_matching_feval_indices_in_range(fevals_range)    # get the indices of the matching feval range per repeat (column)
-        masked_values = np.where(matching_indices_mask, self._y, np.nan)    # apply the mask to the values, filling NaN for False
-        masked_fevals = np.where(matching_indices_mask, self._x_fevals, np.nan).transpose()    # apply the mask to the fevals, filling NaN for False
+        matching_indices_mask = self._get_matching_feval_indices_in_range(
+            fevals_range
+        )  # get the indices of the matching feval range per repeat (column)
+        masked_values = np.where(
+            matching_indices_mask, self._y, np.nan
+        )  # apply the mask to the values, filling NaN for False
+        masked_fevals = np.where(
+            matching_indices_mask, self._x_fevals, np.nan
+        ).transpose()  # apply the mask to the fevals, filling NaN for False
 
         # make sure that the filtered fevals are consistent (every repeat has the same array of fevals)
         if not np.allclose(masked_fevals, masked_fevals[0], equal_nan=True):
-            indices = np.nanargmax(masked_fevals, axis=1)    # get the index of the last non-nan value of each repeat
+            indices = np.nanargmax(masked_fevals, axis=1)  # get the index of the last non-nan value of each repeat
             num_repeats = len(indices)
             # find the repeats that end before the index
             early_ending_repeats = np.where(indices < target_index)
@@ -369,16 +447,20 @@ class StochasticOptimizationAlgorithm(Curve):
             masked_values = masked_values[keep_repeats]
 
             # set all values beyond the greatest common non-NaN index to NaN
-            masked_values[:, greatest_common_non_NaN_index + 1:] = np.nan
-            masked_values = masked_values.transpose()    # transpose back to original shape
-            masked_fevals[:, greatest_common_non_NaN_index + 1:] = np.nan
+            masked_values[:, greatest_common_non_NaN_index + 1 :] = np.nan
+            masked_values = masked_values.transpose()  # transpose back to original shape
+            masked_fevals[:, greatest_common_non_NaN_index + 1 :] = np.nan
 
             # check that the filtered fevals are consistent
-            assert np.allclose(masked_fevals, masked_fevals[0], equal_nan=True), "Every repeat must have the same array of function evaluations"
+            assert np.allclose(
+                masked_fevals, masked_fevals[0], equal_nan=True
+            ), "Every repeat must have the same array of function evaluations"
 
         # as every repeat has the same array of fevals, check whether they match the range
-        fevals = masked_fevals[0]    # safe to assume as every repeat has the same array of fevals, set it before removing NaN to pad the curve
-        masked_fevals = masked_fevals.transpose()    # transpose back to original shape
+        fevals = masked_fevals[
+            0
+        ]  # safe to assume as every repeat has the same array of fevals, set it before removing NaN to pad the curve
+        masked_fevals = masked_fevals.transpose()  # transpose back to original shape
 
         # remove fevals where every repeat has NaN
         num_repeats = masked_values.shape[1]
@@ -415,7 +497,7 @@ class StochasticOptimizationAlgorithm(Curve):
             curve_upper_err = dist[indices_upper_err]
         else:
             # obtain the curves
-            curve: np.ndarray = np.nanmedian(masked_values, axis=1)    # get the curve by taking the mean
+            curve: np.ndarray = np.nanmedian(masked_values, axis=1)  # get the curve by taking the mean
             if confidence_level is None:
                 # get the standard error
                 curve_std: np.ndarray = np.nanstd(masked_values, axis=1)
@@ -447,9 +529,9 @@ class StochasticOptimizationAlgorithm(Curve):
             #     f"For optimization algorithm {self.display_name}, all runs end at {real_stopping_point_index + 1} fevals, which is before the target number of function evals of {target_index + 1}."
             # )
             # take the last non-NaN value and overwrite the curves up to the target index with it
-            curve[real_stopping_point_index:target_index + 1] = curve[real_stopping_point_index]
-            curve_lower_err[real_stopping_point_index:target_index + 1] = curve_lower_err[real_stopping_point_index]
-            curve_upper_err[real_stopping_point_index:target_index + 1] = curve_upper_err[real_stopping_point_index]
+            curve[real_stopping_point_index : target_index + 1] = curve[real_stopping_point_index]
+            curve_lower_err[real_stopping_point_index : target_index + 1] = curve_lower_err[real_stopping_point_index]
+            curve_upper_err[real_stopping_point_index : target_index + 1] = curve_upper_err[real_stopping_point_index]
 
         # check whether there are no NaNs left
         assert curve.shape == fevals_range.shape
@@ -458,9 +540,13 @@ class StochasticOptimizationAlgorithm(Curve):
         assert np.all(~np.isnan(curve_upper_err)), f"NaNs at {np.nonzero(np.isnan(curve_upper_err))[0]}"
 
         # return the curves split in real and fictional
-        return self._get_curve_split_real_fictional_parts(real_stopping_point_index + 1, fevals_range, curve, curve_lower_err, curve_upper_err)
+        return self._get_curve_split_real_fictional_parts(
+            real_stopping_point_index + 1, fevals_range, curve, curve_lower_err, curve_upper_err
+        )
 
-    def _get_curve_over_time_values_in_range(self, time_range: np.ndarray, return_1d=True) -> Tuple[np.ndarray, np.ndarray, float, int, int]:
+    def _get_curve_over_time_values_in_range(
+        self, time_range: np.ndarray, return_1d=True
+    ) -> Tuple[np.ndarray, np.ndarray, float, int, int]:
         """Get the valid times and values that are in the given range"""
         # check and get the variables
         assert time_range.ndim == 1
@@ -476,15 +562,19 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # get the highest time of each run of the algorithm, take the median
         times_no_nan = times
-        times_no_nan[np.isnan(values)] = np.nan    # to count only valid configurations towards highest time
+        times_no_nan[np.isnan(values)] = np.nan  # to count only valid configurations towards highest time
         highest_time_per_repeat = np.nanmax(times_no_nan, axis=0)
         assert highest_time_per_repeat.shape[0] == num_repeats
         real_stopping_point_time: float = np.nanmedian(highest_time_per_repeat)
 
         # filter to get the time range with a margin on both ends for the isotonic regression
         time_range_margin = 0.1
-        range_mask_margin = (time_range[0] * (1 - time_range_margin) <= times) & (times <= time_range[-1] * (1 + time_range_margin))
-        assert np.all(np.count_nonzero(range_mask_margin, axis=0) > 1), "Not enough overlap in time range and time values"
+        range_mask_margin = (time_range[0] * (1 - time_range_margin) <= times) & (
+            times <= time_range[-1] * (1 + time_range_margin)
+        )
+        assert np.all(
+            np.count_nonzero(range_mask_margin, axis=0) > 1
+        ), "Not enough overlap in time range and time values"
         times = np.where(range_mask_margin, times, np.nan)
         values = np.where(range_mask_margin, values, np.nan)
         num_repeats = values.shape[1]
@@ -501,7 +591,9 @@ class StochasticOptimizationAlgorithm(Curve):
         # return the correct values
         if return_1d:
             # remove all NaNs, yielding a 1D array (because iterations has no meaning for over time anyway, and isotonic regression requires a 1D array)
-            no_nan_mask = ~np.isnan(times) & ~np.isnan(values)    # only keep indices where both the times and values are not NaN
+            no_nan_mask = ~np.isnan(times) & ~np.isnan(
+                values
+            )  # only keep indices where both the times and values are not NaN
             times_1D = times[no_nan_mask]
             values_1D = values[no_nan_mask]
             assert times_1D.ndim == 1
@@ -512,7 +604,9 @@ class StochasticOptimizationAlgorithm(Curve):
         else:
             return times, values, real_stopping_point_time, num_fevals, num_repeats
 
-    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None, use_bagging=True):
+    def get_curve_over_time(
+        self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None, use_bagging=True
+    ):
         # check the distribution
         if dist is None:
             raise NotImplementedError()
@@ -522,13 +616,21 @@ class StochasticOptimizationAlgorithm(Curve):
         # use a bagging prediction / interval method or the seperated prediction / interval method
         if use_bagging:
             # get the curve within the time range
-            times_1D, values_1D, real_stopping_point_time, num_fevals, num_repeats = self._get_curve_over_time_values_in_range(time_range, return_1d=True)
+            (
+                times_1D,
+                values_1D,
+                real_stopping_point_time,
+                num_fevals,
+                num_repeats,
+            ) = self._get_curve_over_time_values_in_range(time_range, return_1d=True)
 
             # for each value, get the index in the distribution
             indices = get_indices_in_distribution(values_1D, dist)
             indices_min: int = np.min(indices)
             indices_max: int = np.max(indices)
-            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals)
+            indices_curve = self.get_isotonic_curve(
+                times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals
+            )
             indices_curve = np.clip(np.array(np.round(indices_curve), dtype=int), a_min=0, a_max=dist_size - 1)
             curve = dist[indices_curve]
 
@@ -540,11 +642,17 @@ class StochasticOptimizationAlgorithm(Curve):
 
             # get the lower and upper error curves
             # prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="conformal")
-            prediction_interval = self._get_prediction_interval_bagging(x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats)
+            prediction_interval = self._get_prediction_interval_bagging(
+                x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats
+            )
         else:
-            times, values, real_stopping_point_time, _, _ = self._get_curve_over_time_values_in_range(time_range, return_1d=False)
+            times, values, real_stopping_point_time, _, _ = self._get_curve_over_time_values_in_range(
+                time_range, return_1d=False
+            )
             indices = get_indices_in_distribution(values, dist)
-            prediction_interval = self._get_prediction_interval_separated(times, indices, time_range, confidence_level=confidence_level)
+            prediction_interval = self._get_prediction_interval_separated(
+                times, indices, time_range, confidence_level=confidence_level
+            )
 
         # round off the intervals and prediction in the correct way
         prediction_interval[:, 0] = np.floor(prediction_interval[:, 0])
@@ -556,7 +664,9 @@ class StochasticOptimizationAlgorithm(Curve):
             indices_curve = prediction_interval[:, 2]
             curve = dist[indices_curve]
         curve_lower_err, curve_upper_err = dist[prediction_interval[:, 0]], dist[prediction_interval[:, 1]]
-        assert curve_lower_err.shape == curve_upper_err.shape == curve.shape, f"{curve_lower_err.shape=} != {curve_upper_err.shape=} != {curve.shape=}"
+        assert (
+            curve_lower_err.shape == curve_upper_err.shape == curve.shape
+        ), f"{curve_lower_err.shape=} != {curve_upper_err.shape=} != {curve.shape=}"
 
         # print(f"{self.display_name}: {np.median(curve - curve_lower_err)}, {np.median(curve_upper_err - curve)}")
         # for t, e, i in zip(time_range, curve_lower_err, prediction[:, 0]):
@@ -569,19 +679,24 @@ class StochasticOptimizationAlgorithm(Curve):
         if real_stopping_point_time < time_range[-1]:
             if real_stopping_point_time <= time_range[0]:
                 raise ValueError(f"{real_stopping_point_time=} is before first time in time_range ({time_range[0]})")
-            real_stopping_point_index = min(int(np.nonzero(time_range > real_stopping_point_time)[0][0]),
-                                            real_stopping_point_index)    # look up the index of the stopping point
+            real_stopping_point_index = min(
+                int(np.nonzero(time_range > real_stopping_point_time)[0][0]), real_stopping_point_index
+            )  # look up the index of the stopping point
             # set everything after the index to the last value
             curve[real_stopping_point_index:] = curve[real_stopping_point_index]
             curve_lower_err[real_stopping_point_index:] = curve_lower_err[real_stopping_point_index]
             curve_upper_err[real_stopping_point_index:] = curve_upper_err[real_stopping_point_index]
 
-        return self._get_curve_split_real_fictional_parts(real_stopping_point_index, time_range, curve, curve_lower_err, curve_upper_err)
+        return self._get_curve_split_real_fictional_parts(
+            real_stopping_point_index, time_range, curve, curve_lower_err, curve_upper_err
+        )
 
     def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
         return super().get_split_times(range, x_type, searchspace_stats)
 
-    def get_split_times_at_feval(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         # get the indices in the range
         matching_indices_mask = self._get_matching_feval_indices_in_range(fevals_range)
         objective_time_keys = searchspace_stats.objective_time_keys
@@ -591,7 +706,9 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # for each key, apply the boolean mask
         for key_index in range(num_keys):
-            masked_time_per_key[key_index, matching_indices_mask] = self._x_time_per_key[key_index, matching_indices_mask]
+            masked_time_per_key[key_index, matching_indices_mask] = self._x_time_per_key[
+                key_index, matching_indices_mask
+            ]
 
         # remove where every repeat has NaN
         time_in_range_per_key = np.full((num_keys, fevals_range.shape[0], num_repeats), np.NaN)
@@ -603,7 +720,10 @@ class StochasticOptimizationAlgorithm(Curve):
         split_time_per_feval = np.full((num_keys, fevals_range.shape[0]), np.NaN)
         for key_index in range(num_keys):
             split_time_per_feval[key_index] = np.mean(time_in_range_per_key[key_index], axis=1)
-        assert split_time_per_feval.shape == (num_keys, fevals_range.shape[0]), f"{split_time_per_feval.shape} != {(num_keys, fevals_range.shape[0])}"
+        assert split_time_per_feval.shape == (
+            num_keys,
+            fevals_range.shape[0],
+        ), f"{split_time_per_feval.shape} != {(num_keys, fevals_range.shape[0])}"
         return split_time_per_feval
 
     def get_split_times_at_time(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
@@ -627,9 +747,11 @@ class StochasticOptimizationAlgorithm(Curve):
 
         return split_time_per_timestamp
 
-    def get_confidence_interval(self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None) -> Tuple[np.ndarray, np.ndarray]:
+    def get_confidence_interval(
+        self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Calculates the non-parametric confidence interval at each function evaluation for repeated function evaluations, assumed to be IID"""
-        assert values.ndim == 2    # should be two-dimensional (iterations, repeats)
+        assert values.ndim == 2  # should be two-dimensional (iterations, repeats)
         if weights is not None:
             assert weights.shape == values.shape
             assert np.all(~np.isnan(weights))
@@ -662,7 +784,9 @@ class StochasticOptimizationAlgorithm(Curve):
 
         return confidence_interval_lower, confidence_interval_upper
 
-    def get_confidence_interval_jagged(self, bins: list[np.ndarray], confidence_level: float) -> Tuple[np.ndarray, np.ndarray]:
+    def get_confidence_interval_jagged(
+        self, bins: list[np.ndarray], confidence_level: float
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Calculates the non-parametric confidence interval at each function evaluation for jagged bins, assumed to be IID, slower than get_confidence_interval()"""
         confidence_interval_lower = np.full(len(bins), np.nan)
         confidence_interval_upper = np.full(len(bins), np.nan)
@@ -670,7 +794,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # confidence interval using normal distribution assumption
         from statistics import NormalDist
 
-        distribution = NormalDist()    # TODO check if binomial is more appropriate (calculate according to book)
+        distribution = NormalDist()  # TODO check if binomial is more appropriate (calculate according to book)
         z = distribution.inv_cdf((1 + confidence_level) / 2.0)
         q = 0.5
 
@@ -687,17 +811,23 @@ class StochasticOptimizationAlgorithm(Curve):
             confidence_interval_upper[feval_index] = bin[upper_rank]
 
         # interpolate missing values
-        nan_mask = np.isnan(confidence_interval_lower)    # is the same is np.isnan(confidence_interval_upper)
-        confidence_interval_lower[nan_mask] = np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), confidence_interval_lower[~nan_mask])
-        confidence_interval_upper[nan_mask] = np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), confidence_interval_upper[~nan_mask])
+        nan_mask = np.isnan(confidence_interval_lower)  # is the same is np.isnan(confidence_interval_upper)
+        confidence_interval_lower[nan_mask] = np.interp(
+            np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), confidence_interval_lower[~nan_mask]
+        )
+        confidence_interval_upper[nan_mask] = np.interp(
+            np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), confidence_interval_upper[~nan_mask]
+        )
 
         # check before returning
         assert not np.isnan(confidence_interval_lower).any()
         assert not np.isnan(confidence_interval_upper).any()
         return confidence_interval_lower, confidence_interval_upper
 
-    def _get_prediction_interval_separated(self, times: np.ndarray, values: np.ndarray, time_range: np.ndarray, confidence_level: float) -> np.ndarray:
-        """ Calculates the prediction interval and isotonic regression mean by separating the runs """
+    def _get_prediction_interval_separated(
+        self, times: np.ndarray, values: np.ndarray, time_range: np.ndarray, confidence_level: float
+    ) -> np.ndarray:
+        """Calculates the prediction interval and isotonic regression mean by separating the runs"""
         assert times.shape == values.shape
         assert values.ndim == 2
         num_fevals = values.shape[0]
@@ -712,7 +842,7 @@ class StochasticOptimizationAlgorithm(Curve):
             assert _x.shape[0] == _y.shape[0] == num_fevals
 
             # filter NaN
-            no_nan_mask = ~np.isnan(_x) & ~np.isnan(_y)    # only keep indices where both the times and values are not NaN
+            no_nan_mask = ~np.isnan(_x) & ~np.isnan(_y)  # only keep indices where both the times and values are not NaN
             _x = _x[no_nan_mask]
             _y = _y[no_nan_mask]
             assert _x.ndim == _y.ndim == 1
@@ -720,25 +850,30 @@ class StochasticOptimizationAlgorithm(Curve):
             assert np.all(~np.isnan(_y))
             fraction_valid = _y.shape[0] / num_fevals
             if fraction_valid < 0.05:
-                warnings.warn(f"{round(fraction_valid * 100, 1)}% data left after removing NaN ({_y.shape[0]} / {num_fevals})")
+                warnings.warn(
+                    f"{round(fraction_valid * 100, 1)}% data left after removing NaN ({_y.shape[0]} / {num_fevals})"
+                )
 
             # get the prediction
             predictions[run] = self.get_isotonic_curve(_x, _y, time_range)
 
         # extract the mean and prediction intervals
         assert np.all(~np.isnan(predictions))
-        predictions = predictions.transpose()    # set to (time_range, num_repeats)
+        predictions = predictions.transpose()  # set to (time_range, num_repeats)
         y_lower_err, y_upper_err = self.get_confidence_interval(predictions, confidence_level=confidence_level)
         mean_prediction = np.median(predictions, axis=1)
-        assert y_lower_err.shape == y_upper_err.shape == mean_prediction.shape == time_range.shape, f"{y_lower_err.shape=} != {y_upper_err.shape=} != {mean_prediction.shape=} != {time_range.shape=}"
+        assert (
+            y_lower_err.shape == y_upper_err.shape == mean_prediction.shape == time_range.shape
+        ), f"{y_lower_err.shape=} != {y_upper_err.shape=} != {mean_prediction.shape=} != {time_range.shape=}"
 
         # combine the data and return as a prediction interval
         prediction_interval = np.concatenate([y_lower_err, y_upper_err, mean_prediction]).reshape((3, -1)).transpose()
         return prediction_interval
 
-    def _get_prediction_interval_bagging(self, x_1d: np.ndarray, y_1d: np.ndarray, x_test_1d: np.ndarray, confidence_level: float,
-                                         num_repeats: int) -> np.ndarray:
-        """ Calculates the prediction interval and isotonic regression mean using a bootstrap bagging method """
+    def _get_prediction_interval_bagging(
+        self, x_1d: np.ndarray, y_1d: np.ndarray, x_test_1d: np.ndarray, confidence_level: float, num_repeats: int
+    ) -> np.ndarray:
+        """Calculates the prediction interval and isotonic regression mean using a bootstrap bagging method"""
         # prepare the data
         x = x_1d.reshape(-1, 1)
         x_test = x_test_1d.reshape(-1, 1)
@@ -755,21 +890,34 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # do the bootstrap bagging
         regression_model = self.get_isotonic_regressor(y_min=y.min(), y_max=y.max())
-        bagging_regressor = BaggingRegressor(regression_model, n_estimators=n_estimators, max_samples=max_samples, bootstrap=True)
-        br = bagging_regressor.fit(x, y)    # fit the data to the estimators
+        bagging_regressor = BaggingRegressor(
+            regression_model, n_estimators=n_estimators, max_samples=max_samples, bootstrap=True
+        )
+        br = bagging_regressor.fit(x, y)  # fit the data to the estimators
         br_prediction = br.predict(x_test)
-        br_collection = np.array([est.predict(x_test) for est in br.estimators_])    # predict for each estimator; yields array with shape (run, x_test)
+        br_collection = np.array(
+            [est.predict(x_test) for est in br.estimators_]
+        )  # predict for each estimator; yields array with shape (run, x_test)
 
         # get the prediction interval in the correct shape
-        y_lower_err, y_upper_err = self.get_confidence_interval(br_collection.transpose(), confidence_level=confidence_level)
+        y_lower_err, y_upper_err = self.get_confidence_interval(
+            br_collection.transpose(), confidence_level=confidence_level
+        )
         prediction_interval = np.concatenate([y_lower_err, y_upper_err, br_prediction]).reshape((3, -1)).transpose()
         assert prediction_interval.shape == (x_test.shape[0], 3), f"{prediction_interval.shape}"
         return prediction_interval
 
-    def _get_prediction_interval_conformal(self, x_1d: np.ndarray, y_1d: np.ndarray, x_test_1d: np.ndarray, confidence_level: float,
-                                           method="inductive_conformal", train_fraction: float = 0.75) -> np.ndarray:
-        """ Calculates the prediction interval using various conformal methods """
-        methods = ['inductive_conformal', 'conformal', 'normalized_conformal', 'mondrian_conformal']
+    def _get_prediction_interval_conformal(
+        self,
+        x_1d: np.ndarray,
+        y_1d: np.ndarray,
+        x_test_1d: np.ndarray,
+        confidence_level: float,
+        method="inductive_conformal",
+        train_fraction: float = 0.75,
+    ) -> np.ndarray:
+        """Calculates the prediction interval using various conformal methods"""
+        methods = ["inductive_conformal", "conformal", "normalized_conformal", "mondrian_conformal"]
         assert method in methods
         assert 0 < train_fraction < 1
 
@@ -804,6 +952,7 @@ class StochasticOptimizationAlgorithm(Curve):
             # Inductive Conformal Point Prediction (based on https://arxiv.org/pdf/2107.00363.pdf, page 16 & 17)
             from nonconformist.cp import IcpRegressor
             from nonconformist.nc import NcFactory, SignErrorErrFunc
+
             # create the nonconformity function and inductive conformal regressor
             nonconformity_function = NcFactory.create_nc(regression_model, err_func=SignErrorErrFunc())
             inductive_conformal_regressor = IcpRegressor(nonconformity_function)
@@ -846,7 +995,9 @@ class StochasticOptimizationAlgorithm(Curve):
                 bins_cal, bin_thresholds = binning(values=sigmas_cal, bins=3)
                 cr_mond = ConformalRegressor()
                 cr_mond.fit(residuals=residuals_calibrated, bins=bins_cal)
-                bins_test = binning(values=sigmas_test, bins=bin_thresholds)    # generate bins to take the distance into account
+                bins_test = binning(
+                    values=sigmas_test, bins=bin_thresholds
+                )  # generate bins to take the distance into account
                 prediction_interval = cr_mond.predict(y_hat=prediction, confidence=confidence_level, bins=bins_test)
 
         return prediction_interval

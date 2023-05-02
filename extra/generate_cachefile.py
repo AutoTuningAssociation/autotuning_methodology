@@ -15,7 +15,7 @@ from typing import Tuple
 import progressbar
 import multiprocessing
 
-from kernel_tuner import util               # type: ignore
+from kernel_tuner import util  # type: ignore
 from kernel_tuner.interface import Options  # type: ignore
 
 
@@ -29,24 +29,26 @@ def noise() -> float:
 def rosenbrock_constrained(x, y) -> float:
     if (x**2 + y**2) > 2:
         return 1e20
-    return ((1 - x)**2 + 100 * (y - x**2)**2) + noise()
+    return ((1 - x) ** 2 + 100 * (y - x**2) ** 2) + noise()
 
 
 # Mishra's bird function
 def mishras_bird(x, y) -> float:
-    return (sin(x) * np.exp((1 - cos(y))**2) + cos(y) * np.exp((1 - sin(x))**2) + (x - y)**2) + noise()
+    return (sin(x) * np.exp((1 - cos(y)) ** 2) + cos(y) * np.exp((1 - sin(x)) ** 2) + (x - y) ** 2) + noise()
 
 
 # Mishra's bird function (constrained), minimum set to 0.0
 def mishras_bird_constrained(x, y) -> float:
-    if (x + 5)**2 + (y + 5)**2 >= 25:
+    if (x + 5) ** 2 + (y + 5) ** 2 >= 25:
         return 1e20
-    return (sin(x) * np.exp((1 - cos(y))**2) + cos(y) * np.exp((1 - sin(x))**2) + (x - y)**2) + noise() + 106.7645367
+    return (
+        (sin(x) * np.exp((1 - cos(y)) ** 2) + cos(y) * np.exp((1 - sin(x)) ** 2) + (x - y) ** 2) + noise() + 106.7645367
+    )
 
 
 # Gomez and Levy function, minimum set to 0.0
 def gomez_levy(x, y) -> float:
-    if -np.sin(4 * np.pi * x) + 2 * np.sin(2 * np.pi * y)**2 > 1.5:
+    if -np.sin(4 * np.pi * x) + 2 * np.sin(2 * np.pi * y) ** 2 > 1.5:
         return 1e20
     return (4 * x**2 - 2.1 * x**4 + (1 / 3) * x**6 + x * y - 4 * y**2 + 4 * y**4) + noise() + 1.031628453
 
@@ -101,8 +103,8 @@ repeat_evals = 1
 # }
 # Mishra's bird
 params_to_eval = {
-    'x': param_space(-10, 0, num=100),
-    'y': param_space(-6.5, 0, num=100),
+    "x": param_space(-10, 0, num=100),
+    "y": param_space(-6.5, 0, num=100),
 }
 # # Gomez and Levy
 # params_to_eval = {
@@ -113,10 +115,10 @@ params_to_eval = {
 # set the required dummy variables
 searchspace = cartesian_product(params_to_eval)
 # name = 'gomez_levy'
-name = 'mishras_bird_constrained'
-devname = 'generator'
-kernelname = name + '_kernel'
-cache = name + '_' + devname
+name = "mishras_bird_constrained"
+devname = "generator"
+kernelname = name + "_kernel"
+cache = name + "_" + devname
 kernel_options = Options(kernel_name=kernelname)
 tuning_options = Options(cache=cache, tune_params=Options(params_to_eval), simulation_mode=False)
 runner = Options(dev=Options(name=devname), simulation_mode=False)
@@ -138,15 +140,15 @@ def eval_and_store(param_config: dict) -> Tuple[str, dict]:
         value = eval_func(param_config)
         values = np.array([value])
     # store the result in the param config
-    param_config['times'] = values
-    param_config['time'] = value
+    param_config["times"] = values
+    param_config["time"] = value
     return param_config_keystring, param_config
 
 
 if __name__ == "__main__":
     # initialize the cache file
     time_start = time.perf_counter()
-    print("Initializing cachefile", end='')
+    print("Initializing cachefile", end="")
     if cache[-5:] != ".json":
         cache += ".json"
     util.process_cache(cache, kernel_options, tuning_options, runner)
@@ -180,7 +182,7 @@ if __name__ == "__main__":
     # evaluation of the searchspace
     time_start_eval = time.perf_counter()
     if multi_threaded:
-        print("Multi-threaded evaluation of {} parameter configurations".format(searchspace_len), end='', flush=True)
+        print("Multi-threaded evaluation of {} parameter configurations".format(searchspace_len), end="", flush=True)
         pool = multiprocessing.pool.ThreadPool()
         evals = pool.map(eval_and_store, searchspace)
         pool.close()
@@ -197,11 +199,15 @@ if __name__ == "__main__":
     json_string = ""
     for param_config_keystring, param_config in progressbar.progressbar(evals, redirect_stdout=True):
         tuning_options.cache[param_config_keystring] = param_config
-        json_string += "\n" + json.dumps({ param_config_keystring: param_config }, default=npconverter)[1:-1] + ","
+        json_string += "\n" + json.dumps({param_config_keystring: param_config}, default=npconverter)[1:-1] + ","
 
     util.dump_cache(json_string, tuning_options)
 
     # close the cache file
     util.close_cache(cache)
     time_end = time.perf_counter()
-    print("Generated cachefile '{}' with {} parameter configurations in {} seconds".format(str(cache), searchspace_len, round(time_end - time_start, 3)))
+    print(
+        "Generated cachefile '{}' with {} parameter configurations in {} seconds".format(
+            str(cache), searchspace_len, round(time_end - time_start, 3)
+        )
+    )

@@ -45,7 +45,7 @@ scale_input = lambda x: (x - mean_x) / std_x
 unscale_input = lambda x: x * std_x + mean_x
 
 # mean normalization of outputs
-mean_y, std_y = train_y.mean(),train_y.std()
+mean_y, std_y = train_y.mean(), train_y.std()
 train_y = (train_y - mean_y) / std_y
 scale_output = lambda x: (x - mean_y) / std_y
 unscale_output = lambda x: x * std_y + mean_y
@@ -60,7 +60,6 @@ if cuda_available:
 
 # We will use the simplest form of GP model, exact inference
 class ExactGPModel(gpytorch.models.ExactGP):
-
     def __init__(self, train_x, train_y, likelihood):
         super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
@@ -88,11 +87,10 @@ def instantiate_model(x, y):
         likelihood = likelihood.cuda()
         model = model.cuda()
 
-
     # Find optimal model hyperparameters
     model.train()
     likelihood.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)    # Includes GaussianLikelihood parameters
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
     # optimizer = torch.optim.LBFGS(model.parameters())     # Add closure function to step
 
     # "Loss" for GPs - the marginal log likelihood
@@ -103,7 +101,7 @@ def instantiate_model(x, y):
 model, likelihood, optimizer, mll = instantiate_model(train_x, train_y)
 
 
-def train_model(training_iter = 50, retries = 0):
+def train_model(training_iter=50, retries=0):
     global model, likelihood, optimizer, mll
     model.train()
     likelihood.train()
@@ -132,6 +130,7 @@ def train_model(training_iter = 50, retries = 0):
     model.eval()
     likelihood.eval()
 
+
 # Train the model
 train_model()
 # model.eval()
@@ -141,12 +140,12 @@ with gpytorch.settings.fast_pred_var():
     # Initialize plot
     fig, ax = plt.subplots(1, 1, figsize=(20, 15))
     # ax.set_ylim([-3, 3])
-    ax.set_ylabel('Value')
-    ax.set_xlabel('Parameter')
-    ax.legend(['Observed Data', 'Mean', 'Confidence'])
+    ax.set_ylabel("Value")
+    ax.set_xlabel("Parameter")
+    ax.legend(["Observed Data", "Mean", "Confidence"])
 
     def animate(i: int):
-        """ Function that draws each frame of the animation """
+        """Function that draws each frame of the animation"""
         global model, likelihood, optimizer, mll, train_x, train_y, test_x
 
         # Do one evaluation
@@ -156,7 +155,6 @@ with gpytorch.settings.fast_pred_var():
         print(f"Frame {i}, candidate: {candidate_param}")
 
         # Remove the evaluation from test_x
-
 
         # Update the model
         # TODO get_fantasy_model is unstable, maybe use get_fantasy_model and then have set_train_data every 10 evaluations?
@@ -177,7 +175,6 @@ with gpytorch.settings.fast_pred_var():
         #     print(f"1 in 20 Frame {i}")
         # else:
         #     model.set_train_data(train_x, train_y, strict=False)
-
 
         # Make predictions by feeding model through likelihood
         # TODO look into "GPInputWarning: You have passed data through a FixedNoiseGaussianLikelihood that did not match the size of the fixed noise, *and* you did not specify noise. This is treated as a no-op."
@@ -204,9 +201,9 @@ with gpytorch.settings.fast_pred_var():
         # Update the animation
         ax.clear()
         # Plot training data as black stars
-        ax.plot(train_x_read.numpy(), train_y_read.numpy(), 'k*')
+        ax.plot(train_x_read.numpy(), train_y_read.numpy(), "k*")
         # Plot predictive means as blue line
-        ax.plot(test_x_read.detach().numpy(), mean.detach().numpy(), 'b')
+        ax.plot(test_x_read.detach().numpy(), mean.detach().numpy(), "b")
         # Shade between the lower and upper confidence bounds
         ax.fill_between(test_x_read.detach().numpy(), lower.detach().numpy(), upper.detach().numpy(), alpha=0.5)
 

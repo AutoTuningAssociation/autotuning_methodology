@@ -16,7 +16,9 @@ T4_time_keys_to_kernel_tuner_time_keys_mapping = {
     "search_algorithm": "strategy_time",
     "validation": "verification_time",
 }
-kernel_tuner_time_keys_to_T4_time_keys_mapping = {v: k for k, v in T4_time_keys_to_kernel_tuner_time_keys_mapping.items()}
+kernel_tuner_time_keys_to_T4_time_keys_mapping = {
+    v: k for k, v in T4_time_keys_to_kernel_tuner_time_keys_mapping.items()
+}
 
 
 def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
@@ -42,7 +44,14 @@ class SearchspaceStatistics:
     objective_performances_total_sorted: np.ndarray
     objective_performances_total_sorted_nan: np.ndarray
 
-    def __init__(self, kernel_name: str, device_name: str, minimization: bool, objective_time_keys: list[str], objective_performance_keys: list[str]) -> None:
+    def __init__(
+        self,
+        kernel_name: str,
+        device_name: str,
+        minimization: bool,
+        objective_time_keys: list[str],
+        objective_performance_keys: list[str],
+    ) -> None:
         self.loaded = False
         self.kernel_name = kernel_name
         self.device_name = device_name
@@ -84,7 +93,9 @@ class SearchspaceStatistics:
         # fevals_to_cutoff_point = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
 
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] > cutoff_percentile * arr[-1])
-        i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_performance_at_cutoff_point)
+        i = next(
+            x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_performance_at_cutoff_point
+        )
         # In case of x <= (1+p) * f_opt
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= (1 + (1 - cutoff_percentile)) * arr[-1])
         # In case of p*x <= f_opt
@@ -126,14 +137,20 @@ class SearchspaceStatistics:
     def _to_valid_array(self, cache_values: list[dict], key: str, performance: bool) -> np.ndarray:
         """Convert valid cache performance or time values to a numpy array, sum if the input is a list of arrays"""
         # make a list of all valid values
-        values = list(v[key] if key in v and self._is_not_invalid_value(v[key], performance) else np.nan for v in cache_values)
+        values = list(
+            v[key] if key in v and self._is_not_invalid_value(v[key], performance) else np.nan for v in cache_values
+        )
         # check if there are values that are arrays
         for value_index, value in enumerate(values):
             if isinstance(value, (list, tuple, np.ndarray)):
                 # if the cache value is an array, sum the valid values
                 array = value
                 list_to_sum = list(v for v in array if self._is_not_invalid_value(v, performance))
-                values[value_index] = sum(list_to_sum) if len(list_to_sum) > 0 and self._is_not_invalid_value(sum(list_to_sum), performance) else np.nan
+                values[value_index] = (
+                    sum(list_to_sum)
+                    if len(list_to_sum) > 0 and self._is_not_invalid_value(sum(list_to_sum), performance)
+                    else np.nan
+                )
         assert all(isinstance(v, (int, float)) for v in values)
         return np.array(values)
 
@@ -161,9 +178,15 @@ class SearchspaceStatistics:
             self.objective_times = dict()
             for key in self.objective_time_keys:
                 self.objective_times[key] = self._to_valid_array(cache_values, key, performance=False)
-                self.objective_times[key] = self.objective_times[key] / 1000  # TODO Kernel Tuner specific miliseconds to seconds conversion
-                assert self.objective_times[key].ndim == 1, f"Should have one dimension, has {self.objective_times[key].ndim}"
-                assert self.objective_times[key].shape[0] == len(cache_values), f"Should have the same size as cache_values ({self.size}), has {self.objective_times[key].shape[0]}"
+                self.objective_times[key] = (
+                    self.objective_times[key] / 1000
+                )  # TODO Kernel Tuner specific miliseconds to seconds conversion
+                assert (
+                    self.objective_times[key].ndim == 1
+                ), f"Should have one dimension, has {self.objective_times[key].ndim}"
+                assert self.objective_times[key].shape[0] == len(
+                    cache_values
+                ), f"Should have the same size as cache_values ({self.size}), has {self.objective_times[key].shape[0]}"
                 assert not np.all(
                     np.isnan(self.objective_times[key])
                 ), f"All values for {key=} are NaN. Likely the experiment did not collect time values for objective_time_keys '{key}'."
@@ -172,7 +195,9 @@ class SearchspaceStatistics:
             self.objective_performances = dict()
             for key in self.objective_performance_keys:
                 self.objective_performances[key] = self._to_valid_array(cache_values, key, performance=True)
-                assert self.objective_performances[key].ndim == 1, f"Should have one dimension, has {self.objective_performances[key].ndim}"
+                assert (
+                    self.objective_performances[key].ndim == 1
+                ), f"Should have one dimension, has {self.objective_performances[key].ndim}"
                 assert self.objective_performances[key].shape[0] == len(
                     cache_values
                 ), f"Should have the same size as cache_values ({self.size}), has {self.objective_performances[key].shape[0]}"
@@ -189,7 +214,9 @@ class SearchspaceStatistics:
             # combine the arrays to the shape [len(objective_keys), self.size]
             self.objective_times_array = np.array(list(self.objective_times[key] for key in self.objective_time_keys))
             assert self.objective_times_array.shape == tuple([len(self.objective_time_keys), self.size])
-            self.objective_performances_array = np.array(list(self.objective_performances[key] for key in self.objective_performance_keys))
+            self.objective_performances_array = np.array(
+                list(self.objective_performances[key] for key in self.objective_performance_keys)
+            )
             assert self.objective_performances_array.shape == tuple([len(self.objective_performance_keys), self.size])
 
             # get the totals
@@ -205,14 +232,26 @@ class SearchspaceStatistics:
             ), f"Sums of objective performances do not match: {np.nansum(self.objective_performances_array[:, 0])} vs. {self.objective_performances_total[0]}"  # more of a test
 
             # sort
-            self.objective_times_total_sorted = np.sort(self.objective_times_total[~np.isnan(self.objective_times_total)])
-            self.objective_times_number_of_nan = self.objective_times_total.shape[0] - self.objective_times_total_sorted.shape[0]
+            self.objective_times_total_sorted = np.sort(
+                self.objective_times_total[~np.isnan(self.objective_times_total)]
+            )
+            self.objective_times_number_of_nan = (
+                self.objective_times_total.shape[0] - self.objective_times_total_sorted.shape[0]
+            )
             objective_performances_nan_mask = np.isnan(self.objective_performances_total)
             self.objective_performances_number_of_nan = np.count_nonzero(objective_performances_nan_mask)
-            self.objective_performances_total_sorted = np.sort(self.objective_performances_total[~objective_performances_nan_mask])
+            self.objective_performances_total_sorted = np.sort(
+                self.objective_performances_total[~objective_performances_nan_mask]
+            )
             # make sure the best values are at the start, because NaNs are appended to the end
-            sorted_best_first = self.objective_performances_total_sorted if self.minimization else self.objective_performances_total_sorted[::-1]
-            self.objective_performances_total_sorted_nan = np.concatenate((sorted_best_first, [np.nan] * self.objective_performances_number_of_nan))
+            sorted_best_first = (
+                self.objective_performances_total_sorted
+                if self.minimization
+                else self.objective_performances_total_sorted[::-1]
+            )
+            self.objective_performances_total_sorted_nan = np.concatenate(
+                (sorted_best_first, [np.nan] * self.objective_performances_number_of_nan)
+            )
 
         return True
 

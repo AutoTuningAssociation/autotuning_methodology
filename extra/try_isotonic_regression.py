@@ -28,11 +28,27 @@ dict_regressions = dict(
         "isotonic_constant": {"use": False, "use_interval": False, "name": "Isotonic (half, constant)"},
         "sklearn_gradient_boosting": {"use": False, "use_interval": False, "name": "SKLearn gradient boosting"},
         "sklearn_isotonic_bagging": {"use": True, "use_interval": True, "name": "SKLearn isotonic bagging"},
-        "sklearn_isotonic_bagging_distance": {"use": False, "use_interval": False, "name": "SKLearn isotonic bagging with distance uncertainty"},
-        "inductive_conformal_prediction": {"use": False, "use_interval": False, "name": "Inductive Conformal Prediction"},
+        "sklearn_isotonic_bagging_distance": {
+            "use": False,
+            "use_interval": False,
+            "name": "SKLearn isotonic bagging with distance uncertainty",
+        },
+        "inductive_conformal_prediction": {
+            "use": False,
+            "use_interval": False,
+            "name": "Inductive Conformal Prediction",
+        },
         "conformal_prediction_crepes": {"use": False, "use_interval": False, "name": "Conformal Prediction"},
-        "conformal_prediction_crepes_normalized": {"use": False, "use_interval": False, "name": "Conformal Prediction Normalized"},
-        "conformal_prediction_crepes_mondrian": {"use": False, "use_interval": False, "name": "Conformal Prediction Mondrian"},
+        "conformal_prediction_crepes_normalized": {
+            "use": False,
+            "use_interval": False,
+            "name": "Conformal Prediction Normalized",
+        },
+        "conformal_prediction_crepes_mondrian": {
+            "use": False,
+            "use_interval": False,
+            "name": "Conformal Prediction Mondrian",
+        },
         "manual_bootstrap": {"use": False, "use_interval": False, "name": "Bootstrapped"},
     }
 )
@@ -46,11 +62,18 @@ for key in dict_regressions.keys():
         color_index += 1
 
 # Conditional imports
-if dict_regressions["isotonic_all"]["use"] or dict_regressions["isotonic_half"]["use"] or dict_regressions["isotonic_constant"]["use"]:
+if (
+    dict_regressions["isotonic_all"]["use"]
+    or dict_regressions["isotonic_half"]["use"]
+    or dict_regressions["isotonic_constant"]["use"]
+):
     # can be installed from https://github.com/stucchio/isotonic
     from isotonic.isotonic import LpIsotonicRegression
     from isotonic.isotonic.curves import PiecewiseLinearIsotonicCurve, PiecewiseConstantIsotonicCurve
-if dict_regressions["inductive_conformal_prediction"]["use"] or dict_regressions["inductive_conformal_prediction"]["use_interval"]:
+if (
+    dict_regressions["inductive_conformal_prediction"]["use"]
+    or dict_regressions["inductive_conformal_prediction"]["use_interval"]
+):
     # can be installed with 'pip install nonconformist'
     from nonconformist.cp import IcpRegressor
     from nonconformist.nc import NcFactory, SignErrorErrFunc
@@ -146,11 +169,15 @@ for key, reginfo in dict_regressions.items():
             ir2linear_all_fit = ir2linear_all.fit(x, y)
             y_pred = ir2linear_all_fit.predict_proba(x_test)
         elif key == "isotonic_half":
-            ir2linear_half = LpIsotonicRegression(round(N / 5), increasing=increasing, curve_algo=PiecewiseLinearIsotonicCurve)
+            ir2linear_half = LpIsotonicRegression(
+                round(N / 5), increasing=increasing, curve_algo=PiecewiseLinearIsotonicCurve
+            )
             ir2linear_half_fit = ir2linear_half.fit(x, y)
             y_pred = ir2linear_half_fit.predict_proba(x_test)
         elif key == "isotonic_constant":
-            ir2constant = LpIsotonicRegression(round(N / 5), increasing=increasing, curve_algo=PiecewiseConstantIsotonicCurve)
+            ir2constant = LpIsotonicRegression(
+                round(N / 5), increasing=increasing, curve_algo=PiecewiseConstantIsotonicCurve
+            )
             ir2constant_fit = ir2constant.fit(x, y)
             y_pred = ir2constant_fit.predict_proba(x_test)
         elif key == "sklearn_gradient_boosting":
@@ -166,7 +193,9 @@ for key, reginfo in dict_regressions.items():
             or key == "conformal_prediction_crepes_mondrian"
             or key == "manual_bootstrap"
         ):
-            raise NotImplementedError(f"{reginfo['name']} is not implemented as a regressor, only as an interval estimator")
+            raise NotImplementedError(
+                f"{reginfo['name']} is not implemented as a regressor, only as an interval estimator"
+            )
         else:
             raise KeyError(f"Regression method key '{key}' unkown")
 
@@ -215,7 +244,9 @@ for key, reginfo in dict_regressions.items():
         elif key == "sklearn_isotonic_bagging" or key == "sklearn_isotonic_bagging_distance":
             # Bagging Regressor (based on https://stats.stackexchange.com/questions/183230/bootstrapping-confidence-interval-from-a-regression-prediction)
             br = get_bagging_regressor().fit(x_2d, y)
-            br_collection = np.array([est.predict(x_test_2d) for est in br.estimators_])  # yields 2D array with shape (run, x_test)
+            br_collection = np.array(
+                [est.predict(x_test_2d) for est in br.estimators_]
+            )  # yields 2D array with shape (run, x_test)
             if key == "sklearn_isotonic_bagging":
                 y_lower_err, y_upper_err = calculate_confidence_interval(br_collection.transpose())
             elif key == "sklearn_isotonic_bagging_distance":
@@ -341,20 +372,29 @@ for key, reginfo in dict_regressions.items():
 
                 return percentiles[:, 0], model.predict(x0), percentiles[:, 1]
 
-            y_lower_err, _, y_upper_err = prediction_interval(get_regression_model(), X_train=x_2d, y_train=y, x0=x_test_2d, alpha=1 - confidence_level)
+            y_lower_err, _, y_upper_err = prediction_interval(
+                get_regression_model(), X_train=x_2d, y_train=y, x0=x_test_2d, alpha=1 - confidence_level
+            )
 
         else:
             raise KeyError(f"Interval method key '{key}' unkown")
 
         # write the errors and timing to the dicts
-        assert y_lower_err.shape == y_upper_err.shape == x_test.shape, f"{y_lower_err.shape=} != {y_upper_err.shape=} != {x_test.shape=}"
+        assert (
+            y_lower_err.shape == y_upper_err.shape == x_test.shape
+        ), f"{y_lower_err.shape=} != {y_upper_err.shape=} != {x_test.shape=}"
         dict_regressions[key]["y_lower_err"] = y_lower_err
         dict_regressions[key]["y_upper_err"] = y_upper_err
         dict_timings[f"{reginfo['name']} error"] = perf_counter() - start_perf_counter
 
 # Plot the results (from https://github.com/stucchio/isotonic)
 output_notebook()
-plot = figure(tools="pan,box_zoom,reset,save,", y_axis_label="y", title="Comparison of isotonic regression and interval methods", x_axis_label="x")
+plot = figure(
+    tools="pan,box_zoom,reset,save,",
+    y_axis_label="y",
+    title="Comparison of isotonic regression and interval methods",
+    x_axis_label="x",
+)
 
 # plot raw data
 plot.circle(x, y, color="black", alpha=0.2, legend_label="raw data")
@@ -367,7 +407,14 @@ for key, reginfo in dict_regressions.items():
             plot.varea(x_test, y1=reginfo["y_lower_err"], y2=reginfo["y_upper_err"], alpha=0.3, color=reginfo["color"])
         else:
             # if only the interval shade is drawn, add it to the legend
-            plot.varea(x_test, y1=reginfo["y_lower_err"], y2=reginfo["y_upper_err"], alpha=0.3, color=reginfo["color"], legend_label=reginfo["name"])
+            plot.varea(
+                x_test,
+                y1=reginfo["y_lower_err"],
+                y2=reginfo["y_upper_err"],
+                alpha=0.3,
+                color=reginfo["color"],
+                legend_label=reginfo["name"],
+            )
 
 # plot the regressors
 for key, reginfo in dict_regressions.items():

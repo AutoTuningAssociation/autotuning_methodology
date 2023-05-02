@@ -26,7 +26,9 @@ def tune(device_name: str, strategy="mls", strategy_options=None, verbose=True, 
     args = [output_image, input_image, filter_weights]
 
     metrics = OrderedDict()
-    metrics["GFLOP/s"] = lambda p: (image_width * image_height * filter_width * filter_height * 2 / 1e9) / (p["time"] / 1e3)
+    metrics["GFLOP/s"] = lambda p: (image_width * image_height * filter_width * filter_height * 2 / 1e9) / (
+        p["time"] / 1e3
+    )
 
     # setup tunable parameters
     tune_params = OrderedDict()

@@ -8,11 +8,8 @@ def performance(name, function, array):
     end = perf_counter()
     print(f"{name}: {round(end - start, 5)} seconds")
     num_nonzero = np.count_nonzero(np.isnan(array))
-    assert np.all(np.isnan(
-        array[-num_nonzero:]))  # make sure all NaNs are at the end
-    assert all(
-        a >= b or np.isnan(a) or np.isnan(b)
-        for a, b in zip(array, array[1:]))  # make sure everything is sorted
+    assert np.all(np.isnan(array[-num_nonzero:]))  # make sure all NaNs are at the end
+    assert all(a >= b or np.isnan(a) or np.isnan(b) for a, b in zip(array, array[1:]))  # make sure everything is sorted
 
 
 def sort_append_reverse(x):

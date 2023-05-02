@@ -21,7 +21,9 @@ def get_args_from_cli(args) -> str:
     args = CLI.parse_args(args)
     filepath: str = args.experiment
     if filepath is None or filepath == "":
-        raise ValueError("Invalid '-experiment' option. Run 'visualize_experiments.py -h' to read more about the options.")
+        raise ValueError(
+            "Invalid '-experiment' option. Run 'visualize_experiments.py -h' to read more about the options."
+        )
     return filepath
 
 
@@ -135,7 +137,9 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
                 # if cutoff_type == 'time':
                 #     strategy['options']['time_limit'] = cutoff_point_time * cutoff_margin
                 # else:
-                strategy["options"]["max_fevals"] = min(int(ceil(cutoff_point_fevals * cutoff_margin)), searchspace_stats.size)
+                strategy["options"]["max_fevals"] = min(
+                    int(ceil(cutoff_point_fevals * cutoff_margin)), searchspace_stats.size
+                )
                 results_description = ResultsDescription(
                     experiment_folder_id,
                     kernel_name,
@@ -152,7 +156,9 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
                 if "ignore_cache" not in strategy and results_description.has_results():
                     print(" | - |-> retrieved from cache")
                 else:  # execute each strategy that is not in the cache
-                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling, error_value=1e20)
+                    results_description = collect_results(
+                        kernel, strategy, results_description, profiling=profiling, error_value=1e20
+                    )
 
                 # set the results
                 results_descriptions[gpu_name][kernel_name][strategy_name] = results_description

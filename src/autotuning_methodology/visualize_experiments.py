@@ -78,7 +78,12 @@ class Visualize:
     )
 
     plot_x_value_types = ["fevals", "time", "aggregated"]  # number of function evaluations, time, aggregation
-    plot_y_value_types = ["absolute", "scatter", "normalized", "baseline"]  # absolute values, scatterplot, median-absolute normalized, improvement over baseline
+    plot_y_value_types = [
+        "absolute",
+        "scatter",
+        "normalized",
+        "baseline",
+    ]  # absolute values, scatterplot, median-absolute normalized, improvement over baseline
 
     plot_filename_prefix = "generated_plots/"
 
@@ -88,7 +93,9 @@ class Visualize:
         # # silently execute the experiment
         # with warnings.catch_warnings():
         #     warnings.simplefilter("ignore")
-        self.experiment, self.strategies, self.results_descriptions = execute_experiment(experiment_filename, profiling=False)
+        self.experiment, self.strategies, self.results_descriptions = execute_experiment(
+            experiment_filename, profiling=False
+        )
         print("\n")
         print("Visualizing")
 
@@ -134,12 +141,18 @@ class Visualize:
                 for strategy in self.strategies:
                     results_description = self.results_descriptions[gpu_name][kernel_name][strategy["name"]]
                     if results_description is None:
-                        raise ValueError(f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first")
+                        raise ValueError(
+                            f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first"
+                        )
                     strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
 
                 # set the x-axis range
-                _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(cutoff_percentile)
-                _, cutoff_point_fevals_start, cutoff_point_time_start = searchspace_stats.cutoff_point_fevals_time(cutoff_percentile_start)
+                _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(
+                    cutoff_percentile
+                )
+                _, cutoff_point_fevals_start, cutoff_point_time_start = searchspace_stats.cutoff_point_fevals_time(
+                    cutoff_percentile_start
+                )
                 fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals)
                 time_range = np.linspace(start=cutoff_point_time_start, stop=cutoff_point_time, num=time_resolution)
                 # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
@@ -147,13 +160,26 @@ class Visualize:
 
                 # compare baselines
                 if compare_baselines is True:
-                    self.plot_baselines_comparison(time_range, searchspace_stats, objective_time_keys, title=title, strategies_curves=[strategies_curves[0]])
+                    self.plot_baselines_comparison(
+                        time_range,
+                        searchspace_stats,
+                        objective_time_keys,
+                        title=title,
+                        strategies_curves=[strategies_curves[0]],
+                    )
                 if compare_split_times is True:
                     # self.plot_split_times_comparison('fevals', fevals_range, searchspace_stats, objective_time_keys, title=title,
                     #                                  strategies_curves=[strategies_curves[0], strategies_curves[2]])
                     # self.plot_split_times_comparison('time', time_range, searchspace_stats, objective_time_keys, title=title,
                     #                                  strategies_curves=strategies_curves)
-                    self.plot_split_times_bar_comparison("time", time_range, searchspace_stats, objective_time_keys, title=title, strategies_curves=strategies_curves)
+                    self.plot_split_times_bar_comparison(
+                        "time",
+                        time_range,
+                        searchspace_stats,
+                        objective_time_keys,
+                        title=title,
+                        strategies_curves=strategies_curves,
+                    )
                 if compare_baselines is True or compare_split_times is True:
                     continue
 
@@ -180,8 +206,16 @@ class Visualize:
                         raise ValueError(f"Invalid {x_type=}")
 
                     # create the figure and plots
-                    fig, axs = plt.subplots(nrows=len(plot_y_value_types), ncols=1, figsize=(9, 3.4 * len(plot_y_value_types)), sharex=True, dpi=300)
-                    if not hasattr(axs, "__len__"):  # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
+                    fig, axs = plt.subplots(
+                        nrows=len(plot_y_value_types),
+                        ncols=1,
+                        figsize=(9, 3.4 * len(plot_y_value_types)),
+                        sharex=True,
+                        dpi=300,
+                    )
+                    if not hasattr(
+                        axs, "__len__"
+                    ):  # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
                         axs = [axs]
                     fig.canvas.manager.set_window_title(title)
                     if not save_figs:
@@ -190,7 +224,15 @@ class Visualize:
                     # plot the subplots of individual searchspaces
                     for index, y_type in enumerate(plot_y_value_types):
                         self.plot_strategies(
-                            x_type, y_type, axs[index], searchspace_stats, strategies_curves, x_axis_range, plot_settings, random_baseline, baselines_extra=baselines_extra
+                            x_type,
+                            y_type,
+                            axs[index],
+                            searchspace_stats,
+                            strategies_curves,
+                            x_axis_range,
+                            plot_settings,
+                            random_baseline,
+                            baselines_extra=baselines_extra,
                         )
                         if index == 0:
                             loc = "lower right" if y_type == "normalized" else "best"
@@ -208,7 +250,9 @@ class Visualize:
 
         # plot the aggregated searchspaces
         if "aggregated" in plot_x_value_types and not (compare_baselines or compare_split_times):
-            fig, axs = plt.subplots(ncols=1, figsize=(9, 6), dpi=300)  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+            fig, axs = plt.subplots(
+                ncols=1, figsize=(9, 6), dpi=300
+            )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
             if not hasattr(axs, "__len__"):
                 axs = [axs]
             title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
@@ -227,7 +271,12 @@ class Visualize:
                 plt.show()
 
     def plot_baselines_comparison(
-        self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics, objective_time_keys: list, title: str = None, strategies_curves: list[Curve] = list()
+        self,
+        time_range: np.ndarray,
+        searchspace_stats: SearchspaceStatistics,
+        objective_time_keys: list,
+        title: str = None,
+        strategies_curves: list[Curve] = list(),
     ):
         """Plots a comparison of baselines on a time range, optionally also compares against strategies listed in strategies_curves"""
         dist = searchspace_stats.objective_performances_total_sorted
@@ -237,7 +286,11 @@ class Visualize:
         baselines: list[Baseline] = list()
         # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median'))
         baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, time_per_feval_operator="mean"))
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator="median_per_feval"))
+        baselines.append(
+            RandomSearchCalculatedBaseline(
+                searchspace_stats, include_nan=True, time_per_feval_operator="median_per_feval"
+            )
+        )
 
         # plot random baseline implementations
         for baseline in baselines:
@@ -290,7 +343,9 @@ class Visualize:
         # setup the subplots
         num_rows = len(lines)
         fig, axs = plt.subplots(nrows=num_rows, ncols=1, figsize=(9, 3 * num_rows), sharex=True)
-        if not hasattr(axs, "__len__"):  # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
+        if not hasattr(
+            axs, "__len__"
+        ):  # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
             axs = [axs]
         if title is not None:
             fig.canvas.manager.set_window_title(title)
@@ -347,7 +402,10 @@ class Visualize:
 
         # get a dictionary of {time_key: [array_average_time_per_strategy]}
         data_dict = dict.fromkeys(objective_time_keys)
-        data_table = list(list(list() for _ in range(len(objective_time_keys) - len(print_skip))) for _ in range(len(strategies_curves) + 1))
+        data_table = list(
+            list(list() for _ in range(len(objective_time_keys) - len(print_skip)))
+            for _ in range(len(strategies_curves) + 1)
+        )
         for objective_time_key in objective_time_keys:
             data_dict[objective_time_key] = np.full((len(strategies_curves)), np.NaN)
         for strategy_index, strategy_curve in enumerate(strategies_curves):
@@ -364,8 +422,12 @@ class Visualize:
                 # print(f"    {objective_time_key}: {key_split_times[key_split_times > 0].shape}, {np.mean(key_split_times)}, {np.median(key_split_times)}")
                 if objective_time_key not in print_skip:
                     if strategy_index == 0:
-                        data_table[0][objective_time_key_index - print_skip_counter] = objective_time_key.replace("_", " ")
-                    data_table[strategy_index + 1][objective_time_key_index - print_skip_counter] = str("%.3g" % split_time)
+                        data_table[0][objective_time_key_index - print_skip_counter] = objective_time_key.replace(
+                            "_", " "
+                        )
+                    data_table[strategy_index + 1][objective_time_key_index - print_skip_counter] = str(
+                        "%.3g" % split_time
+                    )
                 else:
                     print_skip_counter += 1
 
@@ -379,7 +441,9 @@ class Visualize:
             print("\\textbf{Algorithm} & \\textbf{" + header + "} \\" + "\\")
             print("\hline")
             for strategy_index in range(len(strategy_label_list)):
-                print(f"    {strategy_label_list[strategy_index]} & {' & '.join(data_table[strategy_index + 1])} \\\\\hline")
+                print(
+                    f"    {strategy_label_list[strategy_index]} & {' & '.join(data_table[strategy_index + 1])} \\\\\hline"
+                )
             print("\end{tabularx}")
             exit(0)
 
@@ -430,7 +494,9 @@ class Visualize:
 
         # plot the absolute optimum
         absolute_optimum_y_value = absolute_optimum if y_type == "absolute" or y_type == "scatter" else 1
-        absolute_optimum_label = "Absolute optimum ({})".format(round(absolute_optimum, 3)) if y_type == "absolute" else "Absolute optimum"
+        absolute_optimum_label = (
+            "Absolute optimum ({})".format(round(absolute_optimum, 3)) if y_type == "absolute" else "Absolute optimum"
+        )
         ax.axhline(absolute_optimum_y_value, c="black", ls="-.", label=absolute_optimum_label)
 
         # plot baseline
@@ -488,28 +554,53 @@ class Visualize:
 
             # transform the curves as necessary and set ylims
             if y_type == "normalized":
-                curve_real, curve_lower_err_real, curve_upper_err_real = normalize_multiple([curve_real, curve_lower_err_real, curve_upper_err_real])
-                curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = normalize_multiple([curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional])
+                curve_real, curve_lower_err_real, curve_upper_err_real = normalize_multiple(
+                    [curve_real, curve_lower_err_real, curve_upper_err_real]
+                )
+                curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = normalize_multiple(
+                    [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional]
+                )
             elif y_type == "baseline":
                 curve_real, curve_lower_err_real, curve_upper_err_real = baseline_curve.get_standardised_curves(
                     x_axis_range_real, [curve_real, curve_lower_err_real, curve_upper_err_real], x_type
                 )
                 if x_axis_range_fictional.ndim > 0:
-                    curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = baseline_curve.get_standardised_curves(
-                        x_axis_range_fictional, [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional], x_type
+                    (
+                        curve_fictional,
+                        curve_lower_err_fictional,
+                        curve_upper_err_fictional,
+                    ) = baseline_curve.get_standardised_curves(
+                        x_axis_range_fictional,
+                        [curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional],
+                        x_type,
                     )
                 ylim_min = min(np.min(curve_real), ylim_min)
 
             # visualize
             if plot_errors:
-                ax.fill_between(x_axis_range_real, curve_lower_err_real, curve_upper_err_real, alpha=0.15, antialiased=True, color=color)
+                ax.fill_between(
+                    x_axis_range_real,
+                    curve_lower_err_real,
+                    curve_upper_err_real,
+                    alpha=0.15,
+                    antialiased=True,
+                    color=color,
+                )
             ax.plot(x_axis_range_real, curve_real, label=label, color=color)
 
             # select the parts of the data that are fictional
             if real_stopping_point < x_axis_range.shape[-1]:
                 # visualize fictional part
                 if plot_errors:
-                    ax.fill_between(x_axis_range_fictional, curve_lower_err_fictional, curve_upper_err_fictional, alpha=0.15, antialiased=True, color=color, ls="dashed")
+                    ax.fill_between(
+                        x_axis_range_fictional,
+                        curve_lower_err_fictional,
+                        curve_upper_err_fictional,
+                        alpha=0.15,
+                        antialiased=True,
+                        color=color,
+                        ls="dashed",
+                    )
                 ax.plot(x_axis_range_fictional, curve_fictional, color=color, ls="dashed")
 
         # # plot cutoff point
@@ -582,17 +673,31 @@ class Visualize:
                 ) = strategy_curve.get_curve_over_time(time_range, dist=dist, confidence_level=confidence_level)
                 # combine the real and fictional parts to get the full curve
                 combine = x_axis_range_fictional.ndim > 0
-                x_axis_range = np.concatenate([x_axis_range_real, x_axis_range_fictional]) if combine else x_axis_range_real
+                x_axis_range = (
+                    np.concatenate([x_axis_range_real, x_axis_range_fictional]) if combine else x_axis_range_real
+                )
                 assert np.array_equal(time_range, x_axis_range, equal_nan=True)
                 curve = np.concatenate([curve_real, curve_fictional]) if combine else curve_real
-                curve_lower_err = np.concatenate([curve_lower_err_real, curve_lower_err_fictional]) if combine else curve_lower_err_real
-                curve_upper_err = np.concatenate([curve_upper_err_real, curve_upper_err_fictional]) if combine else curve_upper_err_real
+                curve_lower_err = (
+                    np.concatenate([curve_lower_err_real, curve_lower_err_fictional])
+                    if combine
+                    else curve_lower_err_real
+                )
+                curve_upper_err = (
+                    np.concatenate([curve_upper_err_real, curve_upper_err_fictional])
+                    if combine
+                    else curve_upper_err_real
+                )
                 # get the standardised curves and write them to the collector
-                curve, curve_lower_err, curve_upper_err = random_baseline.get_standardised_curves(time_range, [curve, curve_lower_err, curve_upper_err], x_type="time")
+                curve, curve_lower_err, curve_upper_err = random_baseline.get_standardised_curves(
+                    time_range, [curve, curve_lower_err, curve_upper_err], x_type="time"
+                )
                 strategies_performance[strategy_index].append(curve)
                 strategies_performance_lower_err[strategy_index].append(curve_lower_err)
                 strategies_performance_upper_err[strategy_index].append(curve_upper_err)
-                strategies_performance_real_stopping_point_fraction[strategy_index].append(real_stopping_point_index / x_axis_range.shape[0])
+                strategies_performance_real_stopping_point_fraction[strategy_index].append(
+                    real_stopping_point_index / x_axis_range.shape[0]
+                )
 
         # for each strategy, get the mean performance per step in time_range
         strategies_aggregated_performance: list[np.ndarray] = list()
@@ -603,11 +708,23 @@ class Visualize:
             strategies_aggregated_performance.append(np.mean(np.array(strategies_performance[index]), axis=0))
             strategies_aggregated_lower_err.append(np.mean(np.array(strategies_performance_lower_err[index]), axis=0))
             strategies_aggregated_upper_err.append(np.mean(np.array(strategies_performance_upper_err[index]), axis=0))
-            strategies_aggregated_real_stopping_point_fraction.append(np.median(strategies_performance_real_stopping_point_fraction[index]))
+            strategies_aggregated_real_stopping_point_fraction.append(
+                np.median(strategies_performance_real_stopping_point_fraction[index])
+            )
 
-        return strategies_aggregated_performance, strategies_aggregated_lower_err, strategies_aggregated_upper_err, strategies_aggregated_real_stopping_point_fraction
+        return (
+            strategies_aggregated_performance,
+            strategies_aggregated_lower_err,
+            strategies_aggregated_upper_err,
+            strategies_aggregated_real_stopping_point_fraction,
+        )
 
-    def plot_strategies_aggregated(self, ax: plt.Axes, aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]], plot_settings: dict):
+    def plot_strategies_aggregated(
+        self,
+        ax: plt.Axes,
+        aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
+        plot_settings: dict,
+    ):
         """Plots all optimization strategies combined accross search spaces"""
         # plot the random baseline and absolute optimum
         ax.axhline(0, label="Random search", c="black", ls=":")
@@ -615,9 +732,12 @@ class Visualize:
 
         # get the relative aggregated performance for each strategy
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
-        strategies_performance, strategies_lower_err, strategies_upper_err, strategies_real_stopping_point_fraction = self.get_strategies_aggregated_performance(
-            aggregation_data, confidence_level
-        )
+        (
+            strategies_performance,
+            strategies_lower_err,
+            strategies_upper_err,
+            strategies_real_stopping_point_fraction,
+        ) = self.get_strategies_aggregated_performance(aggregation_data, confidence_level)
 
         # plot each strategy
         y_axis_size = strategies_performance[0].shape[0]
@@ -646,7 +766,10 @@ class Visualize:
                     antialiased=True,
                     color=color,
                 )
-                if real_stopping_point_index < time_range.shape[0] and real_stopping_point_index < len(strategies_lower_err) - 1:
+                if (
+                    real_stopping_point_index < time_range.shape[0]
+                    and real_stopping_point_index < len(strategies_lower_err) - 1
+                ):
                     ax.fill_between(
                         time_range[real_stopping_point_index:],
                         strategies_lower_err[real_stopping_point_index:],
@@ -658,15 +781,28 @@ class Visualize:
                     )
 
             # plot the curve
-            ax.plot(time_range[:real_stopping_point_index], strategy_performance[:real_stopping_point_index], color=color, label=displayname)
+            ax.plot(
+                time_range[:real_stopping_point_index],
+                strategy_performance[:real_stopping_point_index],
+                color=color,
+                label=displayname,
+            )
             if real_stopping_point_index < time_range.shape[0]:
-                ax.plot(time_range[real_stopping_point_index:], strategy_performance[real_stopping_point_index:], color=color, ls="dashed")
+                ax.plot(
+                    time_range[real_stopping_point_index:],
+                    strategy_performance[real_stopping_point_index:],
+                    color=color,
+                    ls="dashed",
+                )
             print(f" | performance of {displayname}: {round(np.mean(strategy_performance), 3)}")
 
         # set the axis
         cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
         cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
-        ax.set_xlabel(f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)", fontsize="large")
+        ax.set_xlabel(
+            f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)",
+            fontsize="large",
+        )
         ax.set_ylabel(self.y_metric_displayname["aggregate_objective"], fontsize="large")
         num_ticks = 11
         ax.set_xticks(

@@ -19,7 +19,9 @@ def test_get_indices_in_distribution():
             continue
         try:
             assert indices_found[index] == expected_indices[index]
-            assert draw == dist[int(indices_found[index])], f"Is {draw}, but distribution value at index is {dist[int(indices_found[index])]}"
+            assert (
+                draw == dist[int(indices_found[index])]
+            ), f"Is {draw}, but distribution value at index is {dist[int(indices_found[index])]}"
         except ValueError:
             raise ValueError(f"{draw=}, but {indices_found[index]=}")
 
@@ -57,6 +59,8 @@ def test_get_indices_in_array():
             continue
         try:
             assert indices_found[index] == expected_indices[index]
-            assert draw == dist[int(indices_found[index])], f"Is {draw}, but distribution value at index is {dist[int(indices_found[index])]}"
+            assert (
+                draw == dist[int(indices_found[index])]
+            ), f"Is {draw}, but distribution value at index is {dist[int(indices_found[index])]}"
         except ValueError:
             raise ValueError(f"{draw=}, but {indices_found[index]=}")
