@@ -40,7 +40,7 @@ test = [
     "pytest >= 7.3.1",
     "pytest-cov >= 4.0.0",
     # "kernel_tuner >= 0.4.4",
-    "kernel_tuner @ https://github.com/KernelTuner/kernel_tuner/tree/T4_compatibility",
+    "kernel_tuner @ git@github.com:fjwillemsen/kernel_tuner_tests.git",
 ]
 
 [project.urls]
