@@ -1,6 +1,7 @@
-import pytest
 import numpy as np
-from autotuning_methodology.curves import get_indices_in_distribution, get_indices_in_array
+import pytest
+
+from autotuning_methodology.curves import get_indices_in_array, get_indices_in_distribution
 
 
 def test_get_indices_in_distribution():
@@ -29,9 +30,9 @@ def test_get_indices_in_distribution():
 def test_get_indices_in_distribution_check_dist():
     """Dist order should be checked by default and dist should not contain NaN"""
     draws = np.array([[4, np.NaN, 5], [1, 2, 4.5]])
-    with pytest.raises(AssertionError, match="Distribution is not sorted ascendingly, 2 violations in"):
+    with pytest.raises(AssertionError, match="2 violations in 5 values"):
         get_indices_in_distribution(draws=draws, dist=np.array([1, 2, np.NaN, 4, 4.5]))
-    with pytest.raises(AssertionError, match="Distribution is not sorted ascendingly, 1 violations in"):
+    with pytest.raises(AssertionError, match="1 violations in 4 values"):
         get_indices_in_distribution(draws=draws, dist=np.array([5, 4, 6, 7]))
 
 
@@ -63,4 +64,5 @@ def test_get_indices_in_array():
                 draw == dist[int(indices_found[index])]
             ), f"Is {draw}, but distribution value at index is {dist[int(indices_found[index])]}"
         except ValueError:
+            raise ValueError(f"{draw=}, but {indices_found[index]=}")
             raise ValueError(f"{draw=}, but {indices_found[index]=}")

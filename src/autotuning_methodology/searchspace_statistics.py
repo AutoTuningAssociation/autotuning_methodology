@@ -1,13 +1,13 @@
 """ Code for obtaining search space statistics """
 
+import json
+from math import ceil, floor
 from pathlib import Path
 from typing import Tuple
-from math import floor, ceil
-import json
+
 import numpy as np
 
-from autotuning_methodology.runner import is_invalid_objective_time, is_invalid_objective_performance
-
+from autotuning_methodology.runner import is_invalid_objective_performance, is_invalid_objective_time
 
 T4_time_keys_to_kernel_tuner_time_keys_mapping = {
     "compilation": "compile_time",
@@ -97,14 +97,17 @@ class SearchspaceStatistics:
             x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_performance_at_cutoff_point
         )
         # In case of x <= (1+p) * f_opt
-        # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= (1 + (1 - cutoff_percentile)) * arr[-1])
+        # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= (1 + (1 - cutoff_percentile)) * arr[-1])  # noqa: E501
         # In case of p*x <= f_opt
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if cutoff_percentile * x[1] <= arr[-1])
         fevals_to_cutoff_point = ceil(i / (N + 1 - i))
         return objective_performance_at_cutoff_point, fevals_to_cutoff_point
 
     def cutoff_point_fevals_time(self, cutoff_percentile: float) -> Tuple[float, int, float]:
-        """Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point)"""
+        """
+        Calculate the cutoff point.
+        Returns (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point).
+        """
         cutoff_point_value, cutoff_point_fevals = self.cutoff_point(cutoff_percentile)
         cutoff_point_time = cutoff_point_fevals * self.total_time_median()
         return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
@@ -189,7 +192,8 @@ class SearchspaceStatistics:
                 ), f"Should have the same size as cache_values ({self.size}), has {self.objective_times[key].shape[0]}"
                 assert not np.all(
                     np.isnan(self.objective_times[key])
-                ), f"All values for {key=} are NaN. Likely the experiment did not collect time values for objective_time_keys '{key}'."
+                ), f"""All values for {key=} are NaN.
+                        Likely the experiment did not collect time values for objective_time_keys '{key}'."""
 
             # get the performance values per configuration
             self.objective_performances = dict()
@@ -200,10 +204,12 @@ class SearchspaceStatistics:
                 ), f"Should have one dimension, has {self.objective_performances[key].ndim}"
                 assert self.objective_performances[key].shape[0] == len(
                     cache_values
-                ), f"Should have the same size as cache_values ({self.size}), has {self.objective_performances[key].shape[0]}"
+                ), f"""Should have the same size as cache_values ({self.size}),
+                        has {self.objective_performances[key].shape[0]}"""
                 assert not np.all(
                     np.isnan(self.objective_performances[key])
-                ), f"All values for {key=} are NaN. Likely the experiment did not collect performance values for objective_performance_key '{key}'."
+                ), f"""All values for {key=} are NaN.
+                    Likely the experiment did not collect performance values for objective_performance_key '{key}'."""
 
             # get the number of repeats
             valid_cache_index: int = 0
@@ -222,14 +228,18 @@ class SearchspaceStatistics:
             # get the totals
             self.objective_times_total = nansumwrapper(self.objective_times_array, axis=0)
             assert self.objective_times_total.shape == tuple([self.size])
+            # NOTE more of a test than a necessary assert
             assert (
                 np.nansum(self.objective_times_array[:, 0]) == self.objective_times_total[0]
-            ), f"Sums of objective performances do not match: {np.nansum(self.objective_times_array[:, 0])} vs. {self.objective_times_total[0]}"  # more of a test
+            ), f"""Sums of objective performances do not match:
+                {np.nansum(self.objective_times_array[:, 0])} vs. {self.objective_times_total[0]}"""
             self.objective_performances_total = nansumwrapper(self.objective_performances_array, axis=0)
             assert self.objective_performances_total.shape == tuple([self.size])
+            # NOTE more of a test than a necessary assert
             assert (
                 np.nansum(self.objective_performances_array[:, 0]) == self.objective_performances_total[0]
-            ), f"Sums of objective performances do not match: {np.nansum(self.objective_performances_array[:, 0])} vs. {self.objective_performances_total[0]}"  # more of a test
+            ), f"""Sums of objective performances do not match:
+                {np.nansum(self.objective_performances_array[:, 0])} vs. {self.objective_performances_total[0]}"""
 
             # sort
             self.objective_times_total_sorted = np.sort(

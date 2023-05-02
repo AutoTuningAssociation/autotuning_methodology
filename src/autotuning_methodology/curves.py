@@ -1,12 +1,13 @@
 """ Code for curve generation """
 
-from abc import ABC, abstractmethod
-from typing import Tuple
-import numpy as np
-from math import floor, ceil, sqrt
 import warnings
-from sklearn.isotonic import IsotonicRegression
+from abc import ABC, abstractmethod
+from math import ceil, floor, sqrt
+from typing import Tuple
+
+import numpy as np
 from sklearn.ensemble import BaggingRegressor
+from sklearn.isotonic import IsotonicRegression
 
 from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
@@ -15,7 +16,11 @@ from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 def get_indices_in_distribution(
     draws: np.ndarray, dist: np.ndarray, sorter=None, skip_draws_check: bool = False, skip_dist_check: bool = False
 ) -> np.ndarray:
-    """For each draw, get the index (position) in the ascendingly sorted distribution, returns an array of type float of the same shape as draws, NaN where not found in dist. For unsorted dists, use get_indices_in_array()"""
+    """
+    For each draw, get the index (position) in the ascendingly sorted distribution.
+    Returns an array of type float of the same shape as draws, NaN where not found in dist.
+    For unsorted dists, use get_indices_in_array().
+    """
     assert dist.ndim == 1, f"distribution can not have more than one dimension, has {dist.ndim}"
 
     # check whether the distribution is correctly ordered
@@ -23,13 +28,16 @@ def get_indices_in_distribution(
         strictly_ascending_sort = dist[:-1] <= dist[1:]
         assert np.all(
             strictly_ascending_sort
-        ), f"Distribution is not sorted ascendingly, {np.count_nonzero(~strictly_ascending_sort)} violations in {len(dist)} values: {dist}"
+        ), f"""Distribution is not sorted ascendingly,
+            {np.count_nonzero(~strictly_ascending_sort)} violations in {len(dist)} values: {dist}"""
 
     # check whether each value of draws (excluding NaN) is in dist
     if not skip_draws_check:
         assert np.all(
             np.in1d(draws[~np.isnan(draws)], dist)
-        ), f"Each value in draws should be in dist, but {np.size(draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)])} values of the {np.size(draws)} are missing: {draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)]}"
+        ), f"""Each value in draws should be in dist,
+            but {np.size(draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)])} values
+             of the {np.size(draws)} are missing: {draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)]}"""
 
     # check the sorter
     if sorter is not None:
@@ -47,7 +55,11 @@ def get_indices_in_distribution(
 
 
 def get_indices_in_array(values: np.ndarray, array: np.ndarray) -> np.ndarray:
-    """For each value, get the index (position) in the 1D array. More general version of get_indices_in_distribution() that first sorts array and reverses the sort on the result."""
+    """
+    For each value, get the index (position) in the 1D array.
+    More general version of get_indices_in_distribution() that first sorts array and reverses the sort on the result.
+    """
+
     # get the order of indices that would sort the array
     array_sorter = np.argsort(array)
 
@@ -80,7 +92,7 @@ class Curve(ABC):
         results = results_description.get_results()
         self._x_fevals = (
             results.fevals_results
-        )  # the time per objective value in number of function evaluations since start (1d if deterministic, 2d if stochastic)
+        )  # the time per objective value in fevals since start (1d if deterministic, 2d if stochastic)
         self._x_time = (
             results.objective_time_results
         )  # the time per objective value in seconds since start the raw x-axis (1d if deterministic, 2d if stochastic)
@@ -138,7 +150,10 @@ class Curve(ABC):
 
     @abstractmethod
     def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
-        """Get the curve over the specified range of time or function evaluations, returns a tuple of NDArrays with NaN beyond limits."""
+        """
+        Get the curve over the specified range of time or function evaluations.
+        Returns a tuple of NDArrays with NaN beyond limits.
+        """
         if x_type == "fevals":
             return self.get_curve_over_fevals(range, dist, confidence_level)
         elif x_type == "time":
@@ -147,12 +162,17 @@ class Curve(ABC):
 
     @abstractmethod
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """Get the real_stopping_point_index and the real and fictional curve, errors over the specified range of function evaluations"""
+        """
+        Get the real_stopping_point_index,
+        as well as the real and fictional curve, errors over the specified range of function evaluations
+        """
         raise NotImplementedError
 
     @abstractmethod
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """Get the real_stopping_point_index and the real and fictional curve, errors at the specified times using isotonic regression"""
+        """Get the real_stopping_point_index,
+        as well as the real and fictional curve, errors at the specified times using isotonic regression
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -187,7 +207,8 @@ class Curve(ABC):
             return (0, 0)
         if len(indices) > len(target_array):
             raise ValueError(
-                f"Length of indices ({len(indices)}) should be the less then or equal to length of target_array ({len(target_array)})"
+                f"""Length of indices ({len(indices)}) should be
+                 less then or equal to length of target_array ({len(target_array)})"""
             )
         # check whether array is consecutively in target_array
         assert (array[~np.isnan(array)] == target_array[indices]).all()
@@ -234,7 +255,8 @@ class Curve(ABC):
 
         if package == "sklearn":
             # if npoints != 1000:
-            #     warnings.warn("npoints argument is impotent for sklearn package") # TODO look into what to do about the segments
+            #     warnings.warn("npoints argument is impotent for sklearn package")
+            # TODO look into what to do about the segments
             if power != 2:
                 warnings.warn("power argument is impotent for sklearn package")
             ir = self.get_isotonic_regressor(y_min=ymin, y_max=ymax)
@@ -290,7 +312,10 @@ class StochasticOptimizationAlgorithm(Curve):
         curve_lower_err: np.ndarray,
         curve_upper_err: np.ndarray,
     ) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Split the provided curves based on the real_stopping_point_index, return real_stopping_point_index and the real and fictional part for each curve"""
+        """
+        Split the provided curves based on the real_stopping_point_index.
+        Return real_stopping_point_index and the real and fictional part for each curve.
+        """
         # select the parts of the data that are real
         x_axis_range_real = x_axis_range[:real_stopping_point_index]
         curve_real = curve[:real_stopping_point_index]
@@ -357,18 +382,21 @@ class StochasticOptimizationAlgorithm(Curve):
         """Asserts that the real and fictional results add up correctly"""
         assert (
             x_axis_range.shape == curve.shape == curve_lower_err.shape == curve_upper_err.shape
-        ), f"Shapes must be equal: {x_axis_range.shape=}, {curve.shape=}, {curve_lower_err.shape=}, {curve_upper_err.shape=}"
+        ), f"""Shapes must be equal: {x_axis_range.shape=}, {curve.shape=},
+                        {curve_lower_err.shape=}, {curve_upper_err.shape=}"""
         assert (
             x_axis_range_real.shape == curve_real.shape == curve_lower_err_real.shape == curve_upper_err_real.shape
-        ), f"Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=}, {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"
+        ), f"""Shapes must be equal: {x_axis_range_real.shape=}, {curve_real.shape=},
+                        {curve_lower_err_real.shape=}, {curve_upper_err_real.shape=}"""
         assert (
             x_axis_range_fictional.shape
             == curve_fictional.shape
             == curve_lower_err_fictional.shape
             == curve_upper_err_fictional.shape
-        ), f"Shapes must be equal: {x_axis_range_fictional.shape=}, {curve_fictional.shape=}, {curve_lower_err_fictional.shape=} {curve_upper_err_fictional.shape=}"
+        ), f"""Shapes must be equal: {x_axis_range_fictional.shape=}, {curve_fictional.shape=},
+                        {curve_lower_err_fictional.shape=} {curve_upper_err_fictional.shape=}"""
         if x_axis_range_fictional.ndim > 0:
-            # if there is a fictional part, ensure that all the expected data is in the combined real and fictional parts
+            # if there's a fictional part, ensure that all the expected data is in the combined real and fictional parts
             x_axis_range_combined = np.concatenate([x_axis_range_real, x_axis_range_fictional])
             assert (
                 x_axis_range.shape == x_axis_range_combined.shape
@@ -437,7 +465,11 @@ class StochasticOptimizationAlgorithm(Curve):
             greatest_common_non_NaN_index = min(floor(np.median(indices)), target_index)
             if np.count_nonzero(early_ending_repeats) > 0:
                 warnings.warn(
-                    f"For optimization algorithm {self.display_name}, {np.count_nonzero(early_ending_repeats)} of the {num_repeats} runs ended before the end of fevals_range ({target_index + 1}). Only data up to {greatest_common_non_NaN_index + 1} fevals will be used. Perhaps increase the allotted auto-tuning time for this optimization algorithm?"
+                    f"""For optimization algorithm {self.display_name},
+                    {np.count_nonzero(early_ending_repeats)} of the {num_repeats} runs ended before
+                     the end of fevals_range ({target_index + 1}).
+                     Only data up to {greatest_common_non_NaN_index + 1} fevals will be used.
+                     Perhaps increase the allotted auto-tuning time for this optimization algorithm?"""
                 )
 
             # drop the repeats where the highest index is less than greatest_common_non_NaN_index
@@ -467,9 +499,6 @@ class StochasticOptimizationAlgorithm(Curve):
         nan_mask = ~np.isnan(masked_values).all(axis=1)
         masked_fevals = masked_fevals[nan_mask].reshape(-1, num_repeats)
         masked_values = masked_values[nan_mask].reshape(-1, num_repeats)
-
-        # this no longer holds as it is possible for optimization algorithms to end early
-        # assert fevals_range.shape[0] == masked_values.shape[0] == masked_fevals.shape[0], f"The masked fevals and values should have the same first dimension as fevals_range, but {fevals_range.shape[0]=}, {masked_fevals.shape[0]=}, {masked_values.shape[0]=}"
         return fevals, masked_values
 
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
@@ -525,9 +554,11 @@ class StochasticOptimizationAlgorithm(Curve):
         # if necessary, extend the curves up to target_index
         target_index: int = fevals_range.shape[0] - 1
         if real_stopping_point_index < target_index:
-            # warnings.warn(
-            #     f"For optimization algorithm {self.display_name}, all runs end at {real_stopping_point_index + 1} fevals, which is before the target number of function evals of {target_index + 1}."
-            # )
+            warnings.warn(
+                f"""For optimization algorithm {self.display_name},
+                all runs end at {real_stopping_point_index + 1} fevals,
+                which is before the target number of function evals of {target_index + 1}."""
+            )
             # take the last non-NaN value and overwrite the curves up to the target index with it
             curve[real_stopping_point_index : target_index + 1] = curve[real_stopping_point_index]
             curve_lower_err[real_stopping_point_index : target_index + 1] = curve_lower_err[real_stopping_point_index]
@@ -590,7 +621,8 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # return the correct values
         if return_1d:
-            # remove all NaNs, yielding a 1D array (because iterations has no meaning for over time anyway, and isotonic regression requires a 1D array)
+            # remove all NaNs, yielding a 1D array
+            #   (because iterations has no meaning for over time anyway, and isotonic regression requires a 1D array)
             no_nan_mask = ~np.isnan(times) & ~np.isnan(
                 values
             )  # only keep indices where both the times and values are not NaN
@@ -641,7 +673,9 @@ class StochasticOptimizationAlgorithm(Curve):
             assert x.shape == y.shape, f"Shapes do not match: {x.shape} != {y.shape}"
 
             # get the lower and upper error curves
-            # prediction_interval = self._get_prediction_interval_conformal(x, y, time_range, confidence_level=confidence_level, method="conformal")
+            # prediction_interval = self._get_prediction_interval_conformal(
+            #     x, y, time_range, confidence_level=confidence_level, method="conformal"
+            # )
             prediction_interval = self._get_prediction_interval_bagging(
                 x, y, time_range, confidence_level=confidence_level, num_repeats=num_repeats
             )
@@ -673,7 +707,8 @@ class StochasticOptimizationAlgorithm(Curve):
         #     print(f"{t}: {e} ({i})")
         # exit(0)
 
-        # from the real_stopping_point_time until the end of the time range, clip the values because with fewer than 50% of the repeats, as those the results can not be trusted
+        # from the real_stopping_point_time until the end of the time range,
+        #   clip the values because with fewer than 50% of the repeats, as those the results can not be trusted
         assert curve.shape == time_range.shape
         real_stopping_point_index = time_range.shape[0]
         if real_stopping_point_time < time_range[-1]:
@@ -750,7 +785,10 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_confidence_interval(
         self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Calculates the non-parametric confidence interval at each function evaluation for repeated function evaluations, assumed to be IID"""
+        """
+        Calculates the non-parametric confidence interval at each function evaluation
+        for repeated function evaluations, assumed to be IID.
+        """
         assert values.ndim == 2  # should be two-dimensional (iterations, repeats)
         if weights is not None:
             assert weights.shape == values.shape
@@ -787,7 +825,10 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_confidence_interval_jagged(
         self, bins: list[np.ndarray], confidence_level: float
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Calculates the non-parametric confidence interval at each function evaluation for jagged bins, assumed to be IID, slower than get_confidence_interval()"""
+        """
+        Calculates the non-parametric confidence interval at each function evaluation for jagged bins,
+        assumed to be IID, slower than get_confidence_interval().
+        """
         confidence_interval_lower = np.full(len(bins), np.nan)
         confidence_interval_upper = np.full(len(bins), np.nan)
 
@@ -880,7 +921,10 @@ class StochasticOptimizationAlgorithm(Curve):
         y = y_1d
 
         # set the parameters
-        # based on the number of repeats, where the number of estimators is equal to the number of repeats and the fraction of samples is inversely proportional to the square root of the number of estimators. This way, the reuse of data when bootstrapping is limited.
+        # based on the number of repeats,
+        #   where the number of estimators is equal to the number of repeats and the fraction of samples is
+        #   inversely proportional to the square root of the number of estimators.
+        #   This way, the reuse of data when bootstrapping is limited.
         n_estimators = max(num_repeats, 3)
         max_samples = 1 / np.sqrt(n_estimators)
         # alternative parameters (with max_samples this way, on average each datum is used only once).
@@ -966,7 +1010,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
         else:
             from crepes import ConformalRegressor
-            from crepes.fillings import sigma_knn, binning
+            from crepes.fillings import binning, sigma_knn
 
             # fit the regression model
             regression_model.fit(x_train, y_train)
@@ -1000,4 +1044,5 @@ class StochasticOptimizationAlgorithm(Curve):
                 )  # generate bins to take the distance into account
                 prediction_interval = cr_mond.predict(y_hat=prediction, confidence=confidence_level, bins=bins_test)
 
+        return prediction_interval
         return prediction_interval

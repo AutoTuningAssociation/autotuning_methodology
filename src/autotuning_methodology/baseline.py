@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from math import ceil
-import numpy as np
 from typing import Callable
+
+import numpy as np
 
 from autotuning_methodology.curves import Curve, get_indices_in_array
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
@@ -77,13 +78,6 @@ class Baseline(ABC):
         """Substract the baseline curve from the provided strategy curve, yielding a standardised strategy curve"""
         return self.get_standardised_curves(range, [strategy_curve], x_type)[0]
 
-    @abstractmethod
-    def get_split_times_at_feval(
-        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
-    ) -> np.ndarray:
-        """Get the times at each function eval in the range split into objective_time_keys"""
-        raise NotImplementedError()
-
 
 class StochasticCurveBasedBaseline(Baseline):
     """Baseline object using a stochastic curve as input"""
@@ -150,11 +144,10 @@ class RandomSearchCalculatedBaseline(Baseline):
 
     def time_to_fevals(self, time_range: np.ndarray) -> np.ndarray:
         """Convert a time range to a number of function evaluations range"""
-        # TODO more accurate mapping from fevals to time, using interpolated indices, preferably without median_time_per_feval
         time_per_feval = self.searchspace_stats.get_time_per_feval(self.time_per_feval_operator)
-        # assert all(a <= b for a, b in zip(time_range, time_range[1:])), "Time range is not monotonically non-decreasing"
+        # assert all(a <= b for a, b in zip(time_range, time_range[1:])), "Time range not monotonically non-decreasing"
         fevals_range = np.maximum(time_range / time_per_feval, 1)
-        # assert all(a <= b for a, b in zip(fevals_range, fevals_range[1:])), "Fevals range is not monotonically non-decreasing"
+        # assert all(a <= b for a, b in zip(fevals_range, fevals_range[1:])), "Fevals not monotonically non-decreasing"
         fevals_range = np.array(np.round(fevals_range), dtype=int)
         assert all(fevals_range >= 1), f"Fevals range must have minimum of 1, has {fevals_range[fevals_range < 1]}"
         return fevals_range
@@ -263,7 +256,12 @@ class RandomSearchSimulatedBaseline(Baseline):
         performance_avg="mean",
     ) -> None:
         self.searchspace_stats = searchspace_stats
-        self.label = f"Simulated baseline, {repeats} repeats ({'index' if index else 'performance'}, {'flattened' if flatten else 'accumulated'}{'' if index_avg == 'mean' else ', index-median'}{'' if performance_avg == 'mean' else ', performance-median'})"
+        self.label = (
+            f"Simulated baseline, {repeats} repeats"
+            f"({'index' if index else 'performance'}, "
+            f"{'flattened' if flatten else 'accumulated'}{'' if index_avg == 'mean' else ', index-median'}"
+            f"{'' if performance_avg == 'mean' else ', performance-median'})"
+        )
         self.use_index = index
         index_average_func = np.nanmean if index_avg == "mean" else np.nanmedian
         performance_average_func = np.nanmean if performance_avg == "mean" else np.nanmedian
@@ -362,4 +360,5 @@ class RandomSearchSimulatedBaseline(Baseline):
     def get_split_times_at_feval(
         self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
     ) -> np.ndarray:
+        return super().get_split_times_at_feval(fevals_range, searchspace_stats)
         return super().get_split_times_at_feval(fevals_range, searchspace_stats)

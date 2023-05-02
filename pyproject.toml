@@ -57,6 +57,8 @@ line-length = 120
 [tool.ruff]
 line-length = 120
 src = ["src"]
+respect-gitignore = true
+exclude = ["extra", "UML"]
 select = [
   "E",   # pycodestyle
   "F",   # pyflakes

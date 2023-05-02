@@ -1,13 +1,14 @@
 """ Visualize the results of the experiments """
 
-from typing import Tuple
-import numpy as np
 import warnings
-import matplotlib.pyplot as plt
+from typing import Tuple
 
-from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
-from autotuning_methodology.curves import Curve, StochasticOptimizationAlgorithm
+import matplotlib.pyplot as plt
+import numpy as np
+
 from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline
+from autotuning_methodology.curves import Curve, StochasticOptimizationAlgorithm
+from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 # The kernel information per device and device information for visualization purposes
@@ -142,7 +143,8 @@ class Visualize:
                     results_description = self.results_descriptions[gpu_name][kernel_name][strategy["name"]]
                     if results_description is None:
                         raise ValueError(
-                            f"Strategy {strategy['display_name']} not in results_description, make sure execute_experiment() has ran first"
+                            f"""Strategy {strategy['display_name']} not in results_description,
+                                make sure execute_experiment() has ran first"""
                         )
                     strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
 
@@ -168,10 +170,22 @@ class Visualize:
                         strategies_curves=[strategies_curves[0]],
                     )
                 if compare_split_times is True:
-                    # self.plot_split_times_comparison('fevals', fevals_range, searchspace_stats, objective_time_keys, title=title,
-                    #                                  strategies_curves=[strategies_curves[0], strategies_curves[2]])
-                    # self.plot_split_times_comparison('time', time_range, searchspace_stats, objective_time_keys, title=title,
-                    #                                  strategies_curves=strategies_curves)
+                    # self.plot_split_times_comparison(
+                    #     "fevals",
+                    #     fevals_range,
+                    #     searchspace_stats,
+                    #     objective_time_keys,
+                    #     title=title,
+                    #     strategies_curves=[strategies_curves[0], strategies_curves[2]],
+                    # )
+                    # self.plot_split_times_comparison(
+                    #     "time",
+                    #     time_range,
+                    #     searchspace_stats,
+                    #     objective_time_keys,
+                    #     title=title,
+                    #     strategies_curves=strategies_curves,
+                    # )
                     self.plot_split_times_bar_comparison(
                         "time",
                         time_range,
@@ -255,7 +269,8 @@ class Visualize:
             )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
             if not hasattr(axs, "__len__"):
                 axs = [axs]
-            title = f"Aggregated Data\nkernels: {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"
+            title = f"""Aggregated Data\nkernels:
+                    {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"""
             fig.canvas.manager.set_window_title(title)
             if not save_figs:
                 fig.suptitle(title)
@@ -278,13 +293,18 @@ class Visualize:
         title: str = None,
         strategies_curves: list[Curve] = list(),
     ):
-        """Plots a comparison of baselines on a time range, optionally also compares against strategies listed in strategies_curves"""
+        """
+        Plots a comparison of baselines on a time range.
+        Optionally also compares against strategies listed in strategies_curves.
+        """
         dist = searchspace_stats.objective_performances_total_sorted
         plt.figure(figsize=(8, 5), dpi=300)
 
         # list the baselines to test
         baselines: list[Baseline] = list()
-        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator='median'))
+        # baselines.append(
+        #     RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator="median")
+        # )
         baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, time_per_feval_operator="mean"))
         baselines.append(
             RandomSearchCalculatedBaseline(
@@ -308,9 +328,8 @@ class Visualize:
                 curve_fictional,
                 curve_lower_err_fictional,
                 curve_upper_err_fictional,
-            ) = strategy_curve.get_curve_over_time(
-                time_range, dist=dist
-            )  # when adding the error shades to the visualization, don't forget to pass confidence interval to get_curve_over_time
+            ) = strategy_curve.get_curve_over_time(time_range, dist=dist)
+            # when adding error shades to visualization, don't forget to pass confidence interval to get_curve_over_time
             plt.plot(x_axis_range_real, curve_real, label=strategy_curve.display_name, linestyle="dashed")
             if x_axis_range_fictional.ndim > 0:
                 plt.plot(x_axis_range_fictional, curve_fictional, linestyle="dotted")
@@ -337,7 +356,11 @@ class Visualize:
         """Plots a comparison of split times for strategies and baselines over the given range"""
         # list the baselines to test
         baselines: list[Baseline] = list()
-        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True, time_per_feval_operator='median_per_feval'))
+        # baselines.append(
+        #     RandomSearchCalculatedBaseline(
+        #         searchspace_stats, include_nan=True, time_per_feval_operator="median_per_feval"
+        #     )
+        # )
         lines = strategies_curves + baselines
 
         # setup the subplots
@@ -398,7 +421,7 @@ class Visualize:
         """Plots a comparison of the average split times for strategies over the given range"""
         fig, ax = plt.subplots(dpi=200)
         width = 0.5
-        strategy_label_list = list()
+        strategy_labels = list()
 
         # get a dictionary of {time_key: [array_average_time_per_strategy]}
         data_dict = dict.fromkeys(objective_time_keys)
@@ -410,7 +433,7 @@ class Visualize:
             data_dict[objective_time_key] = np.full((len(strategies_curves)), np.NaN)
         for strategy_index, strategy_curve in enumerate(strategies_curves):
             print_skip_counter = 0
-            strategy_label_list.append(strategy_curve.display_name)
+            strategy_labels.append(strategy_curve.display_name)
             strategy_split_times = strategy_curve.get_split_times(fevals_or_time_range, x_type, searchspace_stats)
             # print(f"{strategy_curve.display_name}: ({strategy_split_times.shape})")
             for objective_time_key_index, objective_time_key in enumerate(objective_time_keys):
@@ -419,7 +442,10 @@ class Visualize:
                 split_time = max(np.median(key_split_times), 0.0)
                 split_time = 0.0 if np.isnan(split_time) else split_time
                 data_dict[objective_time_key][strategy_index] = split_time
-                # print(f"    {objective_time_key}: {key_split_times[key_split_times > 0].shape}, {np.mean(key_split_times)}, {np.median(key_split_times)}")
+                # print(
+                #     f"""    {objective_time_key}: {key_split_times[key_split_times > 0].shape},
+                #             {np.mean(key_split_times)}, {np.median(key_split_times)}"""
+                # )
                 if objective_time_key not in print_skip:
                     if strategy_index == 0:
                         data_table[0][objective_time_key_index - print_skip_counter] = objective_time_key.replace(
@@ -440,9 +466,9 @@ class Visualize:
             header = "} & \\textbf{".join(data_table[0])
             print("\\textbf{Algorithm} & \\textbf{" + header + "} \\" + "\\")
             print("\hline")
-            for strategy_index in range(len(strategy_label_list)):
+            for strategy_index in range(len(strategy_labels)):
                 print(
-                    f"    {strategy_label_list[strategy_index]} & {' & '.join(data_table[strategy_index + 1])} \\\\\hline"
+                    f"    {strategy_labels[strategy_index]} & {' & '.join(data_table[strategy_index + 1])} \\\\\hline"
                 )
             print("\end{tabularx}")
             exit(0)
@@ -451,7 +477,7 @@ class Visualize:
         bottom = np.zeros(len(strategies_curves))
         for objective_time_key, objective_times in data_dict.items():
             objective_times = np.array(objective_times)
-            ax.bar(strategy_label_list, objective_times, width, label=objective_time_key, bottom=bottom)
+            ax.bar(strategy_labels, objective_times, width, label=objective_time_key, bottom=bottom)
             bottom += objective_times
 
         # finalize the plot
@@ -800,7 +826,7 @@ class Visualize:
         cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
         cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
         ax.set_xlabel(
-            f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)",
+            f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)",  # noqa: E501
             fontsize="large",
         )
         ax.set_ylabel(self.y_metric_displayname["aggregate_objective"], fontsize="large")
@@ -859,4 +885,5 @@ if __name__ == "__main__":
     else:
         experiment_filepath = get_args_from_cli(None)
 
+    Visualize(experiment_filepath, save_figs=not is_notebook)
     Visualize(experiment_filepath, save_figs=not is_notebook)

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import sys
+from collections import OrderedDict
 
 import numpy
+
 import kernel_tuner
-from kernel_tuner.file_utils import store_output_file, store_metadata_file
-from collections import OrderedDict
+from kernel_tuner.file_utils import store_metadata_file, store_output_file
 
 
 def tune(device_name: str, strategy="mls", strategy_options=None, verbose=True, quiet=False, simulation_mode=True):
@@ -44,19 +45,6 @@ def tune(device_name: str, strategy="mls", strategy_options=None, verbose=True, 
 
     grid_div_x = ["block_size_x", "tile_size_x"]
     grid_div_y = ["block_size_y", "tile_size_y"]
-
-    # #compute the answer using a naive kernel
-    # params = {
-    #     "filter_width": filter_width,
-    #     "filter_height": filter_height,
-    #     "block_size_x": 16,
-    #     "block_size_y": 16
-    # }
-    # results = kernel_tuner.run_kernel("convolution_naive", "convolution.cu", problem_size, args, params, grid_div_y=["block_size_y"],
-    #                                   grid_div_x=["block_size_x"])
-    # gc.collect()
-    # #set non-output fields to None
-    # answer = [results[0], None, None]
 
     # start tuning
     results, env = kernel_tuner.tune_kernel(

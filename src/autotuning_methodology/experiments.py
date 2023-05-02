@@ -1,16 +1,17 @@
 """ Main experiments code """
 
-from typing import Tuple
-from math import ceil
 import json
-from jsonschema import validate
-from importlib import import_module
-from pathlib import Path
 import sys
 from argparse import ArgumentParser
+from importlib import import_module
+from math import ceil
+from pathlib import Path
+from typing import Tuple
 
-from autotuning_methodology.runner import collect_results
+from jsonschema import validate
+
 from autotuning_methodology.caching import ResultsDescription
+from autotuning_methodology.runner import collect_results
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
@@ -59,10 +60,12 @@ def get_strategies(experiment: dict) -> dict:
     strategy_defaults = experiment["strategy_defaults"]
     strategies = experiment["strategies"]
     # # get a baseline index if it exists
-    # baseline_index = list(strategy_index for strategy_index, strategy in enumerate(strategies) if 'is_baseline' in strategy)
+    # baseline_index = list(
+    #     strategy_index for strategy_index, strategy in enumerate(strategies) if "is_baseline" in strategy
+    # )
     # if len(baseline_index) != 1:
     #     raise ValueError(f"There must be exactly one baseline, found {len(baseline_index)} baselines")
-    # if strategies[baseline_index[0]]['is_baseline'] != True:
+    # if strategies[baseline_index[0]]["is_baseline"] is not True:
     #     raise ValueError(f"is_baseline must be true, yet is set to {strategies[0]['is_baseline']}!")
     # # if the baseline index is not 0, put the baseline strategy first
     # if baseline_index[0] != 0:
@@ -131,7 +134,7 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
                 # setup the results description
                 if "options" not in strategy:
                     strategy["options"] = dict()
-                cutoff_margin = 1.1  # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations
+                cutoff_margin = 1.1  # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations  # noqa: E501
 
                 # TODO make sure this works correctly
                 # if cutoff_type == 'time':
@@ -168,4 +171,5 @@ def execute_experiment(filepath: str, profiling: bool) -> Tuple[dict, dict, dict
 
 if __name__ == "__main__":
     experiment_filepath = get_args_from_cli(None)
+    execute_experiment(experiment_filepath, profiling=False)
     execute_experiment(experiment_filepath, profiling=False)

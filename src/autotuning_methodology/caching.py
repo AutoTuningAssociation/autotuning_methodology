@@ -1,9 +1,11 @@
 """ Code regarding storage and retrieval of caches """
 
 from __future__ import annotations  # for referring to class within own method
-import numpy as np
-from typing import Dict
+
 from pathlib import Path
+from typing import Dict
+
+import numpy as np
 
 
 class Results:
@@ -20,7 +22,9 @@ class Results:
 
 
 class ResultsDescription:
-    """Object to store a description of the results and retrieve results for an optimization algorithm on a search space"""
+    """
+    Object to store a description of the results and retrieve results for an optimization algorithm on a search space
+    """
 
     def __init__(
         self,
@@ -141,5 +145,7 @@ class ResultsDescription:
         return Results(args)
 
     def has_results(self) -> bool:
+        """Checks whether there are results or the file exists"""
+        return self.__stored or self.__check_for_file()
         """Checks whether there are results or the file exists"""
         return self.__stored or self.__check_for_file()

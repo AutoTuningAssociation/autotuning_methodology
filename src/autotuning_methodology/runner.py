@@ -21,7 +21,8 @@ def is_invalid_objective_performance(objective_performance: float) -> bool:
         return True
     if not isinstance(objective_performance, (int, float)):
         raise ValueError(
-            f"Objective value should be of type float, but is of type {type(objective_performance)} with value {objective_performance}"
+            f"""Objective value should be of type float,
+                but is of type {type(objective_performance)} with value {objective_performance}"""
         )
     return np.isnan(objective_performance) or objective_performance == kernel_tuner_error_value
 
@@ -40,7 +41,10 @@ def get_results_and_metadata(
     filename_results: str = "cached_data_used/last_run/_tune_configuration-results.json",
     filename_metadata: str = "cached_data_used/last_run/_tune_configuration-metadata.json",
 ) -> Tuple[list, list]:
-    """Load the results and metadata files in accordance with the defined standards, return the metadata, result and filtered result lists"""
+    """
+    Load the results and metadata files in accordance with the defined standards.
+    Returns the metadata, result and filtered result lists.
+    """
     with open(filename_results, "r") as file_results:
         results = json.load(file_results)["results"]
     with open(filename_metadata, "r") as file_metadata:
@@ -238,7 +242,8 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
                 ), f"Objective performance key name {key} not in evaluation['measurements'] ({evaluation_measurements})"
                 assert (
                     len(measurements) == 1
-                ), f"Objective performance key name {key} multiply defined in evaluation['measurements'] ({evaluation_measurements})"
+                ), f"""Objective performance key name {key} multiply defined
+                        in evaluation['measurements'] ({evaluation_measurements})"""
                 value = measurements[0]["value"]
                 if value is not None and not is_invalid_objective_performance(value):
                     objective_performance_results_per_key[key_index, evaluation_index, repeat_index] = value
