@@ -12,7 +12,7 @@ description = "Software package easing implementation of the guidelines of the 2
 keywords = ["autotuning", "auto-tuning", "methodology", "scientific"]
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -63,7 +63,6 @@ select = [
   "E",   # pycodestyle
   "F",   # pyflakes
 ]
-# target-version = "py37"   # inferred from project.requires-python
-
+# target-version = "py38"   # inferred from project.requires-python
 [tool.ruff.pydocstyle]
 convention = "google"
