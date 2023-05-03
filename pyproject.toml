@@ -34,7 +34,8 @@ dev = [
     "pylint >=2.14.4",
     "toml >= 0.10.2",
     "black >= 23.3.0",
-    "nox >= 2023.4.22",
+]
+docs = [
     "sphinx >= 6.2.1",
     "sphinx_rtd_theme >= 1.2.0",
     "sphinx-pyproject >= 0.1.0",
@@ -43,6 +44,7 @@ test = [
     "ruff >= 0.0.263",
     "pytest >= 7.3.1",
     "pytest-cov >= 4.0.0",
+    "nox >= 2023.4.22",
     "kernel_tuner @ git+https://github.com/KernelTuner/kernel_tuner.git@T4_compatibility",
 ]
 
