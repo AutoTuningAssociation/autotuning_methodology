@@ -40,9 +40,7 @@ test = [
     "ruff >= 0.0.263",
     "pytest >= 7.3.1",
     "pytest-cov >= 4.0.0",
-    # "kernel_tuner >= 0.4.4",
-    # "kernel_tuner @ git+https://github.com/KernelTuner/kernel_tuner#egg=T4_compatibility",
-    "kernel_tuner @ git+https://github.com/fjwillemsen/kernel_tuner_tests.git",
+    "kernel_tuner @ git+https://github.com/KernelTuner/kernel_tuner.git@T4_compatibility",
 ]
 
 [project.urls]
@@ -50,7 +48,8 @@ repository = "https://github.com/fjwillemsen/autotuning_methodology"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--cov=src --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 25"
+pythonpath = ["src"]    # necessary to get coverage reports without installing with `-e`
+addopts = "--cov --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 25"
 testpaths = [
     "tests/unit",
     "tests/integration",
