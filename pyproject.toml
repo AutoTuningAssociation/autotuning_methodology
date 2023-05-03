@@ -49,7 +49,9 @@ test = [
 ]
 
 [project.urls]
-repository = "https://github.com/fjwillemsen/autotuning_methodology"
+"Repository" = "https://github.com/fjwillemsen/autotuning_methodology"
+"Documentation" = "https://fjwillemsen.github.io/autotuning_methodology/"
+"Bug Tracker" = "https://github.com/fjwillemsen/autotuning_methodology/issues"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -71,6 +73,6 @@ select = [
   "E",   # pycodestyle
   "F",   # pyflakes
 ]
-# target-version = "py38"   # inferred from project.requires-python
+# target-version = "py310"   # inferred from project.requires-python
 [tool.ruff.pydocstyle]
 convention = "google"
