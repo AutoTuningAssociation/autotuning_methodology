@@ -128,10 +128,9 @@ class CurveBasis(ABC):
             confidence_level: the confidence level for the prediction band. Ignored in ``Baseline``. Defaults to None.
 
         Returns:
-            For ``Baseline``:
-                NumPy array of the baseline trajectory over the specified ``fevals_range``.
-            For ``Curve``:
-                The real_stopping_point_index and the real, fictional curve, errors over the specified ``fevals_range``.
+            Two possible returns, for ``Baseline`` and ``Curve`` respectively:
+            - NumPy array of the baseline trajectory over the specified ``fevals_range``.
+            - The real_stopping_point_index and the real, fictional curve, errors over the specified ``fevals_range``.
         """
         raise NotImplementedError
 
@@ -145,10 +144,9 @@ class CurveBasis(ABC):
             confidence_level: the confidence level for the prediction band. Ignored in ``Baseline``. Defaults to None.
 
         Returns:
-            For ``Baseline``:
-                NumPy array of the baseline trajectory over the specified ``time_range``.
-            For ``Curve``:
-                The real_stopping_point_index and the real, fictional curve, errors over the specified ``time_range``.
+            Two possible returns, for ``Baseline`` and ``Curve`` respectively:
+            - NumPy array of the baseline trajectory over the specified ``time_range``.
+            - The real_stopping_point_index and the real, fictional curve, errors over the specified ``time_range``.
         """
         raise NotImplementedError
 
