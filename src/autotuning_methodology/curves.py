@@ -92,11 +92,125 @@ def get_indices_in_array(values: np.ndarray, array: np.ndarray) -> np.ndarray:
     return indices_found_unsorted
 
 
-class Curve(ABC):
-    """The Curve object can produce NumPy arrays directly suitable for plotting."""
+class CurveBasis(ABC):
+    """Abstract object providing minimals for visualization and analysis. Implemented by ``Curve`` and ``Baseline``."""
+
+    @abstractmethod
+    def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
+        """Get the curve over the specified range of time or function evaluations.
+
+        Args:
+            range: the range of time or function evaluations.
+            x_type: the type of the x-axis range (either time or function evaluations).
+            dist: the distribution, used for looking up indices. Ignored in ``Baseline``. Defaults to None.
+            confidence_level: the confidence level for the prediction band. Ignored in ``Baseline``. Defaults to None.
+
+        Raises:
+            ValueError: on invalid ``x_type`` argument.
+
+        Returns:
+            A tuple of NDArrays with NaN beyond limits.
+            See``get_curve_over_fevals()`` and ``get_curve_over_time()`` for more precise return values.
+        """
+        if x_type == "fevals":
+            return self.get_curve_over_fevals(range, dist, confidence_level)
+        elif x_type == "time":
+            return self.get_curve_over_time(range, dist, confidence_level)
+        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
+
+    @abstractmethod
+    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
+        """Get the curve over function evaluations.
+
+        Args:
+            fevals_range: _description_
+            dist: the distribution, used for looking up indices. Ignored in ``Baseline``. Defaults to None.
+            confidence_level: the confidence level for the prediction band. Ignored in ``Baseline``. Defaults to None.
+
+        Returns:
+            For ``Baseline``:
+                NumPy array of the baseline trajectory over the specified ``fevals_range``.
+            For ``Curve``:
+                The real_stopping_point_index and the real, fictional curve, errors over the specified ``fevals_range``.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
+        """Get the curve over time.
+
+        Args:
+            time_range: the range of time.
+            dist: the distribution, used for looking up indices. Ignored in ``Baseline``. Defaults to None.
+            confidence_level: the confidence level for the prediction band. Ignored in ``Baseline``. Defaults to None.
+
+        Returns:
+            For ``Baseline``:
+                NumPy array of the baseline trajectory over the specified ``time_range``.
+            For ``Curve``:
+                The real_stopping_point_index and the real, fictional curve, errors over the specified ``time_range``.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """Get the times at each point in range split into objective_time_keys.
+
+        Args:
+            range: the range of time or function evaluations.
+            x_type: the type of range (either time or function evaluations).
+            searchspace_stats: Searchspace statistics object.
+
+        Raises:
+            ValueError: on wrong ``x_type``.
+
+        Returns:
+            A NumPy array of size (len(objective_time_keys), len(range)).
+        """
+        if x_type == "fevals":
+            return self.get_split_times_at_feval(range, searchspace_stats)
+        elif x_type == "time":
+            return self.get_split_times_at_time(range, searchspace_stats)
+        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
+
+    @abstractmethod
+    def get_split_times_at_feval(
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
+        """Get the times at each function eval in the range split into objective_time_keys.
+
+        Args:
+            fevals_range: the range of function evaluations.
+            searchspace_stats: Searchspace statistics object.
+
+        Returns:
+            A NumPy array of size (len(objective_time_keys), len(range)).
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_split_times_at_time(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+        """Get the times at each time point in the range split into objective_time_keys.
+
+        Args:
+            time_range: the range of time.
+            searchspace_stats: Searchspace statistics object.
+
+        Returns:
+            A NumPy array of size (len(objective_time_keys), len(range)).
+        """
+        raise NotImplementedError()
+
+
+class Curve(CurveBasis):
+    """The Curve object can produce NumPy arrays directly suitable for plotting from a ResultsDescription."""
 
     def __init__(self, results_description: ResultsDescription) -> None:
-        """Initialize using a ResultsDescription."""
+        """Initialize using a ResultsDescription.
+
+        Args:
+            results_description: the ResultsDescription object containing the data for the Curve.
+        """
         # inputs
         self.name = results_description.strategy_name
         self.display_name = results_description.strategy_display_name
@@ -163,57 +277,6 @@ class Curve(ABC):
             == self._y.shape
             == self._y_per_key.shape[1:]
         )
-
-    @abstractmethod
-    def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
-        """Get the curve over the specified range of time or function evaluations.
-
-        Returns a tuple of NDArrays with NaN beyond limits.
-        """
-        if x_type == "fevals":
-            return self.get_curve_over_fevals(range, dist, confidence_level)
-        elif x_type == "time":
-            return self.get_curve_over_time(range, dist, confidence_level)
-        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
-
-    @abstractmethod
-    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """Get the curve over function evaluations.
-
-        Get the real_stopping_point_index,
-        as well as the real and fictional curve, errors over the specified range of function evaluations.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """Get the curve over time.
-
-        Get the real_stopping_point_index,
-        as well as the real and fictional curve, errors at the specified times using isotonic regression.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """Get the times at each point in range split into objective_time_keys."""
-        if x_type == "fevals":
-            return self.get_split_times_at_feval(range, searchspace_stats)
-        elif x_type == "time":
-            return self.get_split_times_at_time(range, searchspace_stats)
-        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
-
-    @abstractmethod
-    def get_split_times_at_feval(
-        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
-    ) -> np.ndarray:
-        """Get the times at each function eval in the range split into objective_time_keys."""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """Get the times at each time point in the range split into objective_time_keys."""
-        raise NotImplementedError()
 
     def fevals_find_pad_width(self, array: np.ndarray, target_array: np.ndarray) -> tuple[int, int]:
         """Find the amount of padding required on both sides of array to match target_array."""

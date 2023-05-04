@@ -1,116 +1,23 @@
 """Code for baselines."""
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from math import ceil
 from typing import Callable, Optional
 
 import numpy as np
 
-from autotuning_methodology.curves import get_indices_in_array
+from autotuning_methodology.curves import CurveBasis, get_indices_in_array
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
-class Baseline(ABC):
-    """Class to use as a baseline for Curves in plots."""
+class Baseline(CurveBasis):
+    """Class to use as a baseline against Curves in plots."""
 
     label: str
 
     def __init__(self) -> None:
         """Initialization method, implemented in more detail in inheriting classes."""
         super().__init__()
-
-    @abstractmethod
-    def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:
-        """Get the curve over the specified range of time or function evaluations.
-
-        Args:
-            range: the range of time or function evaluations.
-            x_type: the type of range (either time or function evaluations).
-
-        Raises:
-            ValueError: on wrong ``x_type``.
-
-        Returns:
-            The curve over the specified range, with NaN beyond limits.
-        """
-        if x_type == "fevals":
-            return self.get_curve_over_fevals(range)
-        elif x_type == "time":
-            return self.get_curve_over_time(range)
-        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
-
-    @abstractmethod
-    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:
-        """Get the curve over the specified range of function evaluations.
-
-        Args:
-            fevals_range: the range of function evaluations.
-
-        Returns:
-            The curve over the specified range, with NaN beyond limits.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:
-        """Get the curve at the specified times using isotonic regression.
-
-        Args:
-            time_range: the range of time.
-
-        Returns:
-            The curve over the specified range, with NaN beyond limits.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """Get the times at each point in range split into objective_time_keys.
-
-        Args:
-            range: the range of time or function evaluations.
-            x_type: the type of range (either time or function evaluations).
-            searchspace_stats: Searchspace statistics object.
-
-        Raises:
-            ValueError: on wrong ``x_type``.
-
-        Returns:
-            A NumPy array of size (len(objective_time_keys), len(range)).
-        """
-        if x_type == "fevals":
-            return self.get_split_times_at_feval(range, searchspace_stats)
-        elif x_type == "time":
-            return self.get_split_times_at_time(range, searchspace_stats)
-        raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
-
-    @abstractmethod
-    def get_split_times_at_feval(
-        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
-    ) -> np.ndarray:
-        """Get the times at each function eval in the range split into objective_time_keys.
-
-        Args:
-            fevals_range: the range of function evaluations.
-            searchspace_stats: Searchspace statistics object.
-
-        Returns:
-            A NumPy array of size (len(objective_time_keys), len(range)).
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_split_times_at_time(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """Get the times at each time point in the range split into objective_time_keys.
-
-        Args:
-            time_range: the range of time.
-            searchspace_stats: Searchspace statistics object.
-
-        Returns:
-            A NumPy array of size (len(objective_time_keys), len(range)).
-        """
-        raise NotImplementedError()
 
     @abstractmethod
     def get_standardised_curves(
@@ -229,17 +136,19 @@ class RandomSearchCalculatedBaseline(Baseline):
         val_results_index_mean = dist[mean_indices]
         return val_results_index_mean
 
-    def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:  # noqa: D102
-        return super().get_curve(range, x_type)
+    def get_curve(self, range: np.ndarray, x_type: str, dist=None, confidence_level=None) -> np.ndarray:  # noqa: D102
+        return super().get_curve(range, x_type, dist, confidence_level)
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:  # noqa: D102
+    def get_curve_over_fevals(  # noqa: D102
+        self, fevals_range: np.ndarray, dist=None, confidence_level=None
+    ) -> np.ndarray:
         if self.simulate:
             return self._get_random_curve_means(fevals_range)
         return self._get_random_curve(fevals_range)
 
-    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:  # noqa: D102
+    def get_curve_over_time(self, time_range: np.ndarray, dist=None, confidence_level=None) -> np.ndarray:  # noqa: D102
         fevals_range = self.time_to_fevals(time_range)
-        return self.get_curve_over_fevals(fevals_range)
+        return self.get_curve_over_fevals(fevals_range, dist, confidence_level)
 
     def get_standardised_curve(  # noqa: D102
         self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str

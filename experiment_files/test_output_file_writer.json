@@ -51,6 +51,11 @@
       "strategy": "random_sample",
       "display_name": "Random sampling 100 iters",
       "repeats": 5
+    },
+    {
+      "name": "genetic_algorithm",
+      "strategy": "genetic_algorithm",
+      "display_name": "Genetic Algorithm"
     }
   ]
 }
