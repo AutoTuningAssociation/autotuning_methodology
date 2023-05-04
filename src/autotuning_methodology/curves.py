@@ -1,4 +1,4 @@
-""" Code for curve generation """
+"""Code for curve generation."""
 
 from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
@@ -17,8 +17,7 @@ from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 def get_indices_in_distribution(
     draws: np.ndarray, dist: np.ndarray, sorter=None, skip_draws_check: bool = False, skip_dist_check: bool = False
 ) -> np.ndarray:
-    """
-    For each draw, get the index (position) in the ascendingly sorted distribution.
+    """For each draw, get the index (position) in the ascendingly sorted distribution.
     Returns an array of type float of the same shape as draws, NaN where not found in dist.
     For unsorted dists, use get_indices_in_array().
     """
@@ -56,11 +55,9 @@ def get_indices_in_distribution(
 
 
 def get_indices_in_array(values: np.ndarray, array: np.ndarray) -> np.ndarray:
-    """
-    For each value, get the index (position) in the 1D array.
+    """For each value, get the index (position) in the 1D array.
     More general version of get_indices_in_distribution() that first sorts array and reverses the sort on the result.
     """
-
     # get the order of indices that would sort the array
     array_sorter = np.argsort(array)
 
@@ -76,11 +73,10 @@ def get_indices_in_array(values: np.ndarray, array: np.ndarray) -> np.ndarray:
 
 
 class Curve(ABC):
-    """The Curve object can produce NumPy arrays directly suitable for plotting"""
+    """The Curve object can produce NumPy arrays directly suitable for plotting."""
 
     def __init__(self, results_description: ResultsDescription) -> None:
-        """Initialize using a ResultsDescription"""
-
+        """Initialize using a ResultsDescription."""
         # inputs
         self.name = results_description.strategy_name
         self.display_name = results_description.strategy_display_name
@@ -112,8 +108,7 @@ class Curve(ABC):
         super().__init__()
 
     def check_attributes(self) -> None:
-        """Asserts the types and values of attributes upon initialisation"""
-
+        """Asserts the types and values of attributes upon initialisation."""
         # assert types
         assert isinstance(self.name, str)
         assert isinstance(self.display_name, str)
@@ -151,8 +146,7 @@ class Curve(ABC):
 
     @abstractmethod
     def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
-        """
-        Get the curve over the specified range of time or function evaluations.
+        """Get the curve over the specified range of time or function evaluations.
         Returns a tuple of NDArrays with NaN beyond limits.
         """
         if x_type == "fevals":
@@ -163,22 +157,21 @@ class Curve(ABC):
 
     @abstractmethod
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """
-        Get the real_stopping_point_index,
-        as well as the real and fictional curve, errors over the specified range of function evaluations
+        """Get the real_stopping_point_index,
+        as well as the real and fictional curve, errors over the specified range of function evaluations.
         """
         raise NotImplementedError
 
     @abstractmethod
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
         """Get the real_stopping_point_index,
-        as well as the real and fictional curve, errors at the specified times using isotonic regression
+        as well as the real and fictional curve, errors at the specified times using isotonic regression.
         """
         raise NotImplementedError
 
     @abstractmethod
     def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """Get the times at each point in range split into objective_time_keys"""
+        """Get the times at each point in range split into objective_time_keys."""
         if x_type == "fevals":
             return self.get_split_times_at_feval(range, searchspace_stats)
         elif x_type == "time":
@@ -189,16 +182,16 @@ class Curve(ABC):
     def get_split_times_at_feval(
         self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
     ) -> np.ndarray:
-        """Get the times at each function eval in the range split into objective_time_keys"""
+        """Get the times at each function eval in the range split into objective_time_keys."""
         raise NotImplementedError()
 
     @abstractmethod
     def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        """Get the times at each time point in the range split into objective_time_keys"""
+        """Get the times at each time point in the range split into objective_time_keys."""
         raise NotImplementedError()
 
     def fevals_find_pad_width(self, array: np.ndarray, target_array: np.ndarray) -> tuple[int, int]:
-        """Find the amount of padding required on both sides of array to match target_array"""
+        """Find the amount of padding required on both sides of array to match target_array."""
         if array.ndim != 1 or target_array.ndim != 1:
             raise ValueError("Both arrays must be one-dimensional")
 
@@ -226,7 +219,7 @@ class Curve(ABC):
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     def get_isotonic_regressor(self, y_min: float, y_max: float, out_of_bounds: str = "clip") -> IsotonicRegression:
-        """Get the isotonic regressor"""
+        """Get the isotonic regressor."""
         return IsotonicRegression(
             increasing=not self.minimization, y_min=y_min, y_max=y_max, out_of_bounds=out_of_bounds
         )
@@ -242,7 +235,7 @@ class Curve(ABC):
         ymin=None,
         ymax=None,
     ) -> np.ndarray:
-        """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'"""
+        """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'."""
         # check if the assumptions that the input arrays are numpy arrays holds
         assert isinstance(x, np.ndarray)
         assert isinstance(y, np.ndarray)
@@ -313,8 +306,7 @@ class StochasticOptimizationAlgorithm(Curve):
         curve_lower_err: np.ndarray,
         curve_upper_err: np.ndarray,
     ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Split the provided curves based on the real_stopping_point_index.
+        """Split the provided curves based on the real_stopping_point_index.
         Return real_stopping_point_index and the real and fictional part for each curve.
         """
         # select the parts of the data that are real
@@ -380,7 +372,7 @@ class StochasticOptimizationAlgorithm(Curve):
         curve_lower_err_fictional,
         curve_upper_err_fictional,
     ):
-        """Asserts that the real and fictional results add up correctly"""
+        """Asserts that the real and fictional results add up correctly."""
         assert (
             x_axis_range.shape == curve.shape == curve_lower_err.shape == curve_upper_err.shape
         ), f"""Shapes must be equal: {x_axis_range.shape=}, {curve.shape=},
@@ -432,7 +424,7 @@ class StochasticOptimizationAlgorithm(Curve):
         return super().get_curve(range, x_type, dist, confidence_level)
 
     def _get_matching_feval_indices_in_range(self, fevals_range: np.ndarray) -> np.ndarray:
-        """Get a mask of where the fevals range matches with the data"""
+        """Get a mask of where the fevals range matches with the data."""
         assert fevals_range.ndim == 1
         assert np.all(np.isfinite(fevals_range))
         matching_indices_mask = np.array(
@@ -443,7 +435,7 @@ class StochasticOptimizationAlgorithm(Curve):
         return matching_indices_mask
 
     def _get_curve_over_fevals_values_in_range(self, fevals_range: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Get the valid fevals and values that are in the given range"""
+        """Get the valid fevals and values that are in the given range."""
         target_index: int = fevals_range[-1] - 1
 
         # filter to only get data in the fevals range
@@ -579,7 +571,7 @@ class StochasticOptimizationAlgorithm(Curve):
     def _get_curve_over_time_values_in_range(
         self, time_range: np.ndarray, return_1d=True
     ) -> tuple[np.ndarray, np.ndarray, float, int, int]:
-        """Get the valid times and values that are in the given range"""
+        """Get the valid times and values that are in the given range."""
         # check and get the variables
         assert time_range.ndim == 1
         assert np.all(np.isfinite(time_range))
@@ -786,8 +778,7 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_confidence_interval(
         self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Calculates the non-parametric confidence interval at each function evaluation
+        """Calculates the non-parametric confidence interval at each function evaluation
         for repeated function evaluations, assumed to be IID.
         """
         assert values.ndim == 2  # should be two-dimensional (iterations, repeats)
@@ -826,8 +817,7 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_confidence_interval_jagged(
         self, bins: list[np.ndarray], confidence_level: float
     ) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Calculates the non-parametric confidence interval at each function evaluation for jagged bins,
+        """Calculates the non-parametric confidence interval at each function evaluation for jagged bins,
         assumed to be IID, slower than get_confidence_interval().
         """
         confidence_interval_lower = np.full(len(bins), np.nan)
@@ -869,7 +859,7 @@ class StochasticOptimizationAlgorithm(Curve):
     def _get_prediction_interval_separated(
         self, times: np.ndarray, values: np.ndarray, time_range: np.ndarray, confidence_level: float
     ) -> np.ndarray:
-        """Calculates the prediction interval and isotonic regression mean by separating the runs"""
+        """Calculates the prediction interval and isotonic regression mean by separating the runs."""
         assert times.shape == values.shape
         assert values.ndim == 2
         num_fevals = values.shape[0]
@@ -915,7 +905,7 @@ class StochasticOptimizationAlgorithm(Curve):
     def _get_prediction_interval_bagging(
         self, x_1d: np.ndarray, y_1d: np.ndarray, x_test_1d: np.ndarray, confidence_level: float, num_repeats: int
     ) -> np.ndarray:
-        """Calculates the prediction interval and isotonic regression mean using a bootstrap bagging method"""
+        """Calculates the prediction interval and isotonic regression mean using a bootstrap bagging method."""
         # prepare the data
         x = x_1d.reshape(-1, 1)
         x_test = x_test_1d.reshape(-1, 1)
@@ -961,7 +951,7 @@ class StochasticOptimizationAlgorithm(Curve):
         method="inductive_conformal",
         train_fraction: float = 0.75,
     ) -> np.ndarray:
-        """Calculates the prediction interval using various conformal methods"""
+        """Calculates the prediction interval using various conformal methods."""
         methods = ["inductive_conformal", "conformal", "normalized_conformal", "mondrian_conformal"]
         assert method in methods
         assert 0 < train_fraction < 1

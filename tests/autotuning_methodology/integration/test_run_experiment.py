@@ -1,3 +1,5 @@
+"""Integration test for running and fetching an experiment from cache."""
+
 import json
 from pathlib import Path
 
@@ -22,6 +24,7 @@ normal_cachefile_destination = normal_cachefiles_path / "mock_gpu.json"
 
 
 def _remove_dir(path: Path):
+    """Utility function for removing a directory and the contained files."""
     assert path.exists()
     for sub in path.iterdir():
         sub.unlink()
@@ -29,7 +32,7 @@ def _remove_dir(path: Path):
 
 
 def setup_module():
-    # create files where necessary
+    """Setup of the test, creates / copies files where necessary."""
     assert mockfiles_path_source.exists()
     normal_cachefiles_path.mkdir(parents=True, exist_ok=True)
     assert normal_cachefiles_path.exists()
@@ -40,7 +43,7 @@ def setup_module():
 
 
 def teardown_module():
-    # remove files where necessary
+    """Teardown of the tests, removes files where necessary."""
     if normal_cachefile_destination.exists():
         normal_cachefile_destination.unlink()
     _remove_dir(normal_cachefiles_path)
@@ -50,8 +53,7 @@ def teardown_module():
 
 
 def test_CLI_input():
-    """Test bad and good CLI inputs"""
-
+    """Test bad and good CLI inputs."""
     # improper input 1
     with pytest.raises(SystemExit) as e:
         dummy_args = ["-dummy_arg=option"]
@@ -69,7 +71,7 @@ def test_CLI_input():
 
 
 def test_bad_experiment():
-    """Attempting to run a non-existing experiment file should raise a clear error"""
+    """Attempting to run a non-existing experiment file should raise a clear error."""
     experiment_filepath = "bogus_filename"
     with pytest.raises(AssertionError, match=" does not exist, attempted path: "):
         execute_experiment(experiment_filepath, profiling=False)
@@ -80,7 +82,7 @@ def test_bad_experiment():
 
 
 def test_run_experiment_bad_kernel_path():
-    """Run an experiment with a bad kernel path"""
+    """Run an experiment with a bad kernel path."""
     experiment_filepath = str(mockfiles_path / "test_bad_kernel_path.json")
     with pytest.raises(FileNotFoundError, match="No such path"):
         execute_experiment(experiment_filepath, profiling=False)
@@ -88,7 +90,7 @@ def test_run_experiment_bad_kernel_path():
 
 @pytest.fixture(scope="session")
 def test_run_experiment():
-    """Run a dummy experiment"""
+    """Run a dummy experiment."""
     assert normal_cachefile_destination.exists()
     if cached_visualization_file.exists():
         cached_visualization_file.unlink()
@@ -100,7 +102,7 @@ def test_run_experiment():
 
 @pytest.mark.usefixtures("test_run_experiment")
 def test_cached_experiment():
-    """Retrieve a cached experiment"""
+    """Retrieve a cached experiment."""
     assert normal_cachefiles_path.exists()
     assert normal_cachefile_destination.exists()
     assert cached_visualization_path.exists()
@@ -115,7 +117,7 @@ def validate_experiment_results(
     strategies,
     results_descriptions,
 ):
-    # validate the types
+    """Validate the types and contents returned from an experiment."""
     assert isinstance(experiment, dict)
     assert isinstance(strategies, list)
     assert isinstance(results_descriptions, dict)

@@ -1,4 +1,4 @@
-""" Visualize the results of the experiments """
+"""Visualize the results of the experiments."""
 
 from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
@@ -20,7 +20,7 @@ objective_time_keys_values = ["compilation", "benchmark", "framework", "search_a
 
 
 def calculate_lower_upper_error(observations: list) -> tuple[float, float]:
-    """Calculate the lower and upper error by the mean of the values below and above the median respectively"""
+    """Calculate the lower and upper error by the mean of the values below and above the median respectively."""
     observations.sort()
     middle_index = len(observations) // 2
     middle_index_upper = middle_index + 1 if len(observations) % 2 != 0 else middle_index
@@ -32,7 +32,7 @@ def calculate_lower_upper_error(observations: list) -> tuple[float, float]:
 
 
 def smoothing_filter(array: np.ndarray, window_length: int, a_min=None, a_max=None) -> np.ndarray:
-    """Create a rolling average where the kernel size is the smoothing factor"""
+    """Create a rolling average where the kernel size is the smoothing factor."""
     window_length = int(window_length)
     # import pandas as pd
     # d = pd.Series(array)
@@ -48,7 +48,7 @@ def smoothing_filter(array: np.ndarray, window_length: int, a_min=None, a_max=No
 
 
 class Visualize:
-    """Class for visualization of experiments"""
+    """Class for visualization of experiments."""
 
     x_metric_displayname = dict(
         {
@@ -294,8 +294,7 @@ class Visualize:
         title: str = None,
         strategies_curves: list[Curve] = list(),
     ):
-        """
-        Plots a comparison of baselines on a time range.
+        """Plots a comparison of baselines on a time range.
         Optionally also compares against strategies listed in strategies_curves.
         """
         dist = searchspace_stats.objective_performances_total_sorted
@@ -354,7 +353,7 @@ class Visualize:
         title: str = None,
         strategies_curves: list[Curve] = list(),
     ):
-        """Plots a comparison of split times for strategies and baselines over the given range"""
+        """Plots a comparison of split times for strategies and baselines over the given range."""
         # list the baselines to test
         baselines: list[Baseline] = list()
         # baselines.append(
@@ -419,7 +418,7 @@ class Visualize:
         print_table_format=True,
         print_skip=["verification_time"],
     ):
-        """Plots a comparison of the average split times for strategies over the given range"""
+        """Plots a comparison of the average split times for strategies over the given range."""
         fig, ax = plt.subplots(dpi=200)
         width = 0.5
         strategy_labels = list()
@@ -503,20 +502,20 @@ class Visualize:
         plot_errors=True,
         plot_cutoffs=False,
     ):
-        """Plots all optimization strategies for individual search spaces"""
+        """Plots all optimization strategies for individual search spaces."""
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
         absolute_optimum = searchspace_stats.total_performance_absolute_optimum()
         median = searchspace_stats.total_performance_median()
         optimum_median_difference = absolute_optimum - median
 
         def normalize(curve):
-            """Min-max normalization with median as min and absolute optimum as max"""
+            """Min-max normalization with median as min and absolute optimum as max."""
             if curve is None:
                 return None
             return (curve - median) / optimum_median_difference
 
         def normalize_multiple(curves: list) -> tuple:
-            """Normalize multiple curves at once"""
+            """Normalize multiple curves at once."""
             return tuple(normalize(curve) for curve in curves)
 
         # plot the absolute optimum
@@ -677,7 +676,7 @@ class Visualize:
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
         confidence_level: float,
     ) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray], list[int]]:
-        """Get the aggregated relative performances of each strategy"""
+        """Get the aggregated relative performances of each strategy."""
         # for each strategy, collect the relative performance in each search space
         strategies_performance = [list() for _ in aggregation_data[0][1]]
         strategies_performance_lower_err = [list() for _ in aggregation_data[0][1]]
@@ -752,7 +751,7 @@ class Visualize:
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
         plot_settings: dict,
     ):
-        """Plots all optimization strategies combined accross search spaces"""
+        """Plots all optimization strategies combined accross search spaces."""
         # plot the random baseline and absolute optimum
         ax.axhline(0, label="Random search", c="black", ls=":")
         ax.axhline(1, label="Absolute optimum", c="black", ls="-.")
@@ -841,7 +840,7 @@ class Visualize:
         ax.legend()
 
     def get_x_axis_label(self, x_type: str, objective_time_keys: list):
-        """Formatter to get the appropriate x-axis label depending on the x-axis type"""
+        """Formatter to get the appropriate x-axis label depending on the x-axis type."""
         if x_type == "fevals":
             x_label = self.x_metric_displayname[x_type]
         elif x_type == "time" and len(objective_time_keys) == len(objective_time_keys_values):
@@ -858,7 +857,7 @@ class Visualize:
 
 
 def is_ran_as_notebook() -> bool:
-    """Function to determine if this file is ran from an interactive notebook"""
+    """Function to determine if this file is ran from an interactive notebook."""
     try:
         from IPython import get_ipython
 

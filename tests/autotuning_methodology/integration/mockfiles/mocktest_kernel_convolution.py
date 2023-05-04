@@ -1,3 +1,5 @@
+"""Test kernel to run integration tests."""
+
 #!/usr/bin/env python
 import sys
 from collections import OrderedDict

@@ -1,4 +1,4 @@
-""" Interface to run an experiment on the auto-tuning frameworks """
+"""Interface to run an experiment on the auto-tuning frameworks."""
 
 from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
@@ -17,7 +17,7 @@ kernel_tuner_error_value = 1e20
 
 
 def is_invalid_objective_performance(objective_performance: float) -> bool:
-    """Returns whether an objective value is invalid by checking against NaN and the error value"""
+    """Returns whether an objective value is invalid by checking against NaN and the error value."""
     if any(str(objective_performance) == error_type_string for error_type_string in error_types_strings):
         return True
     if not isinstance(objective_performance, (int, float)):
@@ -29,12 +29,12 @@ def is_invalid_objective_performance(objective_performance: float) -> bool:
 
 
 def is_invalid_objective_time(objective_time: float) -> bool:
-    """Returns whether an objective time is invalid"""
+    """Returns whether an objective time is invalid."""
     return np.isnan(objective_time) or objective_time < 0
 
 
 def is_valid_config_result(config: dict) -> bool:
-    """returns whether a given configuration is valid"""
+    """Returns whether a given configuration is valid."""
     return "invalidity" in config and config["invalidity"] == "correct"
 
 
@@ -42,8 +42,7 @@ def get_results_and_metadata(
     filename_results: str = "cached_data_used/last_run/_tune_configuration-results.json",
     filename_metadata: str = "cached_data_used/last_run/_tune_configuration-metadata.json",
 ) -> tuple[list, list]:
-    """
-    Load the results and metadata files in accordance with the defined standards.
+    """Load the results and metadata files in accordance with the defined standards.
     Returns the metadata, result and filtered result lists.
     """
     with open(filename_results, "r") as file_results:
@@ -56,10 +55,10 @@ def get_results_and_metadata(
 def tune(
     kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool
 ) -> tuple[list, list, int]:
-    """Execute a strategy, return the metadata, result, runtime; optionally collect profiling statistics"""
+    """Execute a strategy, return the metadata, result, runtime; optionally collect profiling statistics."""
 
     def tune_with_kerneltuner():
-        """interface with kernel tuner to tune the kernel and return the results"""
+        """Interface with kernel tuner to tune the kernel and return the results."""
         if profiling:
             yappi.set_clock_type("cpu")
             yappi.start()
@@ -83,7 +82,7 @@ def tune(
         return metadata, results
 
     def tune_with_BAT():
-        """interface to tune with the BAT benchmarking suite"""
+        """Interface to tune with the BAT benchmarking suite."""
         # TODO integrate with BAT
 
     total_start_time = python_time.perf_counter()
@@ -103,13 +102,13 @@ def tune(
 def collect_results(
     kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, error_value
 ) -> ResultsDescription:
-    """Executes optimization algorithms to capture optimization algorithm behaviour"""
+    """Executes optimization algorithms to capture optimization algorithm behaviour."""
     min_num_evals: int = strategy["minimum_number_of_evaluations"]
     # TODO put the tune options in the .json in strategy_defaults?
     tune_options = {"verbose": False, "quiet": True, "simulation_mode": True}
 
     def report_multiple_attempts(rep: int, len_res: int, strategy_repeats: int):
-        """If multiple attempts are necessary, report the reason"""
+        """If multiple attempts are necessary, report the reason."""
         if len_res < 1:
             print(f"({rep+1}/{strategy_repeats}) No results found, trying once more...")
         elif len_res < min_num_evals:
@@ -173,8 +172,7 @@ def collect_results(
 
 
 def write_results(repeated_results: list, results_description: ResultsDescription, error_value):
-    """Combine the results and write them to a numpy file"""
-
+    """Combine the results and write them to a numpy file."""
     # get the objective value and time keys
     objective_time_keys = results_description.objective_time_keys
     objective_performance_keys = results_description.objective_performance_keys
@@ -183,7 +181,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
     max_num_evals = max(len(repeat) for repeat in repeated_results)
 
     def get_nan_array() -> np.ndarray:
-        """get an array of NaN so they are not counted as zeros inadvertedly"""
+        """Get an array of NaN so they are not counted as zeros inadvertedly."""
         return np.full((max_num_evals, len(repeated_results)), np.nan)
 
     # set the arrays to write to

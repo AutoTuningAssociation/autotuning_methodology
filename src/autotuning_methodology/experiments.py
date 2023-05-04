@@ -1,4 +1,4 @@
-""" Main experiments code """
+"""Main experiments code."""
 
 from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
@@ -17,7 +17,7 @@ from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
 def get_args_from_cli(args) -> str:
-    """Set the Command Line Interface arguments and return the argument values"""
+    """Set the Command Line Interface arguments and return the argument values."""
     CLI = ArgumentParser()
     CLI.add_argument("experiment", type=str, help="The experiment.json to execute, see experiments/template.json")
     args = CLI.parse_args(args)
@@ -30,14 +30,14 @@ def get_args_from_cli(args) -> str:
 
 
 def get_experiment_schema_filepath() -> Path:
-    """Get the filepath to the JSON schema for experiment files"""
+    """Get the filepath to the JSON schema for experiment files."""
     schemafilepath = Path("src/autotuning_methodology/schema.json")
     assert schemafilepath.exists(), f"Path to schema.json does not exist, attempted path: {schemafilepath}"
     return schemafilepath
 
 
 def get_experiment(filename: str) -> dict:
-    """Validates and gets the experiment from the .json file"""
+    """Validates and gets the experiment from the .json file."""
     folder_name = "experiment_files"
     folder = Path(folder_name)
     extension = ".json"
@@ -57,7 +57,7 @@ def get_experiment(filename: str) -> dict:
 
 
 def get_strategies(experiment: dict) -> dict:
-    """Gets the strategies from an experiments file by augmenting it with the defaults"""
+    """Gets the strategies from an experiments file by augmenting it with the defaults."""
     strategy_defaults = experiment["strategy_defaults"]
     strategies = experiment["strategies"]
     # # get a baseline index if it exists
@@ -82,7 +82,7 @@ def get_strategies(experiment: dict) -> dict:
 
 
 def execute_experiment(filepath: str, profiling: bool) -> tuple[dict, dict, dict]:
-    """Executes the experiment by retrieving it from the cache or running it"""
+    """Executes the experiment by retrieving it from the cache or running it."""
     experiment = get_experiment(filepath)
     print(f"Starting experiment '{experiment['name']}'")
     experiment_folder_id = experiment.get("folder_id")

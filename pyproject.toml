@@ -68,10 +68,11 @@ line-length = 120
 line-length = 120
 src = ["src"]
 respect-gitignore = true
-exclude = ["extra", "UML"]
+exclude = ["extra", "UML", "tests/autotuning_methodology/*mockfiles*"]
 select = [
   "E",   # pycodestyle
-  "F",   # pyflakes
+  "F",   # pyflakes,
+  "D",   # docstrings,
 ]
 # target-version = "py310"   # inferred from project.requires-python
 [tool.ruff.pydocstyle]

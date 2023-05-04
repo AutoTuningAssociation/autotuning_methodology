@@ -1,4 +1,4 @@
-""" Code regarding storage and retrieval of caches """
+"""Code regarding storage and retrieval of caches."""
 
 from __future__ import annotations  # for referring to class within own method
 
@@ -8,7 +8,7 @@ import numpy as np
 
 
 class Results:
-    """Object containing the results for an optimization algorithm on a search space"""
+    """Object containing the results for an optimization algorithm on a search space."""
 
     def __init__(self, numpy_arrays: list[np.ndarray]) -> None:
         self.fevals_results = numpy_arrays[0]
@@ -21,9 +21,7 @@ class Results:
 
 
 class ResultsDescription:
-    """
-    Object to store a description of the results and retrieve results for an optimization algorithm on a search space
-    """
+    """Object to store a description of the results and retrieve results for an optimization algorithm on a search space."""
 
     def __init__(
         self,
@@ -60,7 +58,7 @@ class ResultsDescription:
         ]  # the order must not be changed here! see 'numpy_arrays' in runner.py
 
     def is_same_as(self, other: ResultsDescription) -> bool:
-        """Check for equality against another ResultsDescription object"""
+        """Check for equality against another ResultsDescription object."""
         # check if same type
         if not isinstance(other, (ResultsDescription)):
             # additional check for legacy structure
@@ -93,21 +91,21 @@ class ResultsDescription:
         return f"{self.device_name}_{self.strategy_name}.npz"
 
     def __get_cache_filepath(self) -> Path:
-        """Get the filepath to this experiment"""
+        """Get the filepath to this experiment."""
         return Path("cached_data_used/visualizations") / self.__folder_id / self.kernel_name
 
     def __get_cache_full_filepath(self) -> Path:
-        """Get the filepath for this file, including the filename and extension"""
+        """Get the filepath for this file, including the filename and extension."""
         return self.__get_cache_filepath() / self.__get_cache_filename()
 
     def __check_for_file(self) -> bool:
-        """Check whether the file exists"""
+        """Check whether the file exists."""
         full_filepath = self.__get_cache_full_filepath()
         self.__stored = full_filepath.exists() and np.DataSource().exists(full_filepath)
         return self.__stored
 
     def __write_to_file(self, arrays: dict):
-        """Write the resultsdescription and the accompanying numpy arrays to file"""
+        """Write the resultsdescription and the accompanying numpy arrays to file."""
         if self.__stored is True:
             raise ValueError("Do not overwrite a ResultsDescription")
         filepath = self.__get_cache_filepath()
@@ -117,11 +115,11 @@ class ResultsDescription:
         np.savez_compressed(self.__get_cache_full_filepath(), resultsdescription=self, **arrays)
 
     def set_results(self, arrays: dict):
-        """Set and cache the results"""
+        """Set and cache the results."""
         return self.__write_to_file(arrays)
 
     def __read_from_file(self) -> list[np.ndarray]:
-        """Read and verify the accompanying numpy arrays from file"""
+        """Read and verify the accompanying numpy arrays from file."""
         self.__check_for_file()
         full_filepath = self.__get_cache_full_filepath()
         if self.__stored is False:
@@ -139,12 +137,12 @@ class ResultsDescription:
         return numpy_arrays
 
     def get_results(self) -> Results:
-        """Get the Results object"""
+        """Get the Results object."""
         args = self.__read_from_file()
         return Results(args)
 
     def has_results(self) -> bool:
-        """Checks whether there are results or the file exists"""
+        """Checks whether there are results or the file exists."""
         return self.__stored or self.__check_for_file()
         """Checks whether there are results or the file exists"""
         return self.__stored or self.__check_for_file()
