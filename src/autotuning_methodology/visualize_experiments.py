@@ -92,6 +92,15 @@ class Visualize:
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     def __init__(self, experiment_filename: str, save_figs: True) -> None:
+        """Initialization method for the Visualize class.
+
+        Args:
+            experiment_filename: the experiment-filename.json to run.
+            save_figs: whether to save the figures to file, if not, displays in a window. Defaults to True.
+
+        Raises:
+            ValueError: on various invalid inputs.
+        """
         # # silently execute the experiment
         # with warnings.catch_warnings():
         #     warnings.simplefilter("ignore")
@@ -295,6 +304,7 @@ class Visualize:
         strategies_curves: list[Curve] = list(),
     ):
         """Plots a comparison of baselines on a time range.
+
         Optionally also compares against strategies listed in strategies_curves.
         """
         dist = searchspace_stats.objective_performances_total_sorted
@@ -885,6 +895,4 @@ if __name__ == "__main__":
     else:
         experiment_filepath = get_args_from_cli(None)
 
-    Visualize(experiment_filepath, save_figs=not is_notebook)
-    Visualize(experiment_filepath, save_figs=not is_notebook)
     Visualize(experiment_filepath, save_figs=not is_notebook)

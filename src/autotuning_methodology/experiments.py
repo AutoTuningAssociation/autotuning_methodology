@@ -173,4 +173,3 @@ def execute_experiment(filepath: str, profiling: bool) -> tuple[dict, dict, dict
 if __name__ == "__main__":
     experiment_filepath = get_args_from_cli(None)
     execute_experiment(experiment_filepath, profiling=False)
-    execute_experiment(experiment_filepath, profiling=False)

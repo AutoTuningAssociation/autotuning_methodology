@@ -43,6 +43,7 @@ def get_results_and_metadata(
     filename_metadata: str = "cached_data_used/last_run/_tune_configuration-metadata.json",
 ) -> tuple[list, list]:
     """Load the results and metadata files in accordance with the defined standards.
+
     Returns the metadata, result and filtered result lists.
     """
     with open(filename_results, "r") as file_results:
@@ -268,5 +269,4 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         "objective_time_results_per_key": objective_time_results_per_key,
         "objective_performance_results_per_key": objective_performance_results_per_key,
     }
-    return results_description.set_results(numpy_arrays)
     return results_description.set_results(numpy_arrays)

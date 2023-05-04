@@ -72,7 +72,7 @@ exclude = ["extra", "UML", "tests/autotuning_methodology/*mockfiles*"]
 select = [
   "E",   # pycodestyle
   "F",   # pyflakes,
-  "D",   # docstrings,
+  "D",   # pydocstyle,
 ]
 # target-version = "py310"   # inferred from project.requires-python
 [tool.ruff.pydocstyle]

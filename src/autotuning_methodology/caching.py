@@ -11,6 +11,11 @@ class Results:
     """Object containing the results for an optimization algorithm on a search space."""
 
     def __init__(self, numpy_arrays: list[np.ndarray]) -> None:
+        """Initialization method for the Results object.
+
+        Args:
+            numpy_arrays: A list of 7 NumPy arrays, their order is dictated by ``numpy_arrays`` in runner.py.
+        """
         self.fevals_results = numpy_arrays[0]
         self.objective_time_results = numpy_arrays[1]
         self.objective_performance_results = numpy_arrays[2]
@@ -21,7 +26,7 @@ class Results:
 
 
 class ResultsDescription:
-    """Object to store a description of the results and retrieve results for an optimization algorithm on a search space."""
+    """Object to store a description of results and retrieve results for an optimization algorithm on a search space."""
 
     def __init__(
         self,
@@ -35,6 +40,19 @@ class ResultsDescription:
         objective_performance_keys: list[str],
         minimization: bool,
     ) -> None:
+        """Initialization method for the ResultsDescription object.
+
+        Args:
+            folder_id: the unique ID of the folder to store in.
+            kernel_name: the name of the kernel used.
+            device_name: the name of the device used.
+            strategy_name: the name of the optimization algorithm used, must not contain spaces or special characters.
+            strategy_display_name: the name of the optimization algorithm used in printing / visualization.
+            stochastic: whether the optimization algorithm is stochastic.
+            objective_time_keys: the objective time keys used.
+            objective_performance_keys: the objective performance keys used.
+            minimization: whether the optimization algorithm performed minimization (attempted to find the minimum).
+        """
         # all attributes must be hashable for symetric difference checking
         self._version = "1.3.0"
         self.__stored = False
@@ -58,7 +76,19 @@ class ResultsDescription:
         ]  # the order must not be changed here! see 'numpy_arrays' in runner.py
 
     def is_same_as(self, other: ResultsDescription) -> bool:
-        """Check for equality against another ResultsDescription object."""
+        """Check for equality against another ResultsDescription object.
+
+        Args:
+            other: the other ResultsDescription object.
+
+        Raises:
+            NotImplementedError: when comparing against a not implemented type.
+            ValueError: when comparing against an unkown or incompatible version.
+            KeyError: when there is a difference in the keys.
+
+        Returns:
+            whether this instance is equal to the provided ``other`` instance.
+        """
         # check if same type
         if not isinstance(other, (ResultsDescription)):
             # additional check for legacy structure
@@ -105,7 +135,7 @@ class ResultsDescription:
         return self.__stored
 
     def __write_to_file(self, arrays: dict):
-        """Write the resultsdescription and the accompanying numpy arrays to file."""
+        """Write this ResultsDescription instance and the accompanying numpy arrays to file."""
         if self.__stored is True:
             raise ValueError("Do not overwrite a ResultsDescription")
         filepath = self.__get_cache_filepath()
@@ -143,6 +173,4 @@ class ResultsDescription:
 
     def has_results(self) -> bool:
         """Checks whether there are results or the file exists."""
-        return self.__stored or self.__check_for_file()
-        """Checks whether there are results or the file exists"""
         return self.__stored or self.__check_for_file()

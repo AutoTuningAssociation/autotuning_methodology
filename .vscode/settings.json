@@ -21,4 +21,5 @@
   "ruff.args": [
     "--config=pyproject.toml"
   ],
+  "autoDocstring.docstringFormat": "google-notypes",
 }

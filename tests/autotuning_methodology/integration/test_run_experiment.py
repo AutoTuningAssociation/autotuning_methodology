@@ -132,4 +132,3 @@ def validate_experiment_results(
     assert len(strategies) == 1
     strategy_name = strategies[0]["name"]
     assert isinstance(results_descriptions[gpu_name][kernel_name][strategy_name], ResultsDescription)
-    assert isinstance(results_descriptions[gpu_name][kernel_name][strategy_name], ResultsDescription)

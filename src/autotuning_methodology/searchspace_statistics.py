@@ -54,6 +54,15 @@ class SearchspaceStatistics:
         objective_time_keys: list[str],
         objective_performance_keys: list[str],
     ) -> None:
+        """Initialization method for a Searchspace statistics object.
+
+        Args:
+            kernel_name: the name of the kernel.
+            device_name: the name of the device (GPU) used.
+            minimization: whether the optimization algorithm was minimizing.
+            objective_time_keys: the objective time keys used.
+            objective_performance_keys: the objective performance keys used.
+        """
         self.loaded = False
         self.kernel_name = kernel_name
         self.device_name = device_name
@@ -107,6 +116,7 @@ class SearchspaceStatistics:
 
     def cutoff_point_fevals_time(self, cutoff_percentile: float) -> tuple[float, int, float]:
         """Calculate the cutoff point.
+
         Returns (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point).
         """
         cutoff_point_value, cutoff_point_fevals = self.cutoff_point(cutoff_percentile)
@@ -397,5 +407,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
     test()

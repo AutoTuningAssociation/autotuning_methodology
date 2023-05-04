@@ -17,9 +17,20 @@ from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 def get_indices_in_distribution(
     draws: np.ndarray, dist: np.ndarray, sorter=None, skip_draws_check: bool = False, skip_dist_check: bool = False
 ) -> np.ndarray:
-    """For each draw, get the index (position) in the ascendingly sorted distribution.
-    Returns an array of type float of the same shape as draws, NaN where not found in dist.
-    For unsorted dists, use get_indices_in_array().
+    """Function to get the indices in a distribution in an efficient manner.
+
+    For each draw, get the index (position) in the ascendingly sorted distribution.
+    For unsorted dists, use `get_indices_in_array()`.
+
+    Args:
+        draws: the values to get the indices of.
+        dist: the distribution, assumed to be ascendingly sorted unless `sorter` is provided.
+        sorter: NumPy array of indices that sort the distribution. Defaults to None.
+        skip_draws_check: skips checking that each value in `draws` is in the `dist`. Defaults to False.
+        skip_dist_check: skips checking that the distribution is correctly ordered. Defaults to False.
+
+    Returns:
+        A NumPy array of type float of the same shape as `draws`, with NaN where not found in `dist`.
     """
     assert dist.ndim == 1, f"distribution can not have more than one dimension, has {dist.ndim}"
 
@@ -55,8 +66,17 @@ def get_indices_in_distribution(
 
 
 def get_indices_in_array(values: np.ndarray, array: np.ndarray) -> np.ndarray:
-    """For each value, get the index (position) in the 1D array.
-    More general version of get_indices_in_distribution() that first sorts array and reverses the sort on the result.
+    """Function to get the indices in an array in an efficient manner.
+
+    For each value, get the index (position) in the 1D array.
+    More general version of ``get_indices_in_distribution()``, first sorts array and reverses the sort on the result.
+
+    Args:
+        values: the values to get the indices of.
+        array: the array to look up the indices in.
+
+    Returns:
+        A NumPy integer array with the same shape as ``values``, containing the indices.
     """
     # get the order of indices that would sort the array
     array_sorter = np.argsort(array)
@@ -147,6 +167,7 @@ class Curve(ABC):
     @abstractmethod
     def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
         """Get the curve over the specified range of time or function evaluations.
+
         Returns a tuple of NDArrays with NaN beyond limits.
         """
         if x_type == "fevals":
@@ -157,14 +178,18 @@ class Curve(ABC):
 
     @abstractmethod
     def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """Get the real_stopping_point_index,
+        """Get the curve over function evaluations.
+
+        Get the real_stopping_point_index,
         as well as the real and fictional curve, errors over the specified range of function evaluations.
         """
         raise NotImplementedError
 
     @abstractmethod
     def get_curve_over_time(self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
-        """Get the real_stopping_point_index,
+        """Get the curve over time.
+
+        Get the real_stopping_point_index,
         as well as the real and fictional curve, errors at the specified times using isotonic regression.
         """
         raise NotImplementedError
@@ -212,6 +237,17 @@ class Curve(ABC):
         return padding
 
     def get_scatter_data(self, x_type: str) -> tuple[np.ndarray, np.ndarray]:
+        """Get the raw data required for a scatter plot.
+
+        Args:
+            x_type: the type of the x-axis range (either time or function evaluations).
+
+        Raises:
+            ValueError: on invalid ``x_type`` argument.
+
+        Returns:
+            A tuple of two NumPy arrays for the range and data respectively.
+        """
         if x_type == "fevals":
             return self._x_fevals, self._y
         elif x_type == "time":
@@ -219,7 +255,7 @@ class Curve(ABC):
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     def get_isotonic_regressor(self, y_min: float, y_max: float, out_of_bounds: str = "clip") -> IsotonicRegression:
-        """Get the isotonic regressor."""
+        """Wrapper function to get the isotonic regressor."""
         return IsotonicRegression(
             increasing=not self.minimization, y_min=y_min, y_max=y_max, out_of_bounds=out_of_bounds
         )
@@ -269,35 +305,9 @@ class Curve(ABC):
         raise ValueError(f"Package name {package} is not a valid package name")
 
 
-class DeterministicOptimizationAlgorithm(Curve):
-    def get_curve(
-        self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return tuple([super().get_curve(range, x_type, dist, confidence_level), None, None])
-
-    def get_curve_over_fevals(
-        self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None
-    ) -> np.ndarray:
-        return super().get_curve_over_fevals(fevals_range, dist, confidence_level)
-
-    def get_curve_over_time(
-        self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None
-    ) -> np.ndarray:
-        return super().get_curve_over_time(time_range, dist, confidence_level)
-
-    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics):
-        return super().get_split_times(range, x_type, searchspace_stats)
-
-    def get_split_times_at_feval(
-        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
-    ) -> np.ndarray:
-        return super().get_split_times_at_feval(fevals_range, searchspace_stats)
-
-    def get_split_times_at_time(self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
-        return super().get_split_times_at_time(fevals_range, searchspace_stats)
-
-
 class StochasticOptimizationAlgorithm(Curve):
+    """Class for producing a curve for stochastic optimization algorithms."""
+
     def _get_curve_split_real_fictional_parts(
         self,
         real_stopping_point_index: int,
@@ -307,6 +317,7 @@ class StochasticOptimizationAlgorithm(Curve):
         curve_upper_err: np.ndarray,
     ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Split the provided curves based on the real_stopping_point_index.
+
         Return real_stopping_point_index and the real and fictional part for each curve.
         """
         # select the parts of the data that are real
@@ -420,7 +431,9 @@ class StochasticOptimizationAlgorithm(Curve):
                 curve_upper_err, curve_upper_err_real, equal_nan=True
             ), f"Unequal arrays: {curve_upper_err}, {curve_upper_err_real}"
 
-    def get_curve(self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None):
+    def get_curve(  # noqa: D102
+        self, range: np.ndarray, x_type: str, dist: np.ndarray = None, confidence_level: float = None
+    ):
         return super().get_curve(range, x_type, dist, confidence_level)
 
     def _get_matching_feval_indices_in_range(self, fevals_range: np.ndarray) -> np.ndarray:
@@ -494,7 +507,9 @@ class StochasticOptimizationAlgorithm(Curve):
         masked_values = masked_values[nan_mask].reshape(-1, num_repeats)
         return fevals, masked_values
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None):
+    def get_curve_over_fevals(  # noqa: D102
+        self, fevals_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None
+    ):
         fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
 
         # if a distribution is included
@@ -629,7 +644,7 @@ class StochasticOptimizationAlgorithm(Curve):
         else:
             return times, values, real_stopping_point_time, num_fevals, num_repeats
 
-    def get_curve_over_time(
+    def get_curve_over_time(  # noqa: D102
         self, time_range: np.ndarray, dist: np.ndarray = None, confidence_level: float = None, use_bagging=True
     ):
         # check the distribution
@@ -719,10 +734,12 @@ class StochasticOptimizationAlgorithm(Curve):
             real_stopping_point_index, time_range, curve, curve_lower_err, curve_upper_err
         )
 
-    def get_split_times(self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times(  # noqa: D102
+        self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         return super().get_split_times(range, x_type, searchspace_stats)
 
-    def get_split_times_at_feval(
+    def get_split_times_at_feval(  # noqa: D102
         self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
     ) -> np.ndarray:
         # get the indices in the range
@@ -754,7 +771,9 @@ class StochasticOptimizationAlgorithm(Curve):
         ), f"{split_time_per_feval.shape} != {(num_keys, fevals_range.shape[0])}"
         return split_time_per_feval
 
-    def get_split_times_at_time(self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics) -> np.ndarray:
+    def get_split_times_at_time(  # noqa: D102
+        self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
         # get the raw times
         nan_mask = ~np.isnan(self._x_time)
         times_total = self._x_time[nan_mask]
@@ -778,8 +797,9 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_confidence_interval(
         self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Calculates the non-parametric confidence interval at each function evaluation
-        for repeated function evaluations, assumed to be IID.
+        """Calculates the non-parametric confidence interval at each function evaluation across repeats.
+
+        Observations are assumed to be IID.
         """
         assert values.ndim == 2  # should be two-dimensional (iterations, repeats)
         if weights is not None:
@@ -817,8 +837,10 @@ class StochasticOptimizationAlgorithm(Curve):
     def get_confidence_interval_jagged(
         self, bins: list[np.ndarray], confidence_level: float
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Calculates the non-parametric confidence interval at each function evaluation for jagged bins,
-        assumed to be IID, slower than get_confidence_interval().
+        """Calculates the non-parametric confidence interval at each function evaluation for jagged bins.
+
+        Observations are assumed to be IID.
+        This function is slower than ``get_confidence_interval()``.
         """
         confidence_interval_lower = np.full(len(bins), np.nan)
         confidence_interval_upper = np.full(len(bins), np.nan)
@@ -1035,5 +1057,4 @@ class StochasticOptimizationAlgorithm(Curve):
                 )  # generate bins to take the distance into account
                 prediction_interval = cr_mond.predict(y_hat=prediction, confidence=confidence_level, bins=bins_test)
 
-        return prediction_interval
         return prediction_interval

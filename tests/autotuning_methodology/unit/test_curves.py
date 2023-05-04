@@ -67,4 +67,3 @@ def test_get_indices_in_array():
             ), f"Is {draw}, but distribution value at index is {dist[int(indices_found[index])]}"
         except ValueError:
             raise ValueError(f"{draw=}, but {indices_found[index]=}")
-            raise ValueError(f"{draw=}, but {indices_found[index]=}")
