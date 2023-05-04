@@ -16,8 +16,18 @@ from autotuning_methodology.runner import collect_results
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
-def get_args_from_cli(args) -> str:
-    """Set the Command Line Interface arguments and return the argument values."""
+def get_args_from_cli(args=None) -> str:
+    """Set the Command Line Interface arguments definitions, get and return the argument values.
+
+    Args:
+        args: optional list of arguments for testing without CLI interaction. Defaults to None.
+
+    Raises:
+        ValueError: on invalid argument.
+
+    Returns:
+        The filepath to the experiments file.
+    """
     CLI = ArgumentParser()
     CLI.add_argument("experiment", type=str, help="The experiment.json to execute, see experiments/template.json")
     args = CLI.parse_args(args)
@@ -37,7 +47,14 @@ def get_experiment_schema_filepath() -> Path:
 
 
 def get_experiment(filename: str) -> dict:
-    """Validates and gets the experiment from the .json file."""
+    """Validates and gets the experiment from the experiments .json file.
+
+    Args:
+        filename: path to the experiments .json file.
+
+    Returns:
+        Experiment dictionary object.
+    """
     folder_name = "experiment_files"
     folder = Path(folder_name)
     extension = ".json"
@@ -51,13 +68,20 @@ def get_experiment(filename: str) -> dict:
     schemafilepath = get_experiment_schema_filepath()
     with open(path) as file, open(schemafilepath) as schemafile:
         schema = json.load(schemafile)
-        experiment = json.load(file)
+        experiment: dict = json.load(file)
         validate(instance=experiment, schema=schema)
         return experiment
 
 
 def get_strategies(experiment: dict) -> dict:
-    """Gets the strategies from an experiments file by augmenting it with the defaults."""
+    """Gets the strategies from an experiments file by augmenting it with the defaults.
+
+    Args:
+        experiment: the experiment dictionary object.
+
+    Returns:
+        The strategies in the experiment dictionary object, augmented where necessery.
+    """
     strategy_defaults = experiment["strategy_defaults"]
     strategies = experiment["strategies"]
     # # get a baseline index if it exists
@@ -81,11 +105,22 @@ def get_strategies(experiment: dict) -> dict:
     return strategies
 
 
-def execute_experiment(filepath: str, profiling: bool) -> tuple[dict, dict, dict]:
-    """Executes the experiment by retrieving it from the cache or running it."""
+def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, dict, dict]:
+    """Executes the experiment by retrieving it from the cache or running it.
+
+    Args:
+        filepath: path to the experiments .json file.
+        profiling: whether profiling is enabled. Defaults to False.
+
+    Raises:
+        FileNotFoundError: if the path to the kernel specified in the experiments file is not found.
+
+    Returns:
+        A tuple of the experiment dictionary, the strategies executed, and the resulting list of ``ResultsDescription``.
+    """
     experiment = get_experiment(filepath)
     print(f"Starting experiment '{experiment['name']}'")
-    experiment_folder_id = experiment.get("folder_id")
+    experiment_folder_id: str = experiment["folder_id"]
     minimization: bool = experiment.get("minimization", True)
     cutoff_percentile: float = experiment.get("cutoff_percentile", 1)
     cutoff_type: str = experiment.get("cutoff_type", "fevals")
@@ -102,8 +137,8 @@ def execute_experiment(filepath: str, profiling: bool) -> tuple[dict, dict, dict
     kernels = list(import_module(kernel_name) for kernel_name in kernel_names)
 
     # variables for comparison
-    objective_time_keys = experiment.get("objective_time_keys")
-    objective_performance_keys = experiment.get("objective_performance_keys")
+    objective_time_keys: list[str] = experiment["objective_time_keys"]
+    objective_performance_keys: list[str] = experiment["objective_performance_keys"]
 
     # execute each strategy in the experiment per GPU and kernel
     results_descriptions: dict[str, dict[str, dict[str, ResultsDescription]]] = dict()
@@ -160,9 +195,7 @@ def execute_experiment(filepath: str, profiling: bool) -> tuple[dict, dict, dict
                 if "ignore_cache" not in strategy and results_description.has_results():
                     print(" | - |-> retrieved from cache")
                 else:  # execute each strategy that is not in the cache
-                    results_description = collect_results(
-                        kernel, strategy, results_description, profiling=profiling, error_value=1e20
-                    )
+                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling)
 
                 # set the results
                 results_descriptions[gpu_name][kernel_name][strategy_name] = results_description
@@ -171,5 +204,5 @@ def execute_experiment(filepath: str, profiling: bool) -> tuple[dict, dict, dict
 
 
 if __name__ == "__main__":
-    experiment_filepath = get_args_from_cli(None)
+    experiment_filepath = get_args_from_cli()
     execute_experiment(experiment_filepath, profiling=False)

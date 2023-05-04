@@ -103,14 +103,14 @@ class CurveBasis(ABC):
             range: the range of time or function evaluations.
             x_type: the type of the x-axis range (either time or function evaluations).
             dist: the distribution, used for looking up indices. Ignored in ``Baseline``. Defaults to None.
-            confidence_level: the confidence level for the prediction band. Ignored in ``Baseline``. Defaults to None.
+            confidence_level: confidence level for the confidence interval. Ignored in ``Baseline``. Defaults to None.
 
         Raises:
             ValueError: on invalid ``x_type`` argument.
 
         Returns:
             A tuple of NDArrays with NaN beyond limits.
-            See``get_curve_over_fevals()`` and ``get_curve_over_time()`` for more precise return values.
+            See ``get_curve_over_fevals()`` and ``get_curve_over_time()`` for more precise return values.
         """
         if x_type == "fevals":
             return self.get_curve_over_fevals(range, dist, confidence_level)
@@ -123,9 +123,9 @@ class CurveBasis(ABC):
         """Get the curve over function evaluations.
 
         Args:
-            fevals_range: _description_
+            fevals_range: the range of function evaluations.
             dist: the distribution, used for looking up indices. Ignored in ``Baseline``. Defaults to None.
-            confidence_level: the confidence level for the prediction band. Ignored in ``Baseline``. Defaults to None.
+            confidence_level: confidence level for the confidence interval. Ignored in ``Baseline``. Defaults to None.
 
         Returns:
             Two possible returns, for ``Baseline`` and ``Curve`` respectively:
@@ -141,7 +141,7 @@ class CurveBasis(ABC):
         Args:
             time_range: the range of time.
             dist: the distribution, used for looking up indices. Ignored in ``Baseline``. Defaults to None.
-            confidence_level: the confidence level for the prediction band. Ignored in ``Baseline``. Defaults to None.
+            confidence_level: confidence level for the confidence interval. Ignored in ``Baseline``. Defaults to None.
 
         Returns:
             Two possible returns, for ``Baseline`` and ``Curve`` respectively:
@@ -277,7 +277,18 @@ class Curve(CurveBasis):
         )
 
     def fevals_find_pad_width(self, array: np.ndarray, target_array: np.ndarray) -> tuple[int, int]:
-        """Find the amount of padding required on both sides of array to match target_array."""
+        """Finds the amount of padding required on both sides of ``array`` to match ``target_array``.
+
+        Args:
+            array: input array to be padded.
+            target_array: target array shape.
+
+        Raises:
+            ValueError: when arrays are not one-dimensional or there is a mismatch in the number of values.
+
+        Returns:
+            The padded ``array`` with the same shape as ``target_array``.
+        """
         if array.ndim != 1 or target_array.ndim != 1:
             raise ValueError("Both arrays must be one-dimensional")
 
@@ -316,7 +327,16 @@ class Curve(CurveBasis):
         raise ValueError(f"x_type must be 'fevals' or 'time', is {x_type}")
 
     def get_isotonic_regressor(self, y_min: float, y_max: float, out_of_bounds: str = "clip") -> IsotonicRegression:
-        """Wrapper function to get the isotonic regressor."""
+        """Wrapper function to get the isotonic regressor.
+
+        Args:
+            y_min: lower bound on the lowest predicted value. Defaults to -inf.
+            y_max: upper bound on the highest predicted value. Defaults to +inf.
+            out_of_bounds: handles how values outside the training domain are handled in prediction. Defaults to "clip".
+
+        Returns:
+            _description_
+        """
         return IsotonicRegression(
             increasing=not self.minimization, y_min=y_min, y_max=y_max, out_of_bounds=out_of_bounds
         )
@@ -326,13 +346,21 @@ class Curve(CurveBasis):
         x: np.ndarray,
         y: np.ndarray,
         x_new: np.ndarray,
-        package="sklearn",
-        npoints=1000,
-        power=2,
         ymin=None,
         ymax=None,
     ) -> np.ndarray:
-        """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'."""
+        """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'.
+
+        Args:
+            x: x-dimension training data.
+            y: y-dimension training data.
+            x_new: x-dimension prediction data.
+            ymin: lower bound on the lowest predicted value. Defaults to None.
+            ymax: upper bound on the highest predicted value. Defaults to None.
+
+        Returns:
+            The predicted monotonic piecewise curve for ``x_new``.
+        """
         # check if the assumptions that the input arrays are numpy arrays holds
         assert isinstance(x, np.ndarray)
         assert isinstance(y, np.ndarray)
@@ -344,26 +372,9 @@ class Curve(CurveBasis):
         if y.ndim > 1:
             y = y.flatten()
 
-        if package == "sklearn":
-            # if npoints != 1000:
-            #     warnings.warn("npoints argument is impotent for sklearn package")
-            # TODO look into what to do about the segments
-            if power != 2:
-                warnings.warn("power argument is impotent for sklearn package")
-            ir = self.get_isotonic_regressor(y_min=ymin, y_max=ymax)
-            ir.fit(x, y)
-            return ir.predict(x_new)
-        elif package == "isotonic":
-            raise NotImplementedError("Support for isotonic package is deprecated")
-            from isotonic.isotonic import LpIsotonicRegression
-
-            ir = LpIsotonicRegression(npoints, increasing=not self.minimization, power=power).fit(x, y)
-            y_isotonic_regression = ir.predict_proba(x_new)
-            # TODO check if you are not indadvertedly clipping too much here
-            if ymin is not None or ymax is not None:
-                y_isotonic_regression = np.clip(y_isotonic_regression, ymin, ymax)
-            return y_isotonic_regression
-        raise ValueError(f"Package name {package} is not a valid package name")
+        ir = self.get_isotonic_regressor(y_min=ymin, y_max=ymax)
+        ir.fit(x, y)
+        return ir.predict(x_new)
 
 
 class StochasticOptimizationAlgorithm(Curve):
@@ -388,12 +399,10 @@ class StochasticOptimizationAlgorithm(Curve):
         curve_upper_err_real = curve_upper_err[:real_stopping_point_index]
 
         # select the parts of the data that are fictional
-        x_axis_range_fictional, curve_fictional, curve_lower_err_fictional, curve_upper_err_fictional = (
-            np.ndarray([]),
-            np.ndarray([]),
-            np.ndarray([]),
-            np.ndarray([]),
-        )
+        x_axis_range_fictional = np.empty(0)
+        curve_fictional = np.empty(0)
+        curve_lower_err_fictional = np.empty(0)
+        curve_upper_err_fictional = np.empty(0)
         target_index = x_axis_range.shape[0] - 1
         if real_stopping_point_index <= target_index:
             x_axis_range_fictional = x_axis_range[real_stopping_point_index:]
@@ -574,6 +583,7 @@ class StochasticOptimizationAlgorithm(Curve):
         fevals, masked_values = self._get_curve_over_fevals_values_in_range(fevals_range)
 
         # if a distribution is included
+        curve: np.ndarray
         if dist is not None:
             assert dist.ndim == 1
             # for each value, get the index in the distribution
@@ -595,7 +605,7 @@ class StochasticOptimizationAlgorithm(Curve):
             curve_upper_err = dist[indices_upper_err]
         else:
             # obtain the curves
-            curve: np.ndarray = np.nanmedian(masked_values, axis=1)  # get the curve by taking the mean
+            curve = np.nanmedian(masked_values, axis=1)  # get the curve by taking the mean
             if confidence_level is None:
                 # get the standard error
                 curve_std: np.ndarray = np.nanstd(masked_values, axis=1)
@@ -651,14 +661,14 @@ class StochasticOptimizationAlgorithm(Curve):
         # check and get the variables
         assert time_range.ndim == 1
         assert np.all(np.isfinite(time_range))
-        times = self._x_time
-        values = self._y
+        _times = self._x_time
+        _values = self._y
 
         # remove iterations where every repeat has NaN
-        num_repeats = values.shape[1]
-        nan_mask = ~np.isnan(values).all(axis=1)
-        times: np.ndarray = times[nan_mask].reshape(-1, num_repeats)
-        values: np.ndarray = values[nan_mask].reshape(-1, num_repeats)
+        num_repeats = _values.shape[1]
+        nan_mask = ~np.isnan(_values).all(axis=1)
+        times: np.ndarray = _times[nan_mask].reshape(-1, num_repeats)
+        values: np.ndarray = _values[nan_mask].reshape(-1, num_repeats)
 
         # get the highest time of each run of the algorithm, take the median
         times_no_nan = times
@@ -861,6 +871,17 @@ class StochasticOptimizationAlgorithm(Curve):
         """Calculates the non-parametric confidence interval at each function evaluation across repeats.
 
         Observations are assumed to be IID.
+
+        Args:
+            values: the two-dimensional values to calculate the confidence interval on.
+            confidence_level: the confidence level for the confidence interval.
+            weights: inert argument. Defaults to None.
+
+        Raises:
+            NotImplementedError: when weights is passed.
+
+        Returns:
+            A tuple of two NumPy arrays with lower and upper error, respectively.
         """
         assert values.ndim == 2  # should be two-dimensional (iterations, repeats)
         if weights is not None:
@@ -902,6 +923,13 @@ class StochasticOptimizationAlgorithm(Curve):
 
         Observations are assumed to be IID.
         This function is slower than ``get_confidence_interval()``.
+
+        Args:
+            bins: the values pre-divided into bins.
+            confidence_level: the confidence level for the confidence interval.
+
+        Returns:
+            A tuple of two NumPy arrays with lower and upper error, respectively.
         """
         confidence_interval_lower = np.full(len(bins), np.nan)
         confidence_interval_upper = np.full(len(bins), np.nan)

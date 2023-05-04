@@ -279,10 +279,12 @@ class RandomSearchSimulatedBaseline(Baseline):
             self.y_array = y_array
         self._ir.fit(x_array, y_array)
 
-    def get_curve(self, range: np.ndarray, x_type: str) -> np.ndarray:  # noqa: D102
-        return super().get_curve(range, x_type)
+    def get_curve(self, range: np.ndarray, x_type: str, dist=None, confidence_level=None) -> np.ndarray:  # noqa: D102
+        return super().get_curve(range, x_type, dist, confidence_level)
 
-    def get_curve_over_fevals(self, fevals_range: np.ndarray) -> np.ndarray:  # noqa: D102
+    def get_curve_over_fevals(  # noqa: D102
+        self, fevals_range: np.ndarray, dist=None, confidence_level=None
+    ) -> np.ndarray:
         if self.use_index:
             return self.searchspace_stats.objective_performances_total_sorted_nan[
                 np.array(np.round(self.index_at_feval[fevals_range]), dtype=int)
@@ -291,7 +293,7 @@ class RandomSearchSimulatedBaseline(Baseline):
             assert self.y_array.ndim == 1
             return self.y_array[fevals_range]
 
-    def get_curve_over_time(self, time_range: np.ndarray) -> np.ndarray:  # noqa: D102
+    def get_curve_over_time(self, time_range: np.ndarray, dist=None, confidence_level=None) -> np.ndarray:  # noqa: D102
         predicted_y_values = self._ir.predict(time_range)
         if not self.use_index:
             return predicted_y_values

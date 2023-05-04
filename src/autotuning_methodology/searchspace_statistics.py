@@ -24,7 +24,15 @@ kernel_tuner_time_keys_to_T4_time_keys_mapping = {
 
 
 def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
-    """Wrapper around np.nansum to ensure partials to sum that contain only NaN are returned as NaN instead of 0."""
+    """Wrapper around np.nansum. Ensures partials that contain only NaN are returned as NaN instead of 0.
+
+    Args:
+        array: values to sum.
+        **kwargs: arbitrary keyword arguments.
+
+    Returns:
+        Summed NumPy array.
+    """
     where_all_nan = np.isnan(array).all(**kwargs)  # get the locations where all partials are NaN
     summed_array = np.nansum(array, **kwargs)  # sum as usual
     summed_array[where_all_nan] = np.nan  # overwrite the sums where necessary
@@ -76,27 +84,47 @@ class SearchspaceStatistics:
         self.loaded = self._load()
 
     def T4_time_keys_to_kernel_tuner_time_keys(self, time_keys: list[str]) -> list[str]:
-        """Temporary utility function to use the kernel tuner search space files with the T4 output format."""
+        """Temporary utility function to use the kernel tuner search space files with the T4 output format.
+
+        Args:
+            time_keys: list of T4-style time keys.
+
+        Returns:
+            List of Kernel Tuner-style time keys.
+        """
         return list(T4_time_keys_to_kernel_tuner_time_keys_mapping[key] for key in time_keys)
 
     def total_performance_absolute_optimum(self) -> float:
-        """Absolute optimum of the total performances."""
+        """Calculate the absolute optimum of the total performances.
+
+        Returns:
+            Absolute optimum of the total performances.
+        """
         return self.total_performance_minimum() if self.minimization else self.total_performance_maximum()
 
     def objective_performance_at_cutoff_point(self, cutoff_percentile: float) -> float:
-        """Calculate the objective performance value at which to stop for a given cutoff percentile."""
+        """Calculate the objective performance value at which to stop for a given cutoff percentile.
+
+        Args:
+            cutoff_percentile: the desired cutoff percentile to reach before stopping.
+
+        Returns:
+            The objective performance value at which to stop.
+        """
         absolute_optimum = self.total_performance_absolute_optimum()
         median = self.total_performance_median()
         objective_performance_target = absolute_optimum + ((median - absolute_optimum) * (1 - cutoff_percentile))
         return objective_performance_target
 
-    def number_of_function_evaluations_to_cutoff_point(self, cutoff_percentile: float) -> int:
-        """Calculate the number of function evaluations to reach the cutoff point."""
-        self.cutoff_point_objective_performance(cutoff_percentile)
-        self.objective_performances_total_sorted[::-1]
-
     def cutoff_point(self, cutoff_percentile: float) -> tuple[float, int]:
-        """Calculate the cutoff point, returns (objective value at cutoff point, fevals to cutoff point)."""
+        """Calculates the cutoff point.
+
+        Args:
+            cutoff_percentile: the desired cutoff percentile to reach before stopping.
+
+        Returns:
+            A tuple of the objective value at the cutoff point and the fevals to the cutoff point.
+        """
         objective_performance_at_cutoff_point = self.objective_performance_at_cutoff_point(cutoff_percentile)
         inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
         N = inverted_sorted_performance_arr.shape[0]
@@ -115,9 +143,13 @@ class SearchspaceStatistics:
         return objective_performance_at_cutoff_point, fevals_to_cutoff_point
 
     def cutoff_point_fevals_time(self, cutoff_percentile: float) -> tuple[float, int, float]:
-        """Calculate the cutoff point.
+        """Calculates the cutoff point.
 
-        Returns (objective value at cutoff point, fevals to cutoff point, mean time to cutoff point).
+        Args:
+            cutoff_percentile: the desired cutoff percentile to reach before stopping.
+
+        Returns:
+            A tuple of the objective value at cutoff point, fevals to cutoff point, and the mean time to cutoff point.
         """
         cutoff_point_value, cutoff_point_fevals = self.cutoff_point(cutoff_percentile)
         cutoff_point_time = cutoff_point_fevals * self.total_time_median()
@@ -131,7 +163,14 @@ class SearchspaceStatistics:
         return basepath / kernel_directory / filename
 
     def get_valid_filepath(self) -> Path:
-        """Returns the filepath if it exists."""
+        """Returns the filepath to the Searchspace statistics .json file if it exists.
+
+        Raises:
+            FileNotFoundError: if filepath does not exist.
+
+        Returns:
+            Filepath to the Searchspace statistics .json file.
+        """
         filepath = self._get_filepath()
         if not filepath.exists():
             import os
@@ -277,7 +316,17 @@ class SearchspaceStatistics:
         return True
 
     def get_time_per_feval(self, time_per_feval_operator: str) -> float:
-        """Get the average time per function evaluation, several methods available."""
+        """Gets the average time per function evaluation. Several methods available.
+
+        Args:
+            time_per_feval_operator: method to use.
+
+        Raises:
+            ValueError: if invalid ``time_per_feval_operator`` is passed.
+
+        Returns:
+            The average time per function evaluation.
+        """
         if time_per_feval_operator == "mean":
             time_per_feval = self.total_time_mean()
         elif time_per_feval_operator == "median":

@@ -17,11 +17,21 @@ kernel_tuner_error_value = 1e20
 
 
 def is_invalid_objective_performance(objective_performance: float) -> bool:
-    """Returns whether an objective value is invalid by checking against NaN and the error value."""
+    """Returns whether an objective value is invalid by checking against NaN and the error value.
+
+    Args:
+        objective_performance: the objective performance value to check.
+
+    Raises:
+        TypeError: if the ``objective_performance`` value has an unexpected type.
+
+    Returns:
+        True if the ``objective_performance`` value is invalid, False otherwise.
+    """
     if any(str(objective_performance) == error_type_string for error_type_string in error_types_strings):
         return True
     if not isinstance(objective_performance, (int, float)):
-        raise ValueError(
+        raise TypeError(
             f"""Objective value should be of type float,
                 but is of type {type(objective_performance)} with value {objective_performance}"""
         )
@@ -29,12 +39,26 @@ def is_invalid_objective_performance(objective_performance: float) -> bool:
 
 
 def is_invalid_objective_time(objective_time: float) -> bool:
-    """Returns whether an objective time is invalid."""
+    """Returns whether an objective time is invalid.
+
+    Args:
+        objective_time: the objective time value to check.
+
+    Returns:
+        True if the ``objective_time`` value is invalid, False otherwise.
+    """
     return np.isnan(objective_time) or objective_time < 0
 
 
 def is_valid_config_result(config: dict) -> bool:
-    """Returns whether a given configuration is valid."""
+    """Returns whether a given configuration is valid.
+
+    Args:
+        config: the configuration to check.
+
+    Returns:
+         True if the ``config`` is valid, False otherwise.
+    """
     return "invalidity" in config and config["invalidity"] == "correct"
 
 
@@ -42,21 +66,43 @@ def get_results_and_metadata(
     filename_results: str = "cached_data_used/last_run/_tune_configuration-results.json",
     filename_metadata: str = "cached_data_used/last_run/_tune_configuration-metadata.json",
 ) -> tuple[list, list]:
-    """Load the results and metadata files in accordance with the defined standards.
+    """Load the results and metadata files in accordance with the defined T4 standards.
 
-    Returns the metadata, result and filtered result lists.
+    Args:
+        filename_results: results filepath. Defaults to "cached_data_used/last_run/_tune_configuration-results.json".
+        filename_metadata: metadata filepath. Defaults to "cached_data_used/last_run/_tune_configuration-metadata.json".
+
+    Returns:
+        A tuple of the results and metadata lists respectively.
     """
     with open(filename_results, "r") as file_results:
-        results = json.load(file_results)["results"]
+        results: list = json.load(file_results)["results"]
     with open(filename_metadata, "r") as file_metadata:
-        metadata = json.load(file_metadata)["metadata"]
+        metadata: list = json.load(file_metadata)["metadata"]
     return metadata, results
 
 
 def tune(
     kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool
 ) -> tuple[list, list, int]:
-    """Execute a strategy, return the metadata, result, runtime; optionally collect profiling statistics."""
+    """Tune a program using an optimization algorithm and collect the results.
+
+    Optionally collects profiling statistics.
+
+    Args:
+        kernel: the program (kernel) to tune.
+        kernel_name: the name of the program to tune.
+        device_name: the device (GPU) to tune on.
+        strategy: the optimization algorithm to optimize with.
+        tune_options: a special options dictionary passed along to Kernel Tuner.
+        profiling: whether profiling statistics must be collected.
+
+    Raises:
+        ValueError: if tuning fails multiple times in a row.
+
+    Returns:
+        A tuple of the metadata, the results, and the total runtime in miliseconds.
+    """
 
     def tune_with_kerneltuner():
         """Interface with kernel tuner to tune the kernel and return the results."""
@@ -101,11 +147,21 @@ def tune(
 
 
 def collect_results(
-    kernel, strategy: dict, results_description: ResultsDescription, profiling: bool, error_value
+    kernel, strategy: dict, results_description: ResultsDescription, profiling: bool
 ) -> ResultsDescription:
-    """Executes optimization algorithms to capture optimization algorithm behaviour."""
+    """Executes optimization algorithms on tuning problems to capture their behaviour.
+
+    Args:
+        kernel: the program (kernel) to tune.
+        strategy: the optimization algorithm to optimize with.
+        results_description: the ``ResultsDescription`` object to write the results to.
+        profiling: whether profiling statistics must be collected.
+
+    Returns:
+        The ``ResultsDescription`` object with the results.
+    """
     min_num_evals: int = strategy["minimum_number_of_evaluations"]
-    # TODO put the tune options in the .json in strategy_defaults?
+    # TODO put the tune options in the .json in strategy_defaults? Make it Kernel Tuner independent
     tune_options = {"verbose": False, "quiet": True, "simulation_mode": True}
 
     def report_multiple_attempts(rep: int, len_res: int, strategy_repeats: int):
@@ -167,13 +223,18 @@ def collect_results(
         yappi.clear_stats()
 
     # combine the results to numpy arrays and write to a file
-    write_results(repeated_results, results_description, error_value=error_value)
+    write_results(repeated_results, results_description)
     assert results_description.has_results()
     return results_description
 
 
-def write_results(repeated_results: list, results_description: ResultsDescription, error_value):
-    """Combine the results and write them to a numpy file."""
+def write_results(repeated_results: list, results_description: ResultsDescription):
+    """Combine the results and write them to a NumPy file.
+
+    Args:
+        repeated_results: a list of tuning results, one per tuning session.
+        results_description: the ``ResultsDescription`` object to write the results to.
+    """
     # get the objective value and time keys
     objective_time_keys = results_description.objective_time_keys
     objective_performance_keys = results_description.objective_performance_keys
@@ -269,4 +330,4 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
         "objective_time_results_per_key": objective_time_results_per_key,
         "objective_performance_results_per_key": objective_performance_results_per_key,
     }
-    return results_description.set_results(numpy_arrays)
+    results_description.set_results(numpy_arrays)

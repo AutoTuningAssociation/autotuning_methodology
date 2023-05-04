@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline
-from autotuning_methodology.curves import Curve, StochasticOptimizationAlgorithm
+from autotuning_methodology.curves import Curve, CurveBasis, StochasticOptimizationAlgorithm
 from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
@@ -17,34 +17,6 @@ marker_variatons = ["v", "s", "*", "1", "2", "d", "P", "X"]
 
 # total set of objective time keys
 objective_time_keys_values = ["compilation", "benchmark", "framework", "search_algorithm", "validation"]
-
-
-def calculate_lower_upper_error(observations: list) -> tuple[float, float]:
-    """Calculate the lower and upper error by the mean of the values below and above the median respectively."""
-    observations.sort()
-    middle_index = len(observations) // 2
-    middle_index_upper = middle_index + 1 if len(observations) % 2 != 0 else middle_index
-    lower_values = observations[:middle_index]
-    upper_values = observations[middle_index_upper:]
-    lower_error = np.mean(lower_values)
-    upper_error = np.mean(upper_values)
-    return lower_error, upper_error
-
-
-def smoothing_filter(array: np.ndarray, window_length: int, a_min=None, a_max=None) -> np.ndarray:
-    """Create a rolling average where the kernel size is the smoothing factor."""
-    window_length = int(window_length)
-    # import pandas as pd
-    # d = pd.Series(array)
-    # return d.rolling(window_length).mean()
-    from scipy.signal import savgol_filter
-
-    if window_length % 2 == 0:
-        window_length += 1
-    smoothed = savgol_filter(array, window_length, 3)
-    if a_min is not None or a_max is not None:
-        smoothed = np.clip(smoothed, a_min, a_max)
-    return smoothed
 
 
 class Visualize:
@@ -306,6 +278,13 @@ class Visualize:
         """Plots a comparison of baselines on a time range.
 
         Optionally also compares against strategies listed in strategies_curves.
+
+        Args:
+            time_range: range of time to plot on.
+            searchspace_stats: Searchspace statistics object.
+            objective_time_keys: objective time keys.
+            title: the title for this plot, if not given, a title is generated. Defaults to None.
+            strategies_curves: the strategy curves to draw in the plot. Defaults to list().
         """
         dist = searchspace_stats.objective_performances_total_sorted
         plt.figure(figsize=(8, 5), dpi=300)
@@ -363,7 +342,19 @@ class Visualize:
         title: str = None,
         strategies_curves: list[Curve] = list(),
     ):
-        """Plots a comparison of split times for strategies and baselines over the given range."""
+        """Plots a comparison of split times for strategies and baselines over the given range.
+
+        Args:
+            x_type: the type of ``fevals_or_time_range``.
+            fevals_or_time_range: the time or function evaluations range to plot on.
+            searchspace_stats: the Searchspace statistics object.
+            objective_time_keys: the objective time keys.
+            title: the title for this plot, if not given, a title is generated. Defaults to None.
+            strategies_curves: the strategy curves to draw in the plot. Defaults to list().
+
+        Raises:
+            ValueError: on unexpected strategies curve instance.
+        """
         # list the baselines to test
         baselines: list[Baseline] = list()
         # baselines.append(
@@ -371,7 +362,7 @@ class Visualize:
         #         searchspace_stats, include_nan=True, time_per_feval_operator="median_per_feval"
         #     )
         # )
-        lines = strategies_curves + baselines
+        lines: list[CurveBasis] = strategies_curves + baselines
 
         # setup the subplots
         num_rows = len(lines)
@@ -428,7 +419,18 @@ class Visualize:
         print_table_format=True,
         print_skip=["verification_time"],
     ):
-        """Plots a comparison of the average split times for strategies over the given range."""
+        """Plots a comparison of the average split times for strategies over the given range.
+
+        Args:
+            x_type: the type of ``fevals_or_time_range``.
+            fevals_or_time_range: the time or function evaluations range to plot on.
+            searchspace_stats: the Searchspace statistics object.
+            objective_time_keys: the objective time keys.
+            title: the title for this plot, if not given, a title is generated. Defaults to None.
+            strategies_curves: the strategy curves to draw in the plot. Defaults to list().
+            print_table_format: print a LaTeX-formatted table. Defaults to True.
+            print_skip: list of ``time_keys`` to be skipped in the printed table. Defaults to ["verification_time"].
+        """
         fig, ax = plt.subplots(dpi=200)
         width = 0.5
         strategy_labels = list()
@@ -512,7 +514,22 @@ class Visualize:
         plot_errors=True,
         plot_cutoffs=False,
     ):
-        """Plots all optimization strategies for individual search spaces."""
+        """Plots all optimization strategies for individual search spaces.
+
+        Args:
+            x_type: the type of ``x_axis_range``.
+            y_type: the type of plot on the y-axis.
+            ax: the axis to plot on.
+            searchspace_stats: the Searchspace statistics object.
+            strategies_curves: the strategy curves to draw in the plot. Defaults to list().
+            x_axis_range: the time or function evaluations range to plot on.
+            plot_settings: dictionary of additional plot settings.
+            baseline_curve: the ``Baseline`` to be used as a baseline in the plot. Defaults to None.
+            baselines_extra: additional ``Baseline`` curves to compare against. Defaults to list().
+            plot_errors: whether errors (confidence / prediction intervals) are visualized. Defaults to True.
+            plot_cutoffs: whether the cutoff points for early stopping algorithms are visualized. Defaults to False.
+
+        """
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
         absolute_optimum = searchspace_stats.total_performance_absolute_optimum()
         median = searchspace_stats.total_performance_median()
@@ -686,7 +703,15 @@ class Visualize:
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
         confidence_level: float,
     ) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray], list[int]]:
-        """Get the aggregated relative performances of each strategy."""
+        """Combines the performances across searchspaces.
+
+        Args:
+            aggregation_data: the aggregated data from the various searchspaces.
+            confidence_level: the confidence interval used for the confidence / prediction interval.
+
+        Returns:
+            The aggregated relative performances of each strategy.
+        """
         # for each strategy, collect the relative performance in each search space
         strategies_performance = [list() for _ in aggregation_data[0][1]]
         strategies_performance_lower_err = [list() for _ in aggregation_data[0][1]]
@@ -761,7 +786,13 @@ class Visualize:
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
         plot_settings: dict,
     ):
-        """Plots all optimization strategies combined accross search spaces."""
+        """Plots all optimization strategies combined accross search spaces.
+
+        Args:
+            ax: the axis to plot on.
+            aggregation_data: the aggregated data from the various searchspaces.
+            plot_settings: dictionary of additional plot settings.
+        """
         # plot the random baseline and absolute optimum
         ax.axhline(0, label="Random search", c="black", ls=":")
         ax.axhline(1, label="Absolute optimum", c="black", ls="-.")
@@ -850,7 +881,18 @@ class Visualize:
         ax.legend()
 
     def get_x_axis_label(self, x_type: str, objective_time_keys: list):
-        """Formatter to get the appropriate x-axis label depending on the x-axis type."""
+        """Formatter to get the appropriate x-axis label depending on the x-axis type.
+
+        Args:
+            x_type: the type of a range, either time or function evaluations.
+            objective_time_keys: the objective time keys used.
+
+        Raises:
+            ValueError: when an invalid ``x_type`` is given.
+
+        Returns:
+            The formatted x-axis label.
+        """
         if x_type == "fevals":
             x_label = self.x_metric_displayname[x_type]
         elif x_type == "time" and len(objective_time_keys) == len(objective_time_keys_values):
@@ -864,6 +906,51 @@ class Visualize:
         else:
             raise ValueError(f"Invalid {x_type=}")
         return x_label
+
+
+def calculate_lower_upper_error(observations: list) -> tuple[float, float]:
+    """Calculate the lower and upper error by the mean of the values below and above the median respectively.
+
+    Args:
+        observations: list of observations.
+
+    Returns:
+        A tuple of the lower and upper error, respectively.
+    """
+    observations.sort()
+    middle_index = len(observations) // 2
+    middle_index_upper = middle_index + 1 if len(observations) % 2 != 0 else middle_index
+    lower_values = observations[:middle_index]
+    upper_values = observations[middle_index_upper:]
+    lower_error = np.mean(lower_values)
+    upper_error = np.mean(upper_values)
+    return lower_error, upper_error
+
+
+def smoothing_filter(array: np.ndarray, window_length: int, a_min=None, a_max=None) -> np.ndarray:
+    """Create a rolling average where the kernel size is the smoothing factor.
+
+    Args:
+        array: input array.
+        window_length: number of elements to take into account.
+        a_min: minimum value on the results. Defaults to None.
+        a_max: maximum value on the results. Defaults to None.
+
+    Returns:
+        Smoothed version of ``array``.
+    """
+    window_length = int(window_length)
+    # import pandas as pd
+    # d = pd.Series(array)
+    # return d.rolling(window_length).mean()
+    from scipy.signal import savgol_filter
+
+    if window_length % 2 == 0:
+        window_length += 1
+    smoothed = savgol_filter(array, window_length, 3)
+    if a_min is not None or a_max is not None:
+        smoothed = np.clip(smoothed, a_min, a_max)
+    return smoothed
 
 
 def is_ran_as_notebook() -> bool:
@@ -893,6 +980,6 @@ if __name__ == "__main__":
         experiment_filepath = "methodology_paper_example"
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
-        experiment_filepath = get_args_from_cli(None)
+        experiment_filepath = get_args_from_cli()
 
     Visualize(experiment_filepath, save_figs=not is_notebook)
