@@ -739,9 +739,7 @@ class StochasticOptimizationAlgorithm(Curve):
             indices = get_indices_in_distribution(values_1D, dist)
             indices_min: int = np.min(indices)
             indices_max: int = np.max(indices)
-            indices_curve = self.get_isotonic_curve(
-                times_1D, indices, time_range, ymin=indices_min, ymax=indices_max, package="sklearn", npoints=num_fevals
-            )
+            indices_curve = self.get_isotonic_curve(times_1D, indices, time_range, ymin=indices_min, ymax=indices_max)
             indices_curve = np.clip(np.array(np.round(indices_curve), dtype=int), a_min=0, a_max=dist_size - 1)
             curve = dist[indices_curve]
 
