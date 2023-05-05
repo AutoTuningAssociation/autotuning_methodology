@@ -124,9 +124,9 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
     minimization: bool = experiment.get("minimization", True)
     cutoff_percentile: float = experiment.get("cutoff_percentile", 1)
     cutoff_type: str = experiment.get("cutoff_type", "fevals")
-    assert cutoff_type == "fevals" or cutoff_type == "time"
+    assert cutoff_type == "fevals" or cutoff_type == "time", f"cutoff_type must be 'fevals' or 'time', is {cutoff_type}"
     curve_segment_factor: float = experiment.get("curve_segment_factor", 0.05)
-    assert isinstance(curve_segment_factor, float)
+    assert isinstance(curve_segment_factor, float), f"curve_segment_factor is not float, {type(curve_segment_factor)}"
     strategies = get_strategies(experiment)
     # add the kernel directory to path to import the module
     kernel_path = Path(experiment.get("kernel_path", ""))

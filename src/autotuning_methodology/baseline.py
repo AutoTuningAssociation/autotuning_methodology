@@ -14,15 +14,14 @@ class Baseline(CurveBasis):
     """Class to use as a baseline against Curves in plots."""
 
     label: str
+    searchspace_stats: SearchspaceStatistics
 
     def __init__(self) -> None:
         """Initialization method, implemented in more detail in inheriting classes."""
         super().__init__()
 
     @abstractmethod
-    def get_standardised_curves(
-        self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str
-    ) -> tuple[np.ndarray]:
+    def get_standardised_curves(self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str) -> tuple:
         """Substract the baseline curve from the provided strategy curves, yielding standardised strategy curves."""
         absolute_optimum = self.searchspace_stats.total_performance_absolute_optimum()
         random_curve = self.get_curve(range, x_type)
@@ -31,7 +30,7 @@ class Baseline(CurveBasis):
             if strategy_curve is None:
                 standardised_curves.append(None)
                 continue
-            assert strategy_curve.shape == random_curve.shape
+            assert strategy_curve.shape == random_curve.shape, "strategy_curve shape must match random_curve shape"
             standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
             standardised_curves.append(standardised_curve)
         return tuple(standardised_curves)

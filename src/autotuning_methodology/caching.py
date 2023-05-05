@@ -158,7 +158,7 @@ class ResultsDescription:
         # load the data and verify the resultsdescription object is the same
         data = np.load(full_filepath, allow_pickle=True)
         data_results_description = data["resultsdescription"].item()
-        assert self.is_same_as(data_results_description)
+        assert self.is_same_as(data_results_description), "The results description of the results is not the same"
 
         # get the numpy arrays
         numpy_arrays = list()

@@ -87,7 +87,7 @@ class Visualize:
         cutoff_percentile: float = self.experiment.get("cutoff_percentile")
         cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
         cutoff_type: str = self.experiment.get("cutoff_type", "fevals")
-        assert cutoff_type == "fevals" or cutoff_type == "time"
+        assert cutoff_type == "fevals" or cutoff_type == "time", f"cutoff_type != 'fevals' or 'time', is {cutoff_type}"
         time_resolution: float = self.experiment.get("resolution", 1e4)
         if int(time_resolution) != time_resolution:
             raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
@@ -737,7 +737,7 @@ class Visualize:
                 x_axis_range = (
                     np.concatenate([x_axis_range_real, x_axis_range_fictional]) if combine else x_axis_range_real
                 )
-                assert np.array_equal(time_range, x_axis_range, equal_nan=True)
+                assert np.array_equal(time_range, x_axis_range, equal_nan=True), "time_range != x_axis_range"
                 curve = np.concatenate([curve_real, curve_fictional]) if combine else curve_real
                 curve_lower_err = (
                     np.concatenate([curve_lower_err_real, curve_lower_err_fictional])

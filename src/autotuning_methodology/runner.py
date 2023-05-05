@@ -224,7 +224,7 @@ def collect_results(
 
     # combine the results to numpy arrays and write to a file
     write_results(repeated_results, results_description)
-    assert results_description.has_results()
+    assert results_description.has_results(), "No results in ResultsDescription after writing results."
     return results_description
 
 

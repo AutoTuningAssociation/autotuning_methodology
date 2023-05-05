@@ -52,11 +52,11 @@ def get_indices_in_distribution(
 
     # check the sorter
     if sorter is not None:
-        assert sorter.shape == dist.shape
+        assert sorter.shape == dist.shape, "The shape of the sorter must be the same as the distribution"
 
     # find the index of each draw in the distribution
     indices_found = np.searchsorted(dist, draws, side="left", sorter=sorter).astype(float)
-    assert indices_found.shape == draws.shape
+    assert indices_found.shape == draws.shape, "The shape of the indices must match the shape of the draws"
 
     # if indices found are outside the array, make them NaN
     indices_found[indices_found < 0] = np.NaN
@@ -302,7 +302,7 @@ class Curve(CurveBasis):
                  less then or equal to length of target_array ({len(target_array)})"""
             )
         # check whether array is consecutively in target_array
-        assert (array[~np.isnan(array)] == target_array[indices]).all()
+        assert (array[~np.isnan(array)] == target_array[indices]).all(), "Array must be consecutively in target array"
         padding_start = indices[0]
         padding_end = len(target_array) - 1 - indices[-1]
         padding = (padding_start, padding_end)
@@ -585,7 +585,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # if a distribution is included
         curve: np.ndarray
         if dist is not None:
-            assert dist.ndim == 1
+            assert dist.ndim == 1, "The distribution must one-dimensional"
             # for each value, get the index in the distribution
             indices = get_indices_in_distribution(masked_values, dist)
             # get the mean index per feval
@@ -628,7 +628,7 @@ class StochasticOptimizationAlgorithm(Curve):
             curve = np.pad(curve, pad_width=pad_width, constant_values=np.nan)
             curve_lower_err = np.pad(curve_lower_err, pad_width=pad_width, constant_values=np.nan)
             curve_upper_err = np.pad(curve_upper_err, pad_width=pad_width, constant_values=np.nan)
-        assert curve.shape == fevals_range.shape
+        assert curve.shape == fevals_range.shape, "The curve shape must match the input fevals_range shape"
 
         # if necessary, extend the curves up to target_index
         target_index: int = fevals_range.shape[0] - 1
@@ -644,7 +644,7 @@ class StochasticOptimizationAlgorithm(Curve):
             curve_upper_err[real_stopping_point_index : target_index + 1] = curve_upper_err[real_stopping_point_index]
 
         # check whether there are no NaNs left
-        assert curve.shape == fevals_range.shape
+        assert curve.shape == fevals_range.shape, "The curve shape must match the input fevals_range shape"
         assert np.all(~np.isnan(curve)), f"NaNs at {np.nonzero(np.isnan(curve))[0]}"
         assert np.all(~np.isnan(curve_lower_err)), f"NaNs at {np.nonzero(np.isnan(curve_lower_err))[0]}"
         assert np.all(~np.isnan(curve_upper_err)), f"NaNs at {np.nonzero(np.isnan(curve_upper_err))[0]}"
@@ -721,7 +721,7 @@ class StochasticOptimizationAlgorithm(Curve):
         # check the distribution
         if dist is None:
             raise NotImplementedError()
-        assert dist.ndim == 1
+        assert dist.ndim == 1, "Distribution must be one-dimensional"
         dist_size = dist.shape[0]
 
         # use a bagging prediction / interval method or the seperated prediction / interval method
@@ -786,7 +786,7 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # from the real_stopping_point_time until the end of the time range,
         #   clip the values because with fewer than 50% of the repeats, as those the results can not be trusted
-        assert curve.shape == time_range.shape
+        assert curve.shape == time_range.shape, "Curve and time shapes must match"
         real_stopping_point_index = time_range.shape[0]
         if real_stopping_point_time < time_range[-1]:
             if real_stopping_point_time <= time_range[0]:
@@ -857,15 +857,13 @@ class StochasticOptimizationAlgorithm(Curve):
             nan_mask = ~np.isnan(times_split_key)
             times_total_key = times_total[nan_mask]
             times_split_key = times_split_key[nan_mask]
-            assert times_total_key.shape == times_split_key.shape
+            assert times_total_key.shape == times_split_key.shape, "The shapes of split times must match the original."
             # interpolate the times to the time range
             split_time_per_timestamp[key_index] = np.interp(time_range, times_total_key, times_split_key)
 
         return split_time_per_timestamp
 
-    def get_confidence_interval(
-        self, values: np.ndarray, confidence_level: float, weights: np.ndarray = None
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def get_confidence_interval(self, values: np.ndarray, confidence_level: float) -> tuple[np.ndarray, np.ndarray]:
         """Calculates the non-parametric confidence interval at each function evaluation across repeats.
 
         Observations are assumed to be IID.
@@ -873,7 +871,6 @@ class StochasticOptimizationAlgorithm(Curve):
         Args:
             values: the two-dimensional values to calculate the confidence interval on.
             confidence_level: the confidence level for the confidence interval.
-            weights: inert argument. Defaults to None.
 
         Raises:
             NotImplementedError: when weights is passed.
@@ -881,11 +878,7 @@ class StochasticOptimizationAlgorithm(Curve):
         Returns:
             A tuple of two NumPy arrays with lower and upper error, respectively.
         """
-        assert values.ndim == 2  # should be two-dimensional (iterations, repeats)
-        if weights is not None:
-            assert weights.shape == values.shape
-            assert np.all(~np.isnan(weights))
-            raise NotImplementedError
+        assert values.ndim == 2, "The values need to be two-dimensional (iterations, repeats)"
 
         # confidence interval using normal distribution assumption
         from statistics import NormalDist
@@ -961,8 +954,8 @@ class StochasticOptimizationAlgorithm(Curve):
         )
 
         # check before returning
-        assert not np.isnan(confidence_interval_lower).any()
-        assert not np.isnan(confidence_interval_upper).any()
+        assert not np.isnan(confidence_interval_lower).any(), "The Confidence Interval must not have NaNs"
+        assert not np.isnan(confidence_interval_upper).any(), "The Confidence Interval must not have NaNs"
         return confidence_interval_lower, confidence_interval_upper
 
     def _get_prediction_interval_separated(
