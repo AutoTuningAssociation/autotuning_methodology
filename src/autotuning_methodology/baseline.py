@@ -1,5 +1,7 @@
 """Code for baselines."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from math import ceil
 from typing import Callable, Optional
