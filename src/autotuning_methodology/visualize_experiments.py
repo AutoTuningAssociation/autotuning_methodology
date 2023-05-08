@@ -3,6 +3,7 @@
 from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
 import warnings
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -85,6 +86,10 @@ class Visualize:
         )
         print("\n")
         print("Visualizing")
+
+        # preparing filesystem
+        if save_figs or save_extra_figs:
+            Path(self.plot_filename_prefix).mkdir(exist_ok=True)
 
         # settings
         self.minimization: bool = self.experiment.get("minimization", True)
