@@ -723,6 +723,7 @@ class StochasticOptimizationAlgorithm(Curve):
             raise NotImplementedError()
         assert dist.ndim == 1, "Distribution must be one-dimensional"
         dist_size = dist.shape[0]
+        assert confidence_level is not None, "confidence_level must not be None"
 
         # use a bagging prediction / interval method or the seperated prediction / interval method
         if use_bagging:

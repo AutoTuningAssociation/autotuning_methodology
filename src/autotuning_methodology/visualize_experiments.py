@@ -63,12 +63,16 @@ class Visualize:
 
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
-    def __init__(self, experiment_filename: str, save_figs: True) -> None:
+    def __init__(
+        self, experiment_filename: str, save_figs=True, save_extra_figs=False, continue_after_comparison=False
+    ) -> None:
         """Initialization method for the Visualize class.
 
         Args:
             experiment_filename: the experiment-filename.json to run.
             save_figs: whether to save the figures to file, if not, displays in a window. Defaults to True.
+            save_extra_figs: whether to save split times and baseline comparisons figures to file. Defaults to False.
+            continue_after_comparison: whether to continue plotting after processing comparisons. Defaults to False.
 
         Raises:
             ValueError: on various invalid inputs.
@@ -84,7 +88,7 @@ class Visualize:
 
         # settings
         self.minimization: bool = self.experiment.get("minimization", True)
-        cutoff_percentile: float = self.experiment.get("cutoff_percentile")
+        cutoff_percentile: float = self.experiment["cutoff_percentile"]
         cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
         cutoff_type: str = self.experiment.get("cutoff_type", "fevals")
         assert cutoff_type == "fevals" or cutoff_type == "time", f"cutoff_type != 'fevals' or 'time', is {cutoff_type}"
@@ -92,15 +96,16 @@ class Visualize:
         if int(time_resolution) != time_resolution:
             raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
         time_resolution = int(time_resolution)
-        objective_time_keys = self.experiment.get("objective_time_keys")
-        objective_performance_keys = self.experiment.get("objective_performance_keys")
+        objective_time_keys: list[str] = self.experiment["objective_time_keys"]
+        objective_performance_keys: list[str] = self.experiment["objective_performance_keys"]
 
         # plot settings
-        plot_settings: dict = self.experiment.get("plot")
-        plot_x_value_types: list = plot_settings.get("plot_x_value_types")
-        plot_y_value_types: list = plot_settings.get("plot_y_value_types")
+        plot_settings: dict = self.experiment["plot"]
+        plot_x_value_types: list[str] = plot_settings["plot_x_value_types"]
+        plot_y_value_types: list[str] = plot_settings["plot_y_value_types"]
         compare_baselines: bool = plot_settings.get("compare_baselines", False)
         compare_split_times: bool = plot_settings.get("compare_split_times", False)
+        confidence_level: float = plot_settings.get("confidence_level", 0.95)
 
         # visualize
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]] = list()
@@ -148,26 +153,30 @@ class Visualize:
                         time_range,
                         searchspace_stats,
                         objective_time_keys,
+                        confidence_level=confidence_level,
                         title=title,
-                        strategies_curves=[strategies_curves[0]],
+                        strategies_curves=strategies_curves,
+                        save_fig=save_extra_figs,
                     )
                 if compare_split_times is True:
-                    # self.plot_split_times_comparison(
-                    #     "fevals",
-                    #     fevals_range,
-                    #     searchspace_stats,
-                    #     objective_time_keys,
-                    #     title=title,
-                    #     strategies_curves=[strategies_curves[0], strategies_curves[2]],
-                    # )
-                    # self.plot_split_times_comparison(
-                    #     "time",
-                    #     time_range,
-                    #     searchspace_stats,
-                    #     objective_time_keys,
-                    #     title=title,
-                    #     strategies_curves=strategies_curves,
-                    # )
+                    self.plot_split_times_comparison(
+                        "fevals",
+                        fevals_range,
+                        searchspace_stats,
+                        objective_time_keys,
+                        title=title,
+                        strategies_curves=strategies_curves,
+                        save_fig=save_extra_figs,
+                    )
+                    self.plot_split_times_comparison(
+                        "time",
+                        time_range,
+                        searchspace_stats,
+                        objective_time_keys,
+                        title=title,
+                        strategies_curves=strategies_curves,
+                        save_fig=save_extra_figs,
+                    )
                     self.plot_split_times_bar_comparison(
                         "time",
                         time_range,
@@ -175,8 +184,9 @@ class Visualize:
                         objective_time_keys,
                         title=title,
                         strategies_curves=strategies_curves,
+                        save_fig=save_extra_figs,
                     )
-                if compare_baselines is True or compare_split_times is True:
+                if not continue_after_comparison and (compare_baselines is True or compare_split_times is True):
                     continue
 
                 # get the random baseline
@@ -245,7 +255,11 @@ class Visualize:
                         plt.show()
 
         # plot the aggregated searchspaces
-        if "aggregated" in plot_x_value_types and not (compare_baselines or compare_split_times):
+        if (
+            "aggregated" in plot_x_value_types
+            and continue_after_comparison
+            or not (compare_baselines or compare_split_times)
+        ):
             fig, axs = plt.subplots(
                 ncols=1, figsize=(9, 6), dpi=300
             )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
@@ -272,8 +286,10 @@ class Visualize:
         time_range: np.ndarray,
         searchspace_stats: SearchspaceStatistics,
         objective_time_keys: list,
+        confidence_level: float,
         title: str = None,
         strategies_curves: list[Curve] = list(),
+        save_fig=False,
     ):
         """Plots a comparison of baselines on a time range.
 
@@ -283,8 +299,10 @@ class Visualize:
             time_range: range of time to plot on.
             searchspace_stats: Searchspace statistics object.
             objective_time_keys: objective time keys.
+            confidence_level: the confidence interval used for the confidence / prediction interval.
             title: the title for this plot, if not given, a title is generated. Defaults to None.
             strategies_curves: the strategy curves to draw in the plot. Defaults to list().
+            save_fig: whether to save the resulting figure to file. Defaults to False.
         """
         dist = searchspace_stats.objective_performances_total_sorted
         plt.figure(figsize=(8, 5), dpi=300)
@@ -317,7 +335,7 @@ class Visualize:
                 curve_fictional,
                 curve_lower_err_fictional,
                 curve_upper_err_fictional,
-            ) = strategy_curve.get_curve_over_time(time_range, dist=dist)
+            ) = strategy_curve.get_curve_over_time(time_range, dist=dist, confidence_level=confidence_level)
             # when adding error shades to visualization, don't forget to pass confidence interval to get_curve_over_time
             plt.plot(x_axis_range_real, curve_real, label=strategy_curve.display_name, linestyle="dashed")
             if x_axis_range_fictional.ndim > 0:
@@ -331,7 +349,14 @@ class Visualize:
         plt.xlim(time_range[0], time_range[-1])
         plt.legend()
         plt.tight_layout()
-        plt.show()
+
+        # write to file or show
+        if save_fig:
+            filename = f"{self.plot_filename_prefix}{title}_baselines"
+            filename = filename.replace(" ", "_")
+            plt.savefig(filename, dpi=300)
+        else:
+            plt.show()
 
     def plot_split_times_comparison(
         self,
@@ -341,6 +366,7 @@ class Visualize:
         objective_time_keys: list,
         title: str = None,
         strategies_curves: list[Curve] = list(),
+        save_fig=False,
     ):
         """Plots a comparison of split times for strategies and baselines over the given range.
 
@@ -351,6 +377,7 @@ class Visualize:
             objective_time_keys: the objective time keys.
             title: the title for this plot, if not given, a title is generated. Defaults to None.
             strategies_curves: the strategy curves to draw in the plot. Defaults to list().
+            save_fig: whether to save the resulting figure to file. Defaults to False.
 
         Raises:
             ValueError: on unexpected strategies curve instance.
@@ -374,20 +401,19 @@ class Visualize:
         if title is not None:
             fig.canvas.manager.set_window_title(title)
             fig.suptitle(title)
-            print(title)
         labels = list(key for key in objective_time_keys)
 
         # plot the baselines and strategies
         for ax_index, line in enumerate(lines):
             ax = axs[ax_index]
             if isinstance(line, Curve):
-                title = line.display_name
+                curvetitle = line.display_name
             elif isinstance(line, Baseline):
-                title = line.label
+                curvetitle = line.label
             else:
                 raise ValueError(f"Expected Curve or Baseline instance, but line is {type(line)}")
             split_times = line.get_split_times(fevals_or_time_range, x_type, searchspace_stats)
-            ax.set_title(title)
+            ax.set_title(curvetitle)
             ax.stackplot(fevals_or_time_range, split_times, labels=labels)
             ax.set_ylabel(self.get_x_axis_label("time", objective_time_keys))
             ax.set_xlim(fevals_or_time_range[0], fevals_or_time_range[-1])
@@ -397,16 +423,23 @@ class Visualize:
             if isinstance(line, Baseline):
                 average_time_per_feval_used = searchspace_stats.get_time_per_feval(line.time_per_feval_operator)
                 ax.axhline(y=average_time_per_feval_used, label="Average used")
-                print(f"{title} mean: {round(mean, 3)}, average used: {round(average_time_per_feval_used, 3)}")
+                print(f"{curvetitle} mean: {round(mean, 3)}, average used: {round(average_time_per_feval_used, 3)}")
             else:
-                print(f"{title} mean: {round(mean, 3)}")
+                print(f"{curvetitle} mean: {round(mean, 3)}")
 
         # finalize the plot
         handles, labels = ax.get_legend_handles_labels()
         fig.legend(handles, labels)
         fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
         fig.tight_layout()
-        plt.show()
+
+        # write to file or show
+        if save_fig:
+            filename = f"{self.plot_filename_prefix}{title}_split_times_{x_type}"
+            filename = filename.replace(" ", "_")
+            plt.savefig(filename, dpi=300)
+        else:
+            plt.show()
 
     def plot_split_times_bar_comparison(
         self,
@@ -417,9 +450,10 @@ class Visualize:
         title: str = None,
         strategies_curves: list[Curve] = list(),
         print_table_format=True,
-        print_skip=["verification_time"],
+        print_skip=["validation"],
+        save_fig=False,
     ):
-        """Plots a comparison of the average split times for strategies over the given range.
+        """Plots a bar chart comparison of the average split times for strategies over the given range.
 
         Args:
             x_type: the type of ``fevals_or_time_range``.
@@ -430,10 +464,16 @@ class Visualize:
             strategies_curves: the strategy curves to draw in the plot. Defaults to list().
             print_table_format: print a LaTeX-formatted table. Defaults to True.
             print_skip: list of ``time_keys`` to be skipped in the printed table. Defaults to ["verification_time"].
+            save_fig: whether to save the resulting figure to file. Defaults to False.
         """
         fig, ax = plt.subplots(dpi=200)
         width = 0.5
         strategy_labels = list()
+
+        for print_skip_key in print_skip:
+            assert (
+                print_skip_key in objective_time_keys
+            ), f"Each key in print_skip must be in objective_time_keys, {print_skip_key} is not ({objective_time_keys})"
 
         # get a dictionary of {time_key: [array_average_time_per_strategy]}
         data_dict = dict.fromkeys(objective_time_keys)
@@ -483,7 +523,6 @@ class Visualize:
                     f"    {strategy_labels[strategy_index]} & {' & '.join(data_table[strategy_index + 1])} \\\\\hline"
                 )
             print("\end{tabularx}")
-            exit(0)
 
         # plot the bars
         bottom = np.zeros(len(strategies_curves))
@@ -498,7 +537,14 @@ class Visualize:
         # ax.set_title(title)
         # fig.supxlabel("Median split times per optimization algorithm")
         fig.tight_layout()
-        plt.show()
+
+        # write to file or show
+        if save_fig:
+            filename = f"{self.plot_filename_prefix}{title}_split_times_bar"
+            filename = filename.replace(" ", "_")
+            plt.savefig(filename, dpi=300)
+        else:
+            plt.show()
 
     def plot_strategies(
         self,
@@ -908,52 +954,7 @@ class Visualize:
         return x_label
 
 
-def calculate_lower_upper_error(observations: list) -> tuple[float, float]:
-    """Calculate the lower and upper error by the mean of the values below and above the median respectively.
-
-    Args:
-        observations: list of observations.
-
-    Returns:
-        A tuple of the lower and upper error, respectively.
-    """
-    observations.sort()
-    middle_index = len(observations) // 2
-    middle_index_upper = middle_index + 1 if len(observations) % 2 != 0 else middle_index
-    lower_values = observations[:middle_index]
-    upper_values = observations[middle_index_upper:]
-    lower_error = np.mean(lower_values)
-    upper_error = np.mean(upper_values)
-    return lower_error, upper_error
-
-
-def smoothing_filter(array: np.ndarray, window_length: int, a_min=None, a_max=None) -> np.ndarray:
-    """Create a rolling average where the kernel size is the smoothing factor.
-
-    Args:
-        array: input array.
-        window_length: number of elements to take into account.
-        a_min: minimum value on the results. Defaults to None.
-        a_max: maximum value on the results. Defaults to None.
-
-    Returns:
-        Smoothed version of ``array``.
-    """
-    window_length = int(window_length)
-    # import pandas as pd
-    # d = pd.Series(array)
-    # return d.rolling(window_length).mean()
-    from scipy.signal import savgol_filter
-
-    if window_length % 2 == 0:
-        window_length += 1
-    smoothed = savgol_filter(array, window_length, 3)
-    if a_min is not None or a_max is not None:
-        smoothed = np.clip(smoothed, a_min, a_max)
-    return smoothed
-
-
-def is_ran_as_notebook() -> bool:
+def is_ran_as_notebook() -> bool:  # pragma: no cover
     """Function to determine if this file is ran from an interactive notebook."""
     try:
         from IPython import get_ipython

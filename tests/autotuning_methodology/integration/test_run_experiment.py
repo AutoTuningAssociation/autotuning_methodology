@@ -38,8 +38,8 @@ def setup_module():
     assert normal_cachefiles_path.exists()
     normal_cachefile_destination.write_text(mockfiles_path_source.read_text())
     assert normal_cachefile_destination.exists()
-    cached_visualization_path.mkdir(parents=True, exist_ok=True)
-    assert cached_visualization_path.exists()
+    # cached_visualization_path.mkdir(parents=True, exist_ok=True)
+    # assert cached_visualization_path.exists()
 
 
 def teardown_module():

@@ -33,8 +33,8 @@
       "baseline"
     ],
     "confidence_level": 0.95,
-    "compare_baselines": false,
-    "compare_split_times": false
+    "compare_baselines": true,
+    "compare_split_times": true
   },
   "strategy_defaults": {
     "repeats": 100,
