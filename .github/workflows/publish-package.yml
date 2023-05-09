@@ -21,13 +21,13 @@ jobs:
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
             - uses: actions/checkout@v3
-
             - name: Set up Python 3.9
-              uses: actions/setup-python@v3
+              uses: actions/setup-python@v4
               with:
                   python-version: 3.9
                   cache: pip
 
+            # Publishes to PyPi
             - name: To PyPI using Flit
               uses: AsifArmanRahman/to-pypi-using-flit@v1
               with:
