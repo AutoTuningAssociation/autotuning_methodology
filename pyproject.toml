@@ -27,6 +27,7 @@ dependencies = [
     "yappi >= 1.4.0",
     "progressbar2 >= 4.2.0",
     "jsonschema >= 4.17.3",
+    "nonconformist >= 2.1.0",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +47,7 @@ test = [
     "pytest-cov >= 4.0.0",
     "nox >= 2023.4.22",
     "kernel_tuner @ git+https://github.com/KernelTuner/kernel_tuner.git@T4_compatibility",
+    "crepes >= 0.2.0",
 ]
 
 [project.urls]
@@ -56,7 +58,7 @@ test = [
 [tool.pytest.ini_options]
 minversion = "6.0"
 pythonpath = ["src"]    # necessary to get coverage reports without installing with `-e`
-addopts = "--cov --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 25"
+addopts = "--cov --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 80"
 testpaths = [
     "tests/unit",
     "tests/integration",

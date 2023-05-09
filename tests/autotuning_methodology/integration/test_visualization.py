@@ -74,6 +74,12 @@ def test_visualize_experiment():
         cached_visualization_file.unlink()
     assert not cached_visualization_file.exists()
     experiment_filepath = str(mockfiles_path / "test.json")
-    Visualize(experiment_filepath, save_figs=True, save_extra_figs=True, continue_after_comparison=True)
+    Visualize(
+        experiment_filepath,
+        save_figs=True,
+        save_extra_figs=True,
+        continue_after_comparison=True,
+        compare_extra_baselines=True,
+    )
     for plot_filepath in plot_filepaths:
         assert plot_filepath.exists(), f"{plot_filepath} does not exist"

@@ -3,9 +3,11 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
 from jsonschema import validate
 
+from autotuning_methodology.curves import StochasticOptimizationAlgorithm
 from autotuning_methodology.experiments import (
     ResultsDescription,
     execute_experiment,
@@ -110,6 +112,40 @@ def test_cached_experiment():
     experiment_filepath = str(mockfiles_path / "test.json")
     (experiment, strategies, results_descriptions) = execute_experiment(experiment_filepath, profiling=False)
     validate_experiment_results(experiment, strategies, results_descriptions)
+
+
+@pytest.mark.usefixtures("test_run_experiment")
+def test_curve_instance():
+    """Test a Curve instance."""
+    # setup the test
+    experiment_filepath = str(mockfiles_path / "test.json")
+    (experiment, strategies, results_descriptions) = execute_experiment(experiment_filepath, profiling=False)
+    kernel_name = experiment["kernels"][0]
+    gpu_name = experiment["GPUs"][0]
+    strategy_name = strategies[0]["name"]
+    results_description = results_descriptions[gpu_name][kernel_name][strategy_name]
+    curve = StochasticOptimizationAlgorithm(results_description)
+
+    # set the input data
+    x_1d = np.array([0.1, 1.1, 2.1, 3.1])
+    y_1d = np.log(x_1d)
+    x_test_1d = np.array([1.5, 2.5, 3.5, 4.5])
+    x = x_1d.reshape((-1, 1))
+    y = y_1d.reshape((-1, 1))
+    confidence_level = 0.95
+
+    # test the prediction intervals
+    pred_interval = curve._get_prediction_interval_separated(x, y, x_test_1d, confidence_level)
+    assert pred_interval.shape == (4, 3)
+    assert not np.any(np.isnan(pred_interval))
+    pred_interval = curve._get_prediction_interval_bagging(x_1d, y_1d, x_test_1d, confidence_level, num_repeats=3)
+    assert pred_interval.shape == (4, 3)
+    assert not np.any(np.isnan(pred_interval))
+    methods = ["inductive_conformal"]  # extend with: ["conformal", "normalized_conformal", "mondrian_conformal"
+    for method in methods:
+        pred_interval = curve._get_prediction_interval_conformal(x_1d, y_1d, x_test_1d, confidence_level, method=method)
+        assert pred_interval.shape == (4, 2)
+        assert not np.any(np.isnan(pred_interval))
 
 
 def validate_experiment_results(

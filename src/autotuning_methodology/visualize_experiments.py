@@ -8,7 +8,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline
+from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline, RandomSearchSimulatedBaseline
 from autotuning_methodology.curves import Curve, CurveBasis, StochasticOptimizationAlgorithm
 from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
@@ -65,7 +65,12 @@ class Visualize:
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     def __init__(
-        self, experiment_filename: str, save_figs=True, save_extra_figs=False, continue_after_comparison=False
+        self,
+        experiment_filename: str,
+        save_figs=True,
+        save_extra_figs=False,
+        continue_after_comparison=False,
+        compare_extra_baselines=False,
     ) -> None:
         """Initialization method for the Visualize class.
 
@@ -74,6 +79,7 @@ class Visualize:
             save_figs: whether to save the figures to file, if not, displays in a window. Defaults to True.
             save_extra_figs: whether to save split times and baseline comparisons figures to file. Defaults to False.
             continue_after_comparison: whether to continue plotting after processing comparisons. Defaults to False.
+            compare_extra_baselines: whether to include additional baselines for comparison. Defaults to False.
 
         Raises:
             ValueError: on various invalid inputs.
@@ -199,8 +205,9 @@ class Visualize:
 
                 # set additional baselines for comparison
                 baselines_extra: list[Baseline] = []
-                # baselines_extra.append(RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000))
-                # baselines_extra.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True))
+                if compare_extra_baselines is True:
+                    baselines_extra.append(RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000))
+                    # baselines_extra.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True))
 
                 # collect aggregatable data
                 aggregation_data.append(tuple([random_baseline, strategies_curves, searchspace_stats, time_range]))
