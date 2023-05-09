@@ -1,7 +1,7 @@
 # Autotuning Methodology Software Package
 
 <p align="center">
-  <img width="25%" src="https://fjwillemsen.github.io/autotuning_methodology/docs/source/logo_autotuning_methodology.svg" />
+  <img width="25%" src="https://fjwillemsen.github.io/autotuning_methodology/_static/logo_autotuning_methodology.svg" />
 </p>
 
 [![Build Status](https://github.com/fjwillemsen/autotuning_methodology/actions/workflows/build-test-python-package.yml/badge.svg)](https://github.com/fjwillemsen/autotuning_methodology/actions/workflows/build-test-python-package.yml)
