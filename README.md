@@ -1,7 +1,13 @@
 # Autotuning Methodology Software Package
+
+<p align="center">
+  <img width="25%" src="https://fjwillemsen.github.io/autotuning_methodology/docs/source/logo_autotuning_methodology.svg" />
+</p>
+
 [![Build Status](https://github.com/fjwillemsen/autotuning_methodology/actions/workflows/build-test-python-package.yml/badge.svg)](https://github.com/fjwillemsen/autotuning_methodology/actions/workflows/build-test-python-package.yml)
 [![Docs](https://img.shields.io/github/actions/workflow/status/fjwillemsen/autotuning_methodology/publish-documentation.yml?label=docs)](https://fjwillemsen.github.io/autotuning_methodology/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
+![PyPI - License](https://img.shields.io/pypi/l/autotuning_methodology)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
 
 

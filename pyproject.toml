@@ -39,6 +39,7 @@ dev = [
 docs = [
     "sphinx >= 6.2.1",
     "sphinx_rtd_theme >= 1.2.0",
+    "sphinx-rtd-light-dark >= 0.1.2",
     "sphinx-pyproject >= 0.1.0",
 ]
 test = [
