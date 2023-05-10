@@ -1,4 +1,6 @@
-name: publish-package
+# This workflow checks out a new release and publishes it to PyPI using Flit.
+
+name: Publish Package
 
 # Controls when the workflow will run
 on:

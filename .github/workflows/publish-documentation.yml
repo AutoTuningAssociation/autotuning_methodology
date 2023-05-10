@@ -1,10 +1,12 @@
-name: Deploy Sphinx documentation to GitHub Pages
+# This workflow builds Sphinx documentation and deploys it to GitHub Pages.
+
+name: Publish documentation
 
 on:
     push:
         branches: [main] # branch to trigger deployment
     release:
-        types: [published]
+        types: [published] # releases trigger deployment as well
 
 jobs:
     pages:
