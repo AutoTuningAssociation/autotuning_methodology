@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from autotuning_methodology.curves import get_indices_in_array, get_indices_in_distribution
+from autotuning_methodology.curves import Curve, get_indices_in_array, get_indices_in_distribution
 
 
 def test_get_indices_in_distribution():
@@ -67,3 +67,13 @@ def test_get_indices_in_array():
             ), f"Is {draw}, but distribution value at index is {dist[int(indices_found[index])]}"
         except ValueError:
             raise ValueError(f"{draw=}, but {indices_found[index]=}")
+
+
+def test_fevals_find_pad_width():
+    """The input array should be padded to result in the same shape as target_array."""
+    array = np.array([1, 2])
+    target_array = np.array([0, 1, 2, 3, 4])
+    expected_padding = tuple([1, 2])
+    result_padding = Curve.fevals_find_pad_width(None, array, target_array)
+    assert array.shape != target_array.shape
+    assert expected_padding == result_padding

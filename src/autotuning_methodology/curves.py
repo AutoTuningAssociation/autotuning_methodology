@@ -1,6 +1,7 @@
 """Code for curve generation."""
 
-from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+from __future__ import \
+    annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
 import warnings
 from abc import ABC, abstractmethod
@@ -908,57 +909,6 @@ class StochasticOptimizationAlgorithm(Curve):
 
         return confidence_interval_lower, confidence_interval_upper
 
-    def get_confidence_interval_jagged(
-        self, bins: list[np.ndarray], confidence_level: float
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Calculates the non-parametric confidence interval at each function evaluation for jagged bins.
-
-        Observations are assumed to be IID.
-        This function is slower than ``get_confidence_interval()``.
-
-        Args:
-            bins: the values pre-divided into bins.
-            confidence_level: the confidence level for the confidence interval.
-
-        Returns:
-            A tuple of two NumPy arrays with lower and upper error, respectively.
-        """
-        confidence_interval_lower = np.full(len(bins), np.nan)
-        confidence_interval_upper = np.full(len(bins), np.nan)
-
-        # confidence interval using normal distribution assumption
-        from statistics import NormalDist
-
-        distribution = NormalDist()  # TODO check if binomial is more appropriate (calculate according to book)
-        z = distribution.inv_cdf((1 + confidence_level) / 2.0)
-        q = 0.5
-
-        # for each bin, look up the confidence interval
-        for feval_index, bin in enumerate(bins):
-            n = len(bin)
-            if n <= 0:
-                continue
-            bin = np.sort(bin)
-            base = z * sqrt(n * q * (1 - q))
-            lower_rank = max(floor(n * q - base), 0)
-            upper_rank = min(ceil(n * q + base), n - 1)
-            confidence_interval_lower[feval_index] = bin[lower_rank]
-            confidence_interval_upper[feval_index] = bin[upper_rank]
-
-        # interpolate missing values
-        nan_mask = np.isnan(confidence_interval_lower)  # is the same is np.isnan(confidence_interval_upper)
-        confidence_interval_lower[nan_mask] = np.interp(
-            np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), confidence_interval_lower[~nan_mask]
-        )
-        confidence_interval_upper[nan_mask] = np.interp(
-            np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), confidence_interval_upper[~nan_mask]
-        )
-
-        # check before returning
-        assert not np.isnan(confidence_interval_lower).any(), "The Confidence Interval must not have NaNs"
-        assert not np.isnan(confidence_interval_upper).any(), "The Confidence Interval must not have NaNs"
-        return confidence_interval_lower, confidence_interval_upper
-
     def _get_prediction_interval_separated(
         self, times: np.ndarray, values: np.ndarray, time_range: np.ndarray, confidence_level: float
     ) -> np.ndarray:
@@ -1055,7 +1005,7 @@ class StochasticOptimizationAlgorithm(Curve):
         train_fraction: float = 0.75,
     ) -> np.ndarray:
         """Calculates the prediction interval using various conformal methods."""
-        methods = ["inductive_conformal", "conformal", "normalized_conformal", "mondrian_conformal"]
+        methods = ["inductive_conformal"]
         assert method in methods
         assert 0 < train_fraction < 1
 
@@ -1085,57 +1035,19 @@ class StochasticOptimizationAlgorithm(Curve):
         # create the regression model
         regression_model = self.get_isotonic_regressor(y_min=y.min(), y_max=y.max())
 
-        # get the prediction interval for each methods
-        if method == "inductive_conformal":
-            # Inductive Conformal Point Prediction (based on https://arxiv.org/pdf/2107.00363.pdf, page 16 & 17)
-            from nonconformist.cp import IcpRegressor
-            from nonconformist.nc import NcFactory, SignErrorErrFunc
+        # Inductive Conformal Point Prediction (based on https://arxiv.org/pdf/2107.00363.pdf, page 16 & 17)
+        from nonconformist.cp import IcpRegressor
+        from nonconformist.nc import NcFactory, SignErrorErrFunc
 
-            # create the nonconformity function and inductive conformal regressor
-            nonconformity_function = NcFactory.create_nc(regression_model, err_func=SignErrorErrFunc())
-            inductive_conformal_regressor = IcpRegressor(nonconformity_function)
+        # create the nonconformity function and inductive conformal regressor
+        nonconformity_function = NcFactory.create_nc(regression_model, err_func=SignErrorErrFunc())
+        inductive_conformal_regressor = IcpRegressor(nonconformity_function)
 
-            # fit and calibrate the ICP
-            inductive_conformal_regressor.fit(x_train, y_train)
-            inductive_conformal_regressor.calibrate(x_cal, y_cal)
+        # fit and calibrate the ICP
+        inductive_conformal_regressor.fit(x_train, y_train)
+        inductive_conformal_regressor.calibrate(x_cal, y_cal)
 
-            # get the interval on the prediction
-            prediction_interval = inductive_conformal_regressor.predict(x_test, significance=1 - confidence_level)
-
-        else:
-            from crepes import ConformalRegressor
-            from crepes.fillings import binning, sigma_knn
-
-            # fit the regression model
-            regression_model.fit(x_train, y_train)
-            prediction = regression_model.predict(x_test)
-
-            # get the difference in prediction and true values on the calibration set
-            prediction_calibrated = regression_model.predict(x_cal)
-            residuals_calibrated = y_cal - prediction_calibrated
-
-            # generate difficulty estimates for the calibration and test set
-            sigmas_cal = sigma_knn(X=x_cal, residuals=residuals_calibrated)
-            sigmas_test = sigma_knn(X=x_cal, residuals=residuals_calibrated, X_test=x_test)
-
-            # get the prediction intervals using various methods
-            if method == "conformal":
-                cr = ConformalRegressor()
-                cr.fit(residuals=residuals_calibrated)
-                prediction_interval = cr.predict(y_hat=prediction, confidence=confidence_level)
-
-            elif method == "normalized_conformal":
-                cr_norm = ConformalRegressor()
-                cr_norm.fit(residuals=residuals_calibrated, sigmas=sigmas_cal)
-                prediction_interval = cr_norm.predict(y_hat=prediction, confidence=confidence_level, sigmas=sigmas_test)
-
-            elif method == "mondrian_conformal":
-                bins_cal, bin_thresholds = binning(values=sigmas_cal, bins=3)
-                cr_mond = ConformalRegressor()
-                cr_mond.fit(residuals=residuals_calibrated, bins=bins_cal)
-                bins_test = binning(
-                    values=sigmas_test, bins=bin_thresholds
-                )  # generate bins to take the distance into account
-                prediction_interval = cr_mond.predict(y_hat=prediction, confidence=confidence_level, bins=bins_test)
+        # get the interval on the prediction
+        prediction_interval = inductive_conformal_regressor.predict(x_test, significance=1 - confidence_level)
 
         return prediction_interval
