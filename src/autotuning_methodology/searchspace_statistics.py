@@ -434,7 +434,7 @@ class SearchspaceStatistics:
         return q75 - q25
 
 
-def test():
+def test():  # pragma: no cover
     """Test the SearchspaceStatistics object class."""
     ss_stats = SearchspaceStatistics("gemm", "RTX_2080_Ti")
 

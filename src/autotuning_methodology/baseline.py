@@ -305,24 +305,24 @@ class RandomSearchSimulatedBaseline(Baseline):
     def get_standardised_curve(  # noqa: D102
         self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str
     ) -> np.ndarray:
-        return super().get_standardised_curve(range, strategy_curve, x_type)
+        return super().get_standardised_curve(range, strategy_curve, x_type)  # pragma: no cover
 
     def get_standardised_curves(  # noqa: D102
         self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str
     ) -> tuple[np.ndarray]:
-        return super().get_standardised_curves(range, strategy_curves, x_type)
+        return super().get_standardised_curves(range, strategy_curves, x_type)  # pragma: no cover
 
     def get_split_times(  # noqa: D102
         self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics
     ) -> np.ndarray:
-        return super().get_split_times(range, x_type, searchspace_stats)
+        return super().get_split_times(range, x_type, searchspace_stats)  # pragma: no cover
 
     def get_split_times_at_time(  # noqa: D102
         self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics
     ) -> np.ndarray:
-        return super().get_split_times_at_time(time_range, searchspace_stats)
+        return super().get_split_times_at_time(time_range, searchspace_stats)  # pragma: no cover
 
     def get_split_times_at_feval(  # noqa: D102
         self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
     ) -> np.ndarray:
-        return super().get_split_times_at_feval(fevals_range, searchspace_stats)
+        return super().get_split_times_at_feval(fevals_range, searchspace_stats)  # pragma: no cover
