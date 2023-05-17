@@ -17,11 +17,11 @@
   "cutoff_percentile_start": 0.5,
   "cutoff_type": "fevals",
   "objective_time_keys": [
-    "strategy_time",
-    "compile_time",
-    "benchmark_time",
-    "verification_time",
-    "framework_time"
+    "compilation",
+    "benchmark",
+    "framework",
+    "search_algorithm",
+    "validation"
   ],
   "objective_performance_keys": [
     "time"

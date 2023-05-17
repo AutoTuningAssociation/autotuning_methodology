@@ -11,17 +11,6 @@ import numpy as np
 
 from autotuning_methodology.runner import is_invalid_objective_performance, is_invalid_objective_time
 
-T4_time_keys_to_kernel_tuner_time_keys_mapping = {
-    "compilation": "compile_time",
-    "benchmark": "benchmark_time",
-    "framework": "framework_time",
-    "search_algorithm": "strategy_time",
-    "validation": "verification_time",
-}
-kernel_tuner_time_keys_to_T4_time_keys_mapping = {
-    v: k for k, v in T4_time_keys_to_kernel_tuner_time_keys_mapping.items()
-}
-
 
 def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
     """Wrapper around np.nansum. Ensures partials that contain only NaN are returned as NaN instead of 0.
@@ -54,6 +43,17 @@ class SearchspaceStatistics:
     objective_performances_total_sorted: np.ndarray
     objective_performances_total_sorted_nan: np.ndarray
 
+    T4_time_keys_to_kernel_tuner_time_keys_mapping = {
+        "compilation": "compile_time",
+        "benchmark": "benchmark_time",
+        "framework": "framework_time",
+        "search_algorithm": "strategy_time",
+        "validation": "verification_time",
+    }
+    kernel_tuner_time_keys_to_T4_time_keys_mapping = {
+        v: k for k, v in T4_time_keys_to_kernel_tuner_time_keys_mapping.items()
+    }
+
     def __init__(
         self,
         kernel_name: str,
@@ -75,9 +75,7 @@ class SearchspaceStatistics:
         self.kernel_name = kernel_name
         self.device_name = device_name
         self.minimization = minimization
-        self.objective_time_keys = self.T4_time_keys_to_kernel_tuner_time_keys(
-            objective_time_keys
-        )  # TODO temporary fix until the search spaces have been bruteforced with / caches converted to the T4 format
+        self.objective_time_keys = self.T4_time_keys_to_kernel_tuner_time_keys(objective_time_keys)
         self.objective_performance_keys = objective_performance_keys
 
         # load the data into the arrays
@@ -92,7 +90,12 @@ class SearchspaceStatistics:
         Returns:
             List of Kernel Tuner-style time keys.
         """
-        return list(T4_time_keys_to_kernel_tuner_time_keys_mapping[key] for key in time_keys)
+        return list(
+            self.T4_time_keys_to_kernel_tuner_time_keys_mapping[key]
+            if key in self.T4_time_keys_to_kernel_tuner_time_keys_mapping
+            else key
+            for key in time_keys
+        )
 
     def total_performance_absolute_optimum(self) -> float:
         """Calculate the absolute optimum of the total performances.
