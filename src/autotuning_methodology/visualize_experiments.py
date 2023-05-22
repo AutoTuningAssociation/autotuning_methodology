@@ -982,7 +982,8 @@ def is_ran_as_notebook() -> bool:  # pragma: no cover
         return False  # Probably standard Python interpreter
 
 
-if __name__ == "__main__":
+def entry_point():  #  pragma: no cover
+    """Entry point function for visualization."""
     is_notebook = is_ran_as_notebook()
     if is_notebook:
         # take the CWD one level up
@@ -996,3 +997,7 @@ if __name__ == "__main__":
         experiment_filepath = get_args_from_cli()
 
     Visualize(experiment_filepath, save_figs=not is_notebook)
+
+
+if __name__ == "__main__":
+    entry_point()

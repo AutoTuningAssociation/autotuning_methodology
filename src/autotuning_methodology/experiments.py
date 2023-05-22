@@ -203,6 +203,11 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
     return experiment, strategies, results_descriptions
 
 
-if __name__ == "__main__":
+def entry_point():  #  pragma: no cover
+    """Entry point function for Experiments."""
     experiment_filepath = get_args_from_cli()
     execute_experiment(experiment_filepath, profiling=False)
+
+
+if __name__ == "__main__":
+    entry_point()

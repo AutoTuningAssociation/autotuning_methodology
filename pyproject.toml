@@ -50,6 +50,10 @@ test = [
     "crepes >= 0.2.0",
 ]
 
+[project.scripts]
+autotuning_experiment = "src.autotuning_methodology.experiments:entry_point"
+autotuning_visualize = "src.autotuning_methodology.visualize_experiments:entry_point"
+
 [project.urls]
 "Repository" = "https://github.com/fjwillemsen/autotuning_methodology"
 "Documentation" = "https://fjwillemsen.github.io/autotuning_methodology/"
