@@ -18,6 +18,18 @@
       "description": "Unique ID of the folder to store the results of this experiment in",
       "type": "string"
     },
+    "kernels_path": {
+      "description": "Path to the directory that has the tuning scripts specified in `kernels`, relative to the experiments file.",
+      "type": "string"
+    },
+    "bruteforced_caches_path": {
+      "description": "Path to the directory that has the bruteforced caches, relative to the experiments file.",
+      "type": "string"
+    },
+    "visualization_caches_path": {
+      "description": "Path to the directory to write / look for visualization caches, relative to the experiments file.",
+      "type": "string"
+    },
     "kernels": {
       "description": "Kernels to optimize",
       "type": "array",
@@ -126,6 +138,9 @@
     "version",
     "name",
     "folder_id",
+    "kernels_path",
+    "bruteforced_caches_path",
+    "visualization_caches_path",
     "kernels",
     "GPUs",
     "minimization",

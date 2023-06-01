@@ -12,10 +12,10 @@
 
 
 This repository contains the software package accompanying the paper "A Methodology for Comparing Auto-Tuning Optimization Algorithms". 
-It makes the guidelines in the methodology easy to apply: simply specify the  `.json` file, run it with `python visualize_experiments.py` and wait for the results!
+It makes the guidelines in the methodology easy to apply: simply specify the  `.json` file, run `autotuning_visualize [path_to_json]` and wait for the results!
 
 ## Installation
-The package can be installed by cloning this repository and running `pip install .`. Python >= 3.9 is supported. 
+The package can be installed by cloning this repository and running `pip install .`. Python >= 3.9 is supported.  
 
 ## Notable features
 - Official software by the authors of the methodology-defining paper. 
@@ -27,6 +27,23 @@ The package can be installed by cloning this repository and running `pip install
 
 <img width="674" alt="example run in interactive window" src="https://user-images.githubusercontent.com/6725103/232880006-70a05b0e-a4e4-4cc7-bea9-473959c474c2.png">
 <img width="483" alt="example run in interactive window 2" src="https://user-images.githubusercontent.com/6725103/232881244-d432ea8e-801a-44b1-9acb-b98cc1b740ac.png">
+
+## Usage
+
+### Entry points
+There are two entry points defined: `autotuning_experiment` and `autotuning_visualize`. Both take one argument: the path to an experiment file (see below). 
+
+### Input files
+To get started, all you need is an experiments file. This is a `json` file that describes the details of your comparison: which algorithms to use, which programs to tune on which devices, the graphs to output and so on. 
+You can find the API and an example `experiments.json` in the [documentation](). 
+
+### File references
+As we are dealing with input and output files, file references matter. 
+When calling the entrypoints, we are already providing the path to an experiments file. 
+File references in experiments files are relative to the location of the experiment file itself. 
+File references in tuning scripts are relative to the location of the tuning script itself. Tuning scripts need to have the global literals `file_path_results` and `file_path_metadata` for this package to know where to get the results. 
+Plots outputted by this package are placed in a folder called `generated_plots` relative to the current working directory. 
+
 
 ## Contributing
 

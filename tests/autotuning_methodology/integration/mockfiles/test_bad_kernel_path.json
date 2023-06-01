@@ -2,10 +2,12 @@
   "version": "0.1.2",
   "name": "Test output file writer",
   "folder_id": "test_output_file_writer",
+  "kernels_path": "cached_data_used/bogus_kernels_path",
+  "bruteforced_caches_path": "../../../../cached_data_used/cachefiles",
+  "visualization_caches_path": "../../../../cached_data_used/visualizations",
   "kernels": [
     "convolution"
   ],
-  "kernel_path": "cached_data_used/bogus_kernel_path",
   "GPUs": [
     "RTX_2080_Ti"
   ],

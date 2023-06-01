@@ -2,7 +2,7 @@
   "version": "0.1.2",
   "name": "Example comparison for presentation",
   "folder_id": "presentation_comparison",
-  "kernel_path": "cached_data_used/kernels",
+  "kernels_path": "cached_data_used/kernels",
   "kernels": [
     "pnpoly",
     "convolution"

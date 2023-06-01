@@ -142,10 +142,10 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
     strategies = get_strategies(experiment)
 
     # add the kernel directory to the path to import the module, relative to the experiment file
-    kernel_path = experiment_folderpath / Path(experiment["kernel_path"])
-    if not kernel_path.exists():
-        raise FileNotFoundError(f"No such path {kernel_path}, CWD: {getcwd()}")
-    sys.path.append(str(kernel_path))
+    kernels_path = experiment_folderpath / Path(experiment["kernels_path"])
+    if not kernels_path.exists():
+        raise FileNotFoundError(f"No such path {kernels_path}, CWD: {getcwd()}")
+    sys.path.append(str(kernels_path))
     kernel_names = experiment["kernels"]
     kernels = list(import_module(kernel_name) for kernel_name in kernel_names)
 

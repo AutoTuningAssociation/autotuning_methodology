@@ -2,7 +2,7 @@
   "version": "0.1.2",
   "name": "Test random search (calculated vs executed)",
   "folder_id": "test_random_calculated",
-  "kernel_path": "../cached_data_used/kernels",
+  "kernels_path": "../cached_data_used/kernels",
   "bruteforced_caches_path": "../cached_data_used/cachefiles",
   "visualization_caches_path": "../cached_data_used/visualizations",
   "kernels": [
