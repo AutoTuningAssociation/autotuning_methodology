@@ -6,11 +6,11 @@ import json
 import sys
 from argparse import ArgumentParser
 from importlib import import_module
+from importlib.resources import files
 from math import ceil
 from os import getcwd
 from pathlib import Path
 
-from importlib_resources import files
 from jsonschema import validate
 
 from autotuning_methodology.caching import ResultsDescription
@@ -62,15 +62,15 @@ def get_experiment(filename: str) -> dict:
         Experiment dictionary object.
     """
     # get the path to the experiment file
-    folder_name = "experiment_files"
-    folder = Path(folder_name)
+    # folder_name = "experiment_files"
     extension = ".json"
     if not filename.endswith(extension):
         filename = filename + extension
-    if not filename.startswith(folder_name + "/"):
-        path = folder / filename
-    else:
-        path = Path(filename)
+    path = Path(filename)
+    # if not filename.startswith(folder_name + "/"):
+    #     path = folder / filename
+    # else:
+    #     path = Path(filename)
     assert path.exists(), f"Path to experiment file does not exist, attempted path: {path}, CWD: {getcwd()}"
 
     # get the path to the schema

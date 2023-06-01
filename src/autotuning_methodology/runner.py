@@ -7,12 +7,12 @@ import json
 import os
 import time as python_time
 import warnings
+from inspect import getfile
 from pathlib import Path
 
 import numpy as np
 import progressbar
 import yappi
-from importlib_resources import files
 
 from autotuning_methodology.caching import ResultsDescription
 
@@ -104,6 +104,8 @@ def get_results_and_metadata(
     Returns:
         A tuple of the results and metadata lists respectively.
     """
+    assert Path(filename_results).exists(), f"File {filename_results} does not exist relative to {os.getcwd()}"
+    assert Path(filename_metadata).exists(), f"File {filename_metadata} does not exist relative to {os.getcwd()}"
     with open(filename_results, "r") as file_results:
         results: list = json.load(file_results)["results"]
     with open(filename_metadata, "r") as file_metadata:
@@ -135,10 +137,12 @@ def tune(
 
     def tune_with_kerneltuner():
         """Interface with kernel tuner to tune the kernel and return the results."""
-        # change to the directory of the kernel
-        kernel_directory = files(kernel)
+        # get the path to the directory the kernel is in; can't use importlib.resources.files because its not a package
+        kernel_directory = Path(getfile(kernel)).parent
         assert kernel_directory.is_dir()
-        with temporary_working_directory_change(Path(kernel_directory)):
+
+        # change CWD to the directory of the kernel
+        with temporary_working_directory_change(kernel_directory):
             if profiling:
                 yappi.set_clock_type("cpu")
                 yappi.start()
@@ -152,7 +156,9 @@ def tune(
                 )
             if profiling:
                 yappi.stop()
-            metadata, results = get_results_and_metadata()
+            metadata, results = get_results_and_metadata(
+                filename_results=kernel.file_path_results, filename_metadata=kernel.file_path_metadata
+            )
         if "max_fevals" in strategy["options"]:
             max_fevals = strategy["options"]["max_fevals"]
             if len(results) < max_fevals * 0.1:

@@ -5,7 +5,9 @@
   "kernels": [
     "convolution"
   ],
-  "kernel_path": "cached_data_used/kernels",
+  "kernel_path": "../cached_data_used/kernels",
+  "bruteforced_caches_path": "../cached_data_used/cachefiles",
+  "visualization_caches_path": "../cached_data_used/visualizations",
   "GPUs": [
     "RTX_2080_Ti"
   ],

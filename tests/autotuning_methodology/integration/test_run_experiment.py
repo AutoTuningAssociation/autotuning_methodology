@@ -1,6 +1,7 @@
 """Integration test for running and fetching an experiment from cache."""
 
 import json
+from importlib.resources import files
 from pathlib import Path
 
 import numpy as np
@@ -15,13 +16,20 @@ from autotuning_methodology.experiments import (
     get_experiment_schema_filepath,
 )
 
+# get the path to the package
+package_path = Path(files("autotuning_methodology")).parent.parent
+# package_path = ""
+
 # setup file paths
-mockfiles_path_root = Path("tests/autotuning_methodology/integration/mockfiles/")
+mockfiles_path_root = package_path / Path("tests/autotuning_methodology/integration/mockfiles/")
 mockfiles_path_source = mockfiles_path_root / "mock_gpu.json"
-mockfiles_path = ".." / mockfiles_path_root
-cached_visualization_path = Path("cached_data_used/visualizations/test_run_experiment/mocktest_kernel_convolution")
+mockfiles_path = mockfiles_path_root
+experiment_filepath_test = mockfiles_path / "test.json"
+assert experiment_filepath_test.exists()
+kernel_id = "mocktest_kernel_convolution"
+cached_visualization_path = package_path / Path(f"cached_data_used/visualizations/test_run_experiment/{kernel_id}")
 cached_visualization_file = cached_visualization_path / "mock_GPU_random_sample_10_iter.npz"
-normal_cachefiles_path = Path("cached_data_used/cachefiles/mocktest_kernel_convolution")
+normal_cachefiles_path = package_path / Path(f"cached_data_used/cachefiles/{kernel_id}")
 normal_cachefile_destination = normal_cachefiles_path / "mock_gpu.json"
 
 
@@ -97,8 +105,7 @@ def test_run_experiment():
     if cached_visualization_file.exists():
         cached_visualization_file.unlink()
     assert not cached_visualization_file.exists()
-    experiment_filepath = str(mockfiles_path / "test.json")
-    (experiment, strategies, results_descriptions) = execute_experiment(experiment_filepath, profiling=False)
+    (experiment, strategies, results_descriptions) = execute_experiment(str(experiment_filepath_test), profiling=False)
     validate_experiment_results(experiment, strategies, results_descriptions)
 
 
@@ -109,8 +116,7 @@ def test_cached_experiment():
     assert normal_cachefile_destination.exists()
     assert cached_visualization_path.exists()
     assert cached_visualization_file.exists()
-    experiment_filepath = str(mockfiles_path / "test.json")
-    (experiment, strategies, results_descriptions) = execute_experiment(experiment_filepath, profiling=False)
+    (experiment, strategies, results_descriptions) = execute_experiment(str(experiment_filepath_test), profiling=False)
     validate_experiment_results(experiment, strategies, results_descriptions)
 
 
@@ -118,8 +124,7 @@ def test_cached_experiment():
 def test_curve_instance():
     """Test a Curve instance."""
     # setup the test
-    experiment_filepath = str(mockfiles_path / "test.json")
-    (experiment, strategies, results_descriptions) = execute_experiment(experiment_filepath, profiling=False)
+    (experiment, strategies, results_descriptions) = execute_experiment(str(experiment_filepath_test), profiling=False)
     kernel_name = experiment["kernels"][0]
     gpu_name = experiment["GPUs"][0]
     strategy_name = strategies[0]["name"]

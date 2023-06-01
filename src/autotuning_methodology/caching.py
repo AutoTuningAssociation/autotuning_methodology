@@ -129,7 +129,7 @@ class ResultsDescription:
             else:
                 assert (
                     attribute_value == other.__get_as_dict()[attribute_key]
-                ), f"{attribute_key} has different values: {attribute_value}, other: {other.__get_as_dict()[attribute_key]}"
+                ), f"{attribute_key} has different values: {attribute_value} != {other.__get_as_dict()[attribute_key]}"
 
         return True
 

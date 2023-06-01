@@ -6,6 +6,8 @@
     "mocktest_kernel_convolution"
   ],
   "kernel_path": "../mockfiles",
+  "bruteforced_caches_path": "../../../../cached_data_used/cachefiles",
+  "visualization_caches_path": "../../../../cached_data_used/visualizations",
   "GPUs": [
     "mock_GPU"
   ],

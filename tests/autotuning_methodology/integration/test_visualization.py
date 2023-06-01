@@ -2,18 +2,21 @@
 
 from pathlib import Path
 
+from test_run_experiment import (
+    _remove_dir,
+    cached_visualization_file,
+    cached_visualization_path,
+    experiment_filepath_test,
+    kernel_id,
+    mockfiles_path_source,
+    normal_cachefile_destination,
+    normal_cachefiles_path,
+)
+
 from autotuning_methodology.visualize_experiments import Visualize
 
 # setup file paths
-mockfiles_path_root = Path("tests/autotuning_methodology/integration/mockfiles/")
-mockfiles_path_source = mockfiles_path_root / "mock_gpu.json"
-mockfiles_path = Path("..") / mockfiles_path_root
-experiment_id = "mocktest_kernel_convolution"
-experiment_title = f"{experiment_id}_on_mock_GPU"
-cached_visualization_path = Path(f"cached_data_used/visualizations/test_run_experiment/{experiment_id}")
-cached_visualization_file = cached_visualization_path / "mock_GPU_random_sample_10_iter.npz"
-normal_cachefiles_path = Path(f"cached_data_used/cachefiles/{experiment_id}")
-normal_cachefile_destination = normal_cachefiles_path / "mock_gpu.json"
+experiment_title = f"{kernel_id}_on_mock_GPU"
 plot_path = Path("generated_plots")
 plot_path_fevals = plot_path / f"{experiment_title}_fevals.png"
 plot_path_time = plot_path / f"{experiment_title}_time.png"
@@ -31,14 +34,6 @@ plot_filepaths = [
     plot_path_split_times_bar,
     plot_path_baselines_comparison,
 ]
-
-
-def _remove_dir(path: Path):
-    """Utility function for removing a directory and the contained files."""
-    assert path.exists()
-    for sub in path.iterdir():
-        sub.unlink()
-    path.rmdir()
 
 
 def setup_module():
@@ -73,7 +68,7 @@ def test_visualize_experiment():
     if cached_visualization_file.exists():
         cached_visualization_file.unlink()
     assert not cached_visualization_file.exists()
-    experiment_filepath = str(mockfiles_path / "test.json")
+    experiment_filepath = str(experiment_filepath_test)
     Visualize(
         experiment_filepath,
         save_figs=True,

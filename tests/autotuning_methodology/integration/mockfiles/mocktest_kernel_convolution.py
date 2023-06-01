@@ -9,6 +9,10 @@ import numpy
 import kernel_tuner
 from kernel_tuner.file_utils import store_metadata_file, store_output_file
 
+file_path_prefix = "../../../../cached_data_used"
+file_path_results = file_path_prefix + "/last_run/_tune_configuration-results.json"
+file_path_metadata = file_path_prefix + "/last_run/_tune_configuration-metadata.json"
+
 
 def tune(device_name: str, strategy="mls", strategy_options=None, verbose=True, quiet=False, simulation_mode=True):
     # input dimensions and data
@@ -59,7 +63,7 @@ def tune(device_name: str, strategy="mls", strategy_options=None, verbose=True, 
         grid_div_x=grid_div_x,
         cmem_args=cmem_args,
         restrictions=restrict,
-        cache="cached_data_used/cachefiles/mocktest_kernel_convolution/" + device_name.lower(),
+        cache=file_path_prefix + "/cachefiles/mocktest_kernel_convolution/" + device_name.lower(),
         metrics=metrics,
         iterations=32,
         device=0,
@@ -70,8 +74,8 @@ def tune(device_name: str, strategy="mls", strategy_options=None, verbose=True, 
         simulation_mode=simulation_mode,
     )
 
-    store_output_file("cached_data_used/last_run/_tune_configuration-results.json", results, tune_params)
-    store_metadata_file("cached_data_used/last_run/_tune_configuration-metadata.json")
+    store_output_file(file_path_results, results, tune_params)
+    store_metadata_file(file_path_metadata)
     return results, env
 
 

@@ -265,6 +265,7 @@ class Visualize:
                         filename = f"{self.plot_filename_prefix}{title}_{x_type}"
                         filename = filename.replace(" ", "_")
                         fig.savefig(filename, dpi=300)
+                        print(f"Figure saved to {filename}")
                     else:
                         plt.show()
 
@@ -292,6 +293,7 @@ class Visualize:
                 filename = f"{self.plot_filename_prefix}aggregated"
                 filename = filename.replace(" ", "_")
                 fig.savefig(filename, dpi=300)
+                print(f"Figure saved to {filename}")
             else:
                 plt.show()
 
@@ -369,6 +371,7 @@ class Visualize:
             filename = f"{self.plot_filename_prefix}{title}_baselines"
             filename = filename.replace(" ", "_")
             plt.savefig(filename, dpi=300)
+            print(f"Figure saved to {filename}")
         else:
             plt.show()
 
@@ -452,6 +455,7 @@ class Visualize:
             filename = f"{self.plot_filename_prefix}{title}_split_times_{x_type}"
             filename = filename.replace(" ", "_")
             plt.savefig(filename, dpi=300)
+            print(f"Figure saved to {filename}")
         else:
             plt.show()
 
@@ -557,6 +561,7 @@ class Visualize:
             filename = f"{self.plot_filename_prefix}{title}_split_times_bar"
             filename = filename.replace(" ", "_")
             plt.savefig(filename, dpi=300)
+            print(f"Figure saved to {filename}")
         else:
             plt.show()
 

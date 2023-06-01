@@ -15,7 +15,7 @@ This repository contains the software package accompanying the paper "A Methodol
 It makes the guidelines in the methodology easy to apply: simply specify the  `.json` file, run it with `python visualize_experiments.py` and wait for the results!
 
 ## Installation
-The package can be installed by cloning this repository and running `pip install .`. Python >= 3.8 is supported. 
+The package can be installed by cloning this repository and running `pip install .`. Python >= 3.9 is supported. 
 
 ## Notable features
 - Official software by the authors of the methodology-defining paper. 
