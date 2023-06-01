@@ -5,7 +5,7 @@
   "kernels": [
     "mocktest_kernel_convolution"
   ],
-  "kernel_path": "tests/autotuning_methodology/integration/mockfiles",
+  "kernel_path": "../mockfiles",
   "GPUs": [
     "mock_GPU"
   ],

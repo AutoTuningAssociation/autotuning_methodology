@@ -66,7 +66,7 @@ class Visualize:
 
     def __init__(
         self,
-        experiment_filename: str,
+        experiment_filepath: str,
         save_figs=True,
         save_extra_figs=False,
         continue_after_comparison=False,
@@ -75,7 +75,7 @@ class Visualize:
         """Initialization method for the Visualize class.
 
         Args:
-            experiment_filename: the experiment-filename.json to run.
+            experiment_filepath: the path to the experiment-filename.json to run.
             save_figs: whether to save the figures to file, if not, displays in a window. Defaults to True.
             save_extra_figs: whether to save split times and baseline comparisons figures to file. Defaults to False.
             continue_after_comparison: whether to continue plotting after processing comparisons. Defaults to False.
@@ -88,8 +88,9 @@ class Visualize:
         # with warnings.catch_warnings():
         #     warnings.simplefilter("ignore")
         self.experiment, self.strategies, self.results_descriptions = execute_experiment(
-            experiment_filename, profiling=False
+            experiment_filepath, profiling=False
         )
+        experiment_folderpath = Path(experiment_filepath).parent
         print("\n")
         print("Visualizing")
 
@@ -133,6 +134,7 @@ class Visualize:
                     minimization=self.minimization,
                     objective_time_keys=objective_time_keys,
                     objective_performance_keys=objective_performance_keys,
+                    bruteforced_caches_path=experiment_folderpath / self.experiment["bruteforced_caches_path"],
                 )
 
                 # get the cached strategy results as curves
@@ -978,20 +980,21 @@ def is_ran_as_notebook() -> bool:  # pragma: no cover
             return False  # Terminal running IPython
         else:
             return False  # Other type (?)
-    except NameError:
+    except ModuleNotFoundError or NameError:
         return False  # Probably standard Python interpreter
 
 
 def entry_point():  #  pragma: no cover
-    """Entry point function for visualization."""
+    """Entry point function for Visualization."""
     is_notebook = is_ran_as_notebook()
     if is_notebook:
         # take the CWD one level up
         import os
 
         os.chdir("../")
-        # experiment_filepath = 'test_random_calculated'
-        experiment_filepath = "methodology_paper_example"
+        print(os.getcwd())
+        experiment_filepath = "test_random_calculated"
+        # experiment_filepath = "methodology_paper_example"
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
         experiment_filepath = get_args_from_cli()

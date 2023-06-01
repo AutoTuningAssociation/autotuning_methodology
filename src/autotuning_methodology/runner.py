@@ -2,18 +2,47 @@
 
 from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
+import contextlib
 import json
+import os
 import time as python_time
 import warnings
+from pathlib import Path
 
 import numpy as np
 import progressbar
 import yappi
+from importlib_resources import files
 
 from autotuning_methodology.caching import ResultsDescription
 
 error_types_strings = ["", "InvalidConfig", "CompilationFailedConfig", "RuntimeFailedConfig"]
 kernel_tuner_error_value = 1e20
+
+
+@contextlib.contextmanager
+def temporary_working_directory_change(new_WD: Path):
+    """Temporarily change to the given working directory in a context. Based on https://stackoverflow.com/questions/75048986/way-to-temporarily-change-the-directory-in-python-to-execute-code-without-affect.
+
+    Args:
+        new_WD: path of the working directory to temporarily change to.
+    """
+    assert new_WD.exists()
+
+    # save the current working directory so we can revert to it
+    original_working_directory = os.getcwd()
+
+    # potentially raises an exception, left to the caller
+    os.chdir(new_WD)
+
+    # yield control to the caller
+    try:
+        yield
+
+    # change back to the original working directory
+    finally:
+        # potentially raises an exception, left to the caller
+        os.chdir(original_working_directory)
 
 
 def is_invalid_objective_performance(objective_performance: float) -> bool:
@@ -63,14 +92,14 @@ def is_valid_config_result(config: dict) -> bool:
 
 
 def get_results_and_metadata(
-    filename_results: str = "cached_data_used/last_run/_tune_configuration-results.json",
-    filename_metadata: str = "cached_data_used/last_run/_tune_configuration-metadata.json",
+    filename_results: str = "../last_run/_tune_configuration-results.json",
+    filename_metadata: str = "../last_run/_tune_configuration-metadata.json",
 ) -> tuple[list, list]:
-    """Load the results and metadata files in accordance with the defined T4 standards.
+    """Load the results and metadata files (relative to kernel directory) in accordance with the defined T4 standards.
 
     Args:
-        filename_results: results filepath. Defaults to "cached_data_used/last_run/_tune_configuration-results.json".
-        filename_metadata: metadata filepath. Defaults to "cached_data_used/last_run/_tune_configuration-metadata.json".
+        filename_results: filepath relative to kernel. Defaults to "../last_run/_tune_configuration-results.json".
+        filename_metadata: filepath relative to kernel. Defaults to "../last_run/_tune_configuration-metadata.json".
 
     Returns:
         A tuple of the results and metadata lists respectively.
@@ -106,20 +135,24 @@ def tune(
 
     def tune_with_kerneltuner():
         """Interface with kernel tuner to tune the kernel and return the results."""
-        if profiling:
-            yappi.set_clock_type("cpu")
-            yappi.start()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            res, env = kernel.tune(
-                device_name=device_name,
-                strategy=strategy["strategy"],
-                strategy_options=strategy["options"],
-                **tune_options,
-            )
-        if profiling:
-            yappi.stop()
-        metadata, results = get_results_and_metadata()
+        # change to the directory of the kernel
+        kernel_directory = files(kernel)
+        assert kernel_directory.is_dir()
+        with temporary_working_directory_change(Path(kernel_directory)):
+            if profiling:
+                yappi.set_clock_type("cpu")
+                yappi.start()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                res, env = kernel.tune(
+                    device_name=device_name,
+                    strategy=strategy["strategy"],
+                    strategy_options=strategy["options"],
+                    **tune_options,
+                )
+            if profiling:
+                yappi.stop()
+            metadata, results = get_results_and_metadata()
         if "max_fevals" in strategy["options"]:
             max_fevals = strategy["options"]["max_fevals"]
             if len(results) < max_fevals * 0.1:

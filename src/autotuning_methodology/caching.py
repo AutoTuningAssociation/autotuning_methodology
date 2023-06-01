@@ -39,6 +39,7 @@ class ResultsDescription:
         objective_time_keys: list[str],
         objective_performance_keys: list[str],
         minimization: bool,
+        visualization_caches_path: Path,
     ) -> None:
         """Initialization method for the ResultsDescription object.
 
@@ -52,6 +53,7 @@ class ResultsDescription:
             objective_time_keys: the objective time keys used.
             objective_performance_keys: the objective performance keys used.
             minimization: whether the optimization algorithm performed minimization (attempted to find the minimum).
+            visualization_caches_path: path to visualization caches relative to the experiments file, creation allowed.
         """
         # all attributes must be hashable for symetric difference checking
         self._version = "1.3.0"
@@ -65,6 +67,7 @@ class ResultsDescription:
         self.objective_time_keys = objective_time_keys
         self.objective_performance_keys = objective_performance_keys
         self.minimization = minimization
+        self.visualization_caches_path = visualization_caches_path
         self.numpy_arrays_keys = [
             "fevals_results",
             "objective_time_results",
@@ -74,6 +77,19 @@ class ResultsDescription:
             "objective_time_results_per_key",
             "objective_performance_results_per_key",
         ]  # the order must not be changed here! see 'numpy_arrays' in runner.py
+
+    def __get_as_dict(self) -> dict:
+        """Get the ResultsDescription as a dictionary.
+
+        Returns:
+            a dictionary, similar to self.__dict__ but with some keys removed.
+        """
+        dictionary = vars(self)
+        not_saved_keys = ["strategy_display_name", "visualization_caches_path"]
+        for not_saved_key in not_saved_keys:
+            if not_saved_key in dictionary.keys():
+                del dictionary[not_saved_key]
+        return dictionary
 
     def is_same_as(self, other: ResultsDescription) -> bool:
         """Check for equality against another ResultsDescription object.
@@ -102,18 +118,18 @@ class ResultsDescription:
             raise ValueError(f"Incompatible versions: {self._version} (own), {other._version} (other)")
 
         # check if same keys
-        symetric_difference_keys = self.__dict__.keys() ^ other.__dict__.keys()
+        symetric_difference_keys = self.__get_as_dict().keys() ^ other.__get_as_dict().keys()
         if len(symetric_difference_keys) != 0:
             raise KeyError(f"Difference in keys: {symetric_difference_keys}")
 
         # check if same value for each key
-        for attribute_key, attribute_value in self.__dict__.items():
-            if attribute_key == "strategy_display_name":
+        for attribute_key, attribute_value in self.__get_as_dict().items():
+            if attribute_key == "strategy_display_name" or attribute_key == "visualization_caches_path":
                 continue
             else:
                 assert (
-                    attribute_value == other.__dict__[attribute_key]
-                ), f"{attribute_key} has different values: {attribute_value}, other: {other.__dict__[attribute_key]}"
+                    attribute_value == other.__get_as_dict()[attribute_key]
+                ), f"{attribute_key} has different values: {attribute_value}, other: {other.__get_as_dict()[attribute_key]}"
 
         return True
 
@@ -122,7 +138,7 @@ class ResultsDescription:
 
     def __get_cache_filepath(self) -> Path:
         """Get the filepath to this experiment."""
-        return Path("cached_data_used/visualizations") / self.__folder_id / self.kernel_name
+        return self.visualization_caches_path / self.__folder_id / self.kernel_name
 
     def __get_cache_full_filepath(self) -> Path:
         """Get the filepath for this file, including the filename and extension."""

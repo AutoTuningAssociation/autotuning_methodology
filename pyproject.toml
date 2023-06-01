@@ -28,6 +28,7 @@ dependencies = [
     "progressbar2 >= 4.2.0",
     "jsonschema >= 4.17.3",
     "nonconformist >= 2.1.0",
+    "kernel_tuner @ git+https://github.com/KernelTuner/kernel_tuner.git",
 ]
 
 [project.optional-dependencies]
@@ -46,13 +47,12 @@ test = [
     "pytest >= 7.3.1",
     "pytest-cov >= 4.0.0",
     "nox >= 2023.4.22",
-    "kernel_tuner @ git+https://github.com/KernelTuner/kernel_tuner.git",
     "crepes >= 0.2.0",
 ]
 
 [project.scripts]
-autotuning_experiment = "src.autotuning_methodology.experiments:entry_point"
-autotuning_visualize = "src.autotuning_methodology.visualize_experiments:entry_point"
+autotuning_experiment = "autotuning_methodology.experiments:entry_point"
+autotuning_visualize = "autotuning_methodology.visualize_experiments:entry_point"
 
 [project.urls]
 "Repository" = "https://github.com/fjwillemsen/autotuning_methodology"
@@ -60,7 +60,7 @@ autotuning_visualize = "src.autotuning_methodology.visualize_experiments:entry_p
 "Bug Tracker" = "https://github.com/fjwillemsen/autotuning_methodology/issues"
 
 [tool.pytest.ini_options]
-minversion = "6.0"
+minversion = "7.3"
 pythonpath = ["src"]    # necessary to get coverage reports without installing with `-e`
 addopts = "--cov --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 80"
 testpaths = [

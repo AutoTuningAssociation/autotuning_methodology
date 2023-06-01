@@ -18,7 +18,7 @@ from autotuning_methodology.experiments import (
 # setup file paths
 mockfiles_path_root = Path("tests/autotuning_methodology/integration/mockfiles/")
 mockfiles_path_source = mockfiles_path_root / "mock_gpu.json"
-mockfiles_path = Path("..") / mockfiles_path_root
+mockfiles_path = ".." / mockfiles_path_root
 cached_visualization_path = Path("cached_data_used/visualizations/test_run_experiment/mocktest_kernel_convolution")
 cached_visualization_file = cached_visualization_path / "mock_GPU_random_sample_10_iter.npz"
 normal_cachefiles_path = Path("cached_data_used/cachefiles/mocktest_kernel_convolution")

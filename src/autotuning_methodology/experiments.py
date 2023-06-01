@@ -7,8 +7,10 @@ import sys
 from argparse import ArgumentParser
 from importlib import import_module
 from math import ceil
+from os import getcwd
 from pathlib import Path
 
+from importlib_resources import files
 from jsonschema import validate
 
 from autotuning_methodology.caching import ResultsDescription
@@ -39,11 +41,15 @@ def get_args_from_cli(args=None) -> str:
     return filepath
 
 
-def get_experiment_schema_filepath() -> Path:
-    """Get the filepath to the JSON schema for experiment files."""
-    schemafilepath = Path("src/autotuning_methodology/schema.json")
-    assert schemafilepath.exists(), f"Path to schema.json does not exist, attempted path: {schemafilepath}"
-    return schemafilepath
+def get_experiment_schema_filepath():
+    """Obtains and checks the filepath to the JSON schema.
+
+    Returns:
+        the filepath to the schema in Traversable format.
+    """
+    schemafile = files("autotuning_methodology").joinpath("schema.json")
+    assert schemafile.is_file(), f"Path to schema.json does not exist, attempted path: {schemafile}"
+    return schemafile
 
 
 def get_experiment(filename: str) -> dict:
@@ -55,6 +61,7 @@ def get_experiment(filename: str) -> dict:
     Returns:
         Experiment dictionary object.
     """
+    # get the path to the experiment file
     folder_name = "experiment_files"
     folder = Path(folder_name)
     extension = ".json"
@@ -64,9 +71,13 @@ def get_experiment(filename: str) -> dict:
         path = folder / filename
     else:
         path = Path(filename)
-    assert path.exists(), f"Path to experiment file does not exist, attempted path: {path}"
-    schemafilepath = get_experiment_schema_filepath()
-    with open(path) as file, open(schemafilepath) as schemafile:
+    assert path.exists(), f"Path to experiment file does not exist, attempted path: {path}, CWD: {getcwd()}"
+
+    # get the path to the schema
+    schemafile = get_experiment_schema_filepath()
+
+    # open the experiment file and validate using the schema file
+    with open(path) as file, open(schemafile) as schemafile:
         schema = json.load(schemafile)
         experiment: dict = json.load(file)
         validate(instance=experiment, schema=schema)
@@ -119,6 +130,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
         A tuple of the experiment dictionary, the strategies executed, and the resulting list of ``ResultsDescription``.
     """
     experiment = get_experiment(filepath)
+    experiment_folderpath = Path(filepath).parent
     print(f"Starting experiment '{experiment['name']}'")
     experiment_folder_id: str = experiment["folder_id"]
     minimization: bool = experiment.get("minimization", True)
@@ -128,10 +140,11 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
     curve_segment_factor: float = experiment.get("curve_segment_factor", 0.05)
     assert isinstance(curve_segment_factor, float), f"curve_segment_factor is not float, {type(curve_segment_factor)}"
     strategies = get_strategies(experiment)
-    # add the kernel directory to path to import the module
-    kernel_path = Path(experiment.get("kernel_path", ""))
+
+    # add the kernel directory to the path to import the module, relative to the experiment file
+    kernel_path = experiment_folderpath / Path(experiment["kernel_path"])
     if not kernel_path.exists():
-        raise FileNotFoundError(f"No such path {kernel_path}")
+        raise FileNotFoundError(f"No such path {kernel_path}, CWD: {getcwd()}")
     sys.path.append(str(kernel_path))
     kernel_names = experiment["kernels"]
     kernels = list(import_module(kernel_name) for kernel_name in kernel_names)
@@ -154,6 +167,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
                 minimization=minimization,
                 objective_time_keys=objective_time_keys,
                 objective_performance_keys=objective_performance_keys,
+                bruteforced_caches_path=experiment_folderpath / experiment["bruteforced_caches_path"],
             )
 
             # set cutoff point
@@ -189,6 +203,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
                     objective_time_keys=objective_time_keys,
                     objective_performance_keys=objective_performance_keys,
                     minimization=minimization,
+                    visualization_caches_path=experiment_folderpath / experiment["visualization_caches_path"],
                 )
 
                 # if the strategy is in the cache, use cached data

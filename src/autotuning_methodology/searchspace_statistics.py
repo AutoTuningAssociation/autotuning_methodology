@@ -61,6 +61,7 @@ class SearchspaceStatistics:
         minimization: bool,
         objective_time_keys: list[str],
         objective_performance_keys: list[str],
+        bruteforced_caches_path=Path("cached_data_used/cachefiles"),
     ) -> None:
         """Initialization method for a Searchspace statistics object.
 
@@ -77,6 +78,7 @@ class SearchspaceStatistics:
         self.minimization = minimization
         self.objective_time_keys = self.T4_time_keys_to_kernel_tuner_time_keys(objective_time_keys)
         self.objective_performance_keys = objective_performance_keys
+        self.bruteforced_caches_path = bruteforced_caches_path
 
         # load the data into the arrays
         self.loaded = self._load()
@@ -160,10 +162,9 @@ class SearchspaceStatistics:
 
     def _get_filepath(self) -> Path:
         """Returns the filepath."""
-        basepath = Path("cached_data_used/cachefiles")
         kernel_directory = self.kernel_name.lower()
         filename = f"{self.device_name.lower()}.json"
-        return basepath / kernel_directory / filename
+        return self.bruteforced_caches_path / kernel_directory / filename
 
     def get_valid_filepath(self) -> Path:
         """Returns the filepath to the Searchspace statistics .json file if it exists.
