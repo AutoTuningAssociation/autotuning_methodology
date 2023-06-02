@@ -4,7 +4,7 @@ requires = ["flit_core >=3.8.0,<4"]
 
 [project]   # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
 name = "autotuning_methodology"
-version = "0.1.0.b1"
+version = "0.1.0b1"
 authors = [
     {name = "Floris-Jan Willemsen", email = "fjwillemsen97@gmail.com"},
 ]
@@ -28,13 +28,12 @@ dependencies = [
     "progressbar2 >= 4.2.0",
     "jsonschema >= 4.17.3",
     "nonconformist >= 2.1.0",
-    "kernel_tuner @ git+https://github.com/KernelTuner/kernel_tuner.git",
+    "kernel_tuner >= 0.4.5",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pylint >=2.14.4",
-    "toml >= 0.10.2",
     "black >= 23.3.0",
 ]
 docs = [
@@ -49,6 +48,7 @@ test = [
     "pytest-cov >= 4.0.0",
     "nox >= 2023.4.22",
     "crepes >= 0.2.0",
+    "tomli >= 2.0.1",   # can be replaced by built-in [tomllib](https://docs.python.org/3.11/library/tomllib.html) from Python 3.11
 ]
 
 [project.scripts]
@@ -67,6 +67,7 @@ addopts = "--cov --cov-config=.coveragerc --cov-report html --cov-report term-mi
 testpaths = [
     "tests/unit",
     "tests/integration",
+    "tests/release",
 ]
 
 [tool.black]
