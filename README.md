@@ -67,3 +67,9 @@ Upon submitting a pull request or pushing to main, these same checks will be ran
 
 ### Publishing
 For publising the package to PyPI (the Python Package Index), we use [Flit](https://flit.pypa.io) and the [to-pypi-using-flit](https://github.com/AsifArmanRahman/to-pypi-using-flit/tree/v1/) GitHub Action to automate this. 
+
+[Semantic version numbering](https://semver.org) is used as follows: `MAJOR.Minor.patch`. 
+`MAJOR` version for incompatible API changes.
+`Minor` version for functionality in a backward compatible manner.
+`patch` version for backward compatible bug fixes. 
+In addition, [PEP 440](https://peps.python.org/pep-0440/) is adhered to, specifically for [pre-release versioning](https://packaging.python.org/en/latest/guides/distributing-packages-using-setuptools/#id62). 

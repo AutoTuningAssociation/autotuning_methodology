@@ -10,6 +10,9 @@ cached_data_used/kernels/*
 cached_data_used/visualizations/*
 cached_data_used/last_run/*
 
+# ignore specific experiment files
+experiment_files/milo.json
+
 # ignore mypy
 mypy.ini
 

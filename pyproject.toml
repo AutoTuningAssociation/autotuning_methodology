@@ -4,7 +4,7 @@ requires = ["flit_core >=3.8.0,<4"]
 
 [project]   # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
 name = "autotuning_methodology"
-version = "0.2.0"
+version = "0.1.0.b1"
 authors = [
     {name = "Floris-Jan Willemsen", email = "fjwillemsen97@gmail.com"},
 ]
@@ -44,6 +44,7 @@ docs = [
 ]
 test = [
     "ruff >= 0.0.263",
+    "pep440 >= 0.1.2",
     "pytest >= 7.3.1",
     "pytest-cov >= 4.0.0",
     "nox >= 2023.4.22",
