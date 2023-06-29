@@ -1,7 +1,8 @@
 """Code for obtaining search space statistics."""
 
 
-from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+from __future__ import \
+    annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
 import json
 from math import ceil, floor
@@ -9,7 +10,8 @@ from pathlib import Path
 
 import numpy as np
 
-from autotuning_methodology.runner import is_invalid_objective_performance, is_invalid_objective_time
+from autotuning_methodology.runner import (is_invalid_objective_performance,
+                                           is_invalid_objective_time)
 
 
 def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
@@ -120,7 +122,40 @@ class SearchspaceStatistics:
         absolute_optimum = self.total_performance_absolute_optimum()
         median = self.total_performance_median()
         objective_performance_target = absolute_optimum + ((median - absolute_optimum) * (1 - cutoff_percentile))
+        # print(f"{cutoff_percentile=}, {median=}, {absolute_optimum=}; results in {objective_performance_target=}")
         return objective_performance_target
+
+    def plot_histogram(self, cutoff_percentile: float):
+        """Plots a histogram of the distribution.
+
+        Args:
+            cutoff_percentile: the desired cutoff percentile to reach before stopping.
+        """
+        # prepare plot
+        import matplotlib.pyplot as plt
+        fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
+        if not isinstance(axs, list):
+            axs = [axs]
+
+        # prepare data
+        performances = self.objective_performances_total_sorted
+        mean = self.total_performance_mean()
+        median = self.total_performance_median()
+        cutoff_performance = self.objective_performance_at_cutoff_point(cutoff_percentile)
+
+        # plot the data
+        n_bins = 200
+        axs[0].hist(performances, bins=n_bins)
+        axs[0].set_ylabel("Number of configurations in bin")
+        axs[0].set_xlabel("Performance in miliseconds")
+        axs[0].axvline(x=[mean], label="Mean", c='red')
+        axs[0].axvline(x=[median], label="Median", c='orange')
+        axs[0].axvline(x=[cutoff_performance], label="Cutoff point", c='green')
+
+        # finalize and show plot
+        plt.legend()
+        plt.show()
+
 
     def cutoff_point(self, cutoff_percentile: float) -> tuple[float, int]:
         """Calculates the cutoff point.
@@ -131,12 +166,37 @@ class SearchspaceStatistics:
         Returns:
             A tuple of the objective value at the cutoff point and the fevals to the cutoff point.
         """
-        objective_performance_at_cutoff_point = self.objective_performance_at_cutoff_point(cutoff_percentile)
         inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
         N = inverted_sorted_performance_arr.shape[0]
 
-        # fevals_to_cutoff_point = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
+        # get the objective performance at the cutoff point
+        objective_performance_at_cutoff_point = self.objective_performance_at_cutoff_point(cutoff_percentile)
 
+        # # top 10 duplicate values
+        # uniques, counts = np.unique(inverted_sorted_performance_arr, return_counts=True)
+        # top_ten = sorted(zip(uniques, counts), key=lambda x: x[1])[-10:]
+        # print(f"Searchspace size: {N}, of which unique: {len(uniques)}")
+        # print("Top ten duplicate values (value, occurance):")
+        # print(top_ten)
+
+        # # for each number of function evaluations from 0 to N
+        # print("Calculating r_i (eq. 6) for each feval until the performance cutoff is reached:")
+        # for feval in range(0, N):
+        #     # calculate the random search index
+        #     ri = round((feval * (N + 1)) / (feval + 1))
+        #     print(f"  {feval}: {ri} ({round(ri / N * 100, 3)}%)")
+        #     # lookup if random search has reached the performance at cutoff
+        #     if inverted_sorted_performance_arr[ri] <= objective_performance_at_cutoff_point:
+        #         i = ri
+        #         fevals_to_cutoff_point = ceil(i / (N + 1 - i))
+        #         print(
+        #             f"{fevals_to_cutoff_point=} ({i=}) ({inverted_sorted_performance_arr[ri]} <= {objective_performance_at_cutoff_point})"
+        #         )
+        #         break
+
+        # fevals_to_cutoff_point_alt = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
+
+        # iterate over the inverted_sorted_performance_arr until we have
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] > cutoff_percentile * arr[-1])
         i = next(
             x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_performance_at_cutoff_point
@@ -146,6 +206,9 @@ class SearchspaceStatistics:
         # In case of p*x <= f_opt
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if cutoff_percentile * x[1] <= arr[-1])
         fevals_to_cutoff_point = ceil(i / (N + 1 - i))
+
+        # print(f"{fevals_to_cutoff_point=} ({i=})")
+        # exit(0)
         return objective_performance_at_cutoff_point, fevals_to_cutoff_point
 
     def cutoff_point_fevals_time(self, cutoff_percentile: float) -> tuple[float, int, float]:

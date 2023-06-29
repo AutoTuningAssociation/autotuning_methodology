@@ -4,18 +4,21 @@
   <img width="25%" src="https://fjwillemsen.github.io/autotuning_methodology/_static/logo_autotuning_methodology.svg" />
 </p>
 
+![PyPI - License](https://img.shields.io/pypi/l/autotuning_methodology)
 [![Build Status](https://github.com/fjwillemsen/autotuning_methodology/actions/workflows/build-test-python-package.yml/badge.svg)](https://github.com/fjwillemsen/autotuning_methodology/actions/workflows/build-test-python-package.yml)
 [![Docs](https://img.shields.io/github/actions/workflow/status/fjwillemsen/autotuning_methodology/publish-documentation.yml?label=docs)](https://fjwillemsen.github.io/autotuning_methodology/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
-![PyPI - License](https://img.shields.io/pypi/l/autotuning_methodology)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
+![PyPI - Status](https://img.shields.io/pypi/status/autotuning_methodology)
 
-
+ 
 This repository contains the software package accompanying the paper "A Methodology for Comparing Auto-Tuning Optimization Algorithms". 
 It makes the guidelines in the methodology easy to apply: simply specify the  `.json` file, run `autotuning_visualize [path_to_json]` and wait for the results!
 
 ## Installation
-The package can be installed by cloning this repository and running `pip install .`. Python >= 3.9 is supported.  
+The package can be installed with `pip install autotuning_methodology`. 
+Alternatively, it can be installed by cloning this repository and running `pip install .` in the root of the cloned project. 
+Python >= 3.9 is supported. 
 
 ## Notable features
 - Official software by the authors of the methodology-defining paper. 
