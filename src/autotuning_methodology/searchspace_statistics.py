@@ -1,8 +1,7 @@
 """Code for obtaining search space statistics."""
 
 
-from __future__ import \
-    annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
 import json
 from math import ceil, floor
@@ -10,8 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from autotuning_methodology.runner import (is_invalid_objective_performance,
-                                           is_invalid_objective_time)
+from autotuning_methodology.runner import is_invalid_objective_performance, is_invalid_objective_time
 
 
 def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
@@ -189,9 +187,6 @@ class SearchspaceStatistics:
         #     if inverted_sorted_performance_arr[ri] <= objective_performance_at_cutoff_point:
         #         i = ri
         #         fevals_to_cutoff_point = ceil(i / (N + 1 - i))
-        #         print(
-        #             f"{fevals_to_cutoff_point=} ({i=}) ({inverted_sorted_performance_arr[ri]} <= {objective_performance_at_cutoff_point})"
-        #         )
         #         break
 
         # fevals_to_cutoff_point_alt = ceil((cutoff_percentile * N) / (1 + (1 - cutoff_percentile) * N))
