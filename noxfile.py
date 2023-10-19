@@ -22,4 +22,4 @@ def tests(session: nox.Session) -> None:
 def lint(session: nox.Session) -> None:
     """Ensure the code is formatted as expected."""
     session.install("ruff")
-    session.run("ruff", "--format=github", "--config=pyproject.toml", ".")
+    session.run("ruff", "--output-format=github", "--config=pyproject.toml", ".")
