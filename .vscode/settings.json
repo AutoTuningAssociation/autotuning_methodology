@@ -14,8 +14,7 @@
       "source.organizeImports": true,
     }
   },
-  "python.formatting.provider": "black",
-  "python.formatting.blackArgs": [
+  "black-formatter.args": [
     "--config=pyproject.toml"
   ],
   "ruff.args": [

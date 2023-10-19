@@ -3,7 +3,6 @@
     "ms-python.python",
     "ms-python.black-formatter",
     "charliermarsh.ruff",
-    "bungcip.better-toml",
     "njpwerner.autodocstring",
   ]
 }
