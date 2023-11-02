@@ -2,16 +2,14 @@
 build-backend = "flit_core.buildapi"
 requires = ["flit_core >=3.8.0,<4"]
 
-[project]   # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
+[project] # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
 name = "autotuning_methodology"
-version = "0.1.0b1"
-authors = [
-    {name = "Floris-Jan Willemsen", email = "fjwillemsen97@gmail.com"},
-]
+version = "0.1.0b2"
+authors = [{ name = "Floris-Jan Willemsen", email = "fjwillemsen97@gmail.com" }]
 description = "Software package easing implementation of the guidelines of the 2023 paper 'A Methodology for Comparing Auto-Tuning Optimization Algorithms'."
 keywords = ["autotuning", "auto-tuning", "methodology", "scientific"]
 readme = "README.md"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 requires-python = ">=3.9"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -21,7 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-]       # https://pypi.org/classifiers/
+] # https://pypi.org/classifiers/
 dependencies = [
     "numpy >= 1.22.4",
     "scikit-learn >= 1.0.2",
@@ -30,14 +28,11 @@ dependencies = [
     "progressbar2 >= 4.2.0",
     "jsonschema >= 4.17.3",
     "nonconformist >= 2.1.0",
-    "kernel_tuner >= 0.4.5",
+    "kernel_tuner >= 1.0.0b5",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pylint >=2.14.4",
-    "black >= 23.3.0",
-]
+dev = ["pylint >=2.14.4", "black >= 23.3.0"]
 docs = [
     "sphinx >= 6.2.1",
     "sphinx_rtd_theme >= 1.2.0",
@@ -50,7 +45,7 @@ test = [
     "pytest-cov >= 4.0.0",
     "nox >= 2023.4.22",
     "crepes >= 0.2.0",
-    "tomli >= 2.0.1",   # can be replaced by built-in [tomllib](https://docs.python.org/3.11/library/tomllib.html) from Python 3.11
+    "tomli >= 2.0.1",      # can be replaced by built-in [tomllib](https://docs.python.org/3.11/library/tomllib.html) from Python 3.11
 ]
 
 [project.scripts]
@@ -64,13 +59,11 @@ autotuning_visualize = "autotuning_methodology.visualize_experiments:entry_point
 
 [tool.pytest.ini_options]
 minversion = "7.3"
-pythonpath = ["src"]    # necessary to get coverage reports without installing with `-e`
+pythonpath = [
+    "src",
+] # necessary to get coverage reports without installing with `-e`
 addopts = "--cov --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 80"
-testpaths = [
-    "tests/unit",
-    "tests/integration",
-    "tests/release",
-]
+testpaths = ["tests/unit", "tests/integration", "tests/release"]
 
 [tool.black]
 line-length = 120
@@ -80,9 +73,9 @@ src = ["src"]
 respect-gitignore = true
 exclude = ["extra", "UML", "tests/autotuning_methodology/*mockfiles*"]
 select = [
-  "E",   # pycodestyle
-  "F",   # pyflakes,
-  "D",   # pydocstyle,
+    "E", # pycodestyle
+    "F", # pyflakes,
+    "D", # pydocstyle,
 ]
 # target-version = "py310"   # inferred from project.requires-python
 [tool.ruff.pydocstyle]

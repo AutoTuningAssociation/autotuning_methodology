@@ -625,7 +625,7 @@ class Visualize:
                 baseline = baseline_curve.get_curve(x_axis_range, x_type)
                 if y_type == "normalized":
                     baseline = normalize(baseline)
-                ax.plot(x_axis_range, baseline, label="baseline curve", color="black", ls="--")
+                ax.plot(x_axis_range, baseline, label="random search baseline", color="black", ls="--")
 
         # plot additional baselines if provided
         baselines_extra_curves = list()

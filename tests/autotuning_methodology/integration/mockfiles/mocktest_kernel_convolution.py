@@ -2,7 +2,6 @@
 
 #!/usr/bin/env python
 import sys
-from collections import OrderedDict
 
 import numpy
 
@@ -31,13 +30,13 @@ def tune(device_name: str, strategy="mls", strategy_options=None, verbose=True, 
     cmem_args = {"d_filter": filter_weights}
     args = [output_image, input_image, filter_weights]
 
-    metrics = OrderedDict()
+    metrics = dict()
     metrics["GFLOP/s"] = lambda p: (image_width * image_height * filter_width * filter_height * 2 / 1e9) / (
         p["time"] / 1e3
     )
 
     # setup tunable parameters
-    tune_params = OrderedDict()
+    tune_params = dict()
     tune_params["block_size_x"] = [1, 2, 4, 8, 16, 32, 48, 64, 96, 112, 128]
     tune_params["block_size_y"] = [1, 2, 4, 8, 16, 32]
     tune_params["filter_height"] = [filter_height]

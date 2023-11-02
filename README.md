@@ -26,7 +26,7 @@ Python >= 3.9 is supported.
 - Split executer and visualizer to allow running the algorithms on a cluster and visualize locally. 
 - Caching built-in to avoid duplicate executions.  
 - Planned support for T1 input and T4 output files.
-- Notebook / interactive window mode; in this case, plots are shown in the notebook / window instead of written to a folder. 
+- Notebook / interactive window mode; if enabled, plots are shown in the notebook / window instead of written to a folder. 
 
 <img width="674" alt="example run in interactive window" src="https://user-images.githubusercontent.com/6725103/232880006-70a05b0e-a4e4-4cc7-bea9-473959c474c2.png">
 <img width="483" alt="example run in interactive window 2" src="https://user-images.githubusercontent.com/6725103/232881244-d432ea8e-801a-44b1-9acb-b98cc1b740ac.png">
