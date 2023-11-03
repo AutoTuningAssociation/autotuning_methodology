@@ -7,6 +7,7 @@ from math import ceil
 from typing import Callable, Optional
 
 import numpy as np
+from scipy.interpolate import PchipInterpolator
 
 from autotuning_methodology.curves import CurveBasis, get_indices_in_array
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
@@ -109,13 +110,33 @@ class RandomSearchCalculatedBaseline(Baseline):
         """Get the expected value in the distribution for a budget in number of function evaluations M."""
         return dist[self._redwhite_index(M, N)]
 
-    def _get_random_curve(self, fevals_range: np.ndarray) -> np.ndarray:
+    def _get_random_curve(self, fevals_range: np.ndarray, smoothing=True) -> np.ndarray:
         """Returns the drawn values of the random curve at each number of function evaluations."""
         ks = fevals_range
         dist = self._redwhite_index_dist
         N = dist.shape[0]
         draws = np.array([self._redwhite_index_value(k, N, dist) for k in ks])
-        return draws
+        if not smoothing or len(fevals_range) <= 2:
+            return draws
+
+        # the monotic interpolator does not handle duplicate values, so if present, filter them out first
+        if len(fevals_range) != len(np.unique(fevals_range)):
+            # get a boolean mask of the fevals_range-values that occur multiple times
+            # (as ediff1d only gives the difference between consecutive values, the first value is added as True)
+            first_occurance_index = np.concatenate([[True], np.where(np.ediff1d(fevals_range) > 0, True, False)])
+            assert len(first_occurance_index) == len(fevals_range) == len(draws)
+
+            # apply the boolean mask to the x and y dimensions
+            x = fevals_range[first_occurance_index]
+            y = draws[first_occurance_index]
+        else:
+            x = fevals_range
+            y = draws
+
+        # apply the monotonicity-preserving Piecewise Cubic Hermite Interpolating Polynomial
+        smooth_fevals_range = np.linspace(fevals_range[0], fevals_range[-1], len(fevals_range))
+        smooth_draws = PchipInterpolator(x, y)(smooth_fevals_range)
+        return smooth_draws
 
     def _draw_random(self, xs: np.ndarray, k: int):
         """Monte Carlo simulation over cache."""
