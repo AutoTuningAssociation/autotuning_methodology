@@ -219,10 +219,14 @@ class SearchspaceStatistics:
         cutoff_point_time = cutoff_point_fevals * self.total_time_median()
         return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
 
-    def _get_filepath(self) -> Path:
+    def _get_filepath(self, lowercase=False) -> Path:
         """Returns the filepath."""
-        kernel_directory = self.kernel_name.lower()
-        filename = f"{self.device_name.lower()}.json"
+        kernel_directory = self.kernel_name
+        if lowercase:
+            kernel_directory = kernel_directory.lower()
+        filename = f"{self.device_name}.json"
+        if lowercase:
+            filename = filename.lower()
         return self.bruteforced_caches_path / kernel_directory / filename
 
     def get_valid_filepath(self) -> Path:
@@ -236,9 +240,15 @@ class SearchspaceStatistics:
         """
         filepath = self._get_filepath()
         if not filepath.exists():
-            import os
+            # if the file is not found, try again with lowercase
+            filepath = self._get_filepath(lowercase=True)
+            if not filepath.exists():
+                # if the file is still not found, raise an error
+                import os
 
-            raise FileNotFoundError(f"{filepath} does not exist relative to current working directory {os.getcwd()}")
+                raise FileNotFoundError(
+                    f"{filepath} does not exist relative to current working directory {os.getcwd()}"
+                )
         return filepath
 
     def _is_not_invalid_value(self, value, performance: bool) -> bool:
