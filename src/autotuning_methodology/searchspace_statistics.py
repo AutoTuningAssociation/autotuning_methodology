@@ -399,6 +399,7 @@ class SearchspaceStatistics:
 
         Args:
             time_per_feval_operator: method to use.
+            strategy_offset: whether to include a small offset to adjust for missing strategy time.
 
         Raises:
             ValueError: if invalid ``time_per_feval_operator`` is passed.
@@ -456,7 +457,6 @@ class SearchspaceStatistics:
     def total_time_mean_per_feval(self) -> float:
         """Get the true mean per function evaluation by adding the chance of an invalid."""
         invalid_mask = np.isnan(self.objective_performances_total)
-        # TODO maybe it has to do with how objective_times_total is calculated? Or with the time taken by actual random search
         if all(~invalid_mask):  # if there are no invalid values, this is the same as the normal mean
             return self.total_time_mean()
         mean_time_per_invalid_feval = np.mean(self.objective_times_total[invalid_mask])
