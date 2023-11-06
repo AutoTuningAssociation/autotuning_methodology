@@ -1,60 +1,60 @@
 {
-  "version": "0.1.2",
-  "name": "Mock run test",
-  "folder_id": "test_run_experiment",
-  "kernels_path": "../mockfiles",
-  "bruteforced_caches_path": "../../../../cached_data_used/cachefiles",
-  "visualization_caches_path": "../../../../cached_data_used/visualizations",
-  "kernels": [
-    "mocktest_kernel_convolution"
-  ],
-  "GPUs": [
-    "mock_GPU"
-  ],
-  "minimization": true,
-  "resolution": 1e3,
-  "cutoff_percentile": 0.99,
-  "cutoff_percentile_start": 0.7,
-  "objective_time_keys": [
-    "compilation",
-    "benchmark",
-    "framework",
-    "search_algorithm",
-    "validation"
-  ],
-  "objective_performance_keys": [
-    "time"
-  ],
-  "cutoff_type": "fevals",
-  "plot": {
-    "plot_x_value_types": [
-      "fevals",
-      "time",
-      "aggregated"
+    "version": "0.1.2",
+    "name": "Mock run test",
+    "folder_id": "test_run_experiment",
+    "kernels_path": "../mockfiles",
+    "bruteforced_caches_path": "../../../../cached_data_used/cachefiles",
+    "visualization_caches_path": "../../../../cached_data_used/visualizations",
+    "kernels": [
+        "mocktest_kernel_convolution"
     ],
-    "plot_y_value_types": [
-      "normalized",
-      "baseline"
+    "GPUs": [
+        "mock_GPU"
     ],
-    "confidence_level": 0.95,
-    "compare_baselines": true,
-    "compare_split_times": true
-  },
-  "strategy_defaults": {
-    "repeats": 10,
-    "minimum_number_of_evaluations": 20,
-    "stochastic": true,
-    "record_data": [
-      "time",
-      "GFLOP/s"
+    "minimization": true,
+    "resolution": 1e3,
+    "cutoff_percentile": 0.99,
+    "cutoff_percentile_start": 0.7,
+    "objective_time_keys": [
+        "compilation",
+        "benchmark",
+        "framework",
+        "search_algorithm",
+        "validation"
+    ],
+    "objective_performance_keys": [
+        "time"
+    ],
+    "cutoff_type": "fevals",
+    "plot": {
+        "plot_x_value_types": [
+            "fevals",
+            "time",
+            "aggregated"
+        ],
+        "plot_y_value_types": [
+            "normalized",
+            "baseline"
+        ],
+        "confidence_level": 0.95,
+        "compare_baselines": true,
+        "compare_split_times": true
+    },
+    "strategy_defaults": {
+        "repeats": 10,
+        "minimum_number_of_evaluations": 20,
+        "stochastic": true,
+        "record_data": [
+            "time",
+            "GFLOP/s"
+        ]
+    },
+    "strategies": [
+        {
+            "name": "random_sample_10_iter",
+            "strategy": "random_sample",
+            "display_name": "Random sampling 10 iters",
+            "repeats": 3
+        }
     ]
-  },
-  "strategies": [
-    {
-      "name": "random_sample_10_iter",
-      "strategy": "random_sample",
-      "display_name": "Random sampling 10 iters",
-      "repeats": 3
-    }
-  ]
 }

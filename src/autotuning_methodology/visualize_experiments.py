@@ -60,7 +60,7 @@ class Visualize:
         "baseline",
     ]  # absolute values, scatterplot, median-absolute normalized, improvement over baseline
 
-    plot_filename_prefix = "generated_plots/"
+    plot_filename_prefix_parent = "generated_plots"
 
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
@@ -91,11 +91,15 @@ class Visualize:
             experiment_filepath, profiling=False
         )
         experiment_folderpath = Path(experiment_filepath).parent
+        experiment_folder_id: str = self.experiment["folder_id"]
+        assert isinstance(experiment_folder_id, str) and len(experiment_folder_id) > 0
+        self.plot_filename_prefix = f"{self.plot_filename_prefix_parent}/{experiment_folder_id}/"
         print("\n")
         print("Visualizing")
 
         # preparing filesystem
         if save_figs or save_extra_figs:
+            Path(self.plot_filename_prefix_parent).mkdir(exist_ok=True)
             Path(self.plot_filename_prefix).mkdir(exist_ok=True)
 
         # settings

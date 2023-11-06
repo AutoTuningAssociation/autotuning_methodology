@@ -17,7 +17,7 @@ from autotuning_methodology.visualize_experiments import Visualize
 
 # setup file paths
 experiment_title = f"{kernel_id}_on_mock_GPU"
-plot_path = Path("generated_plots")
+plot_path = Path("generated_plots/test_run_experiment")
 plot_path_fevals = plot_path / f"{experiment_title}_fevals.png"
 plot_path_time = plot_path / f"{experiment_title}_time.png"
 plot_path_aggregated = plot_path / "aggregated.png"
@@ -60,6 +60,7 @@ def teardown_module():
     if plot_path.exists():
         for plot_filepath in plot_filepaths:
             plot_filepath.unlink(missing_ok=True)
+        plot_path.rmdir()
 
 
 def test_visualize_experiment():
