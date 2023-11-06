@@ -1,0 +1,69 @@
+{
+    "version": "0.1.2",
+    "name": "Example visualization",
+    "folder_id": "example_visualization",
+    "kernels_path": "../cached_data_used/kernels",
+    "bruteforced_caches_path": "../cached_data_used/cachefiles",
+    "visualization_caches_path": "../cached_data_used/visualizations",
+    "kernels": [
+        "gemm"
+    ],
+    "GPUs": [
+        "RTX_3090"
+    ],
+    "minimization": true,
+    "resolution": 1e3,
+    "cutoff_percentile": 0.95,
+    "cutoff_percentile_start": 0.5,
+    "objective_time_keys": [
+        "compilation",
+        "benchmark",
+        "framework",
+        "search_algorithm",
+        "validation"
+    ],
+    "objective_performance_keys": [
+        "time"
+    ],
+    "cutoff_type": "fevals",
+    "plot": {
+        "plot_x_value_types": [
+            "fevals",
+            "time",
+            "aggregated"
+        ],
+        "plot_y_value_types": [
+            "normalized",
+            "baseline"
+        ],
+        "confidence_level": 0.95,
+        "compare_baselines": false,
+        "compare_split_times": false
+    },
+    "strategy_defaults": {
+        "repeats": 100,
+        "minimum_number_of_evaluations": 20,
+        "stochastic": true,
+        "record_data": [
+            "time",
+            "GFLOP/s"
+        ]
+    },
+    "strategies": [
+        {
+            "name": "greedy_mls",
+            "strategy": "greedy_mls",
+            "display_name": "Greedy Multi-Start Local Search"
+        },
+        {
+            "name": "greedy_ils",
+            "strategy": "greedy_ils",
+            "display_name": "Greedy Iterative Local Search"
+        },
+        {
+            "name": "simulated_annealing",
+            "strategy": "simulated_annealing",
+            "display_name": "Simulated Annealing"
+        }
+    ]
+}
