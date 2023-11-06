@@ -131,6 +131,7 @@ class SearchspaceStatistics:
         """
         # prepare plot
         import matplotlib.pyplot as plt
+
         fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
         if not isinstance(axs, list):
             axs = [axs]
@@ -146,14 +147,13 @@ class SearchspaceStatistics:
         axs[0].hist(performances, bins=n_bins)
         axs[0].set_ylabel("Number of configurations in bin")
         axs[0].set_xlabel("Performance in miliseconds")
-        axs[0].axvline(x=[mean], label="Mean", c='red')
-        axs[0].axvline(x=[median], label="Median", c='orange')
-        axs[0].axvline(x=[cutoff_performance], label="Cutoff point", c='green')
+        axs[0].axvline(x=[mean], label="Mean", c="red")
+        axs[0].axvline(x=[median], label="Median", c="orange")
+        axs[0].axvline(x=[cutoff_performance], label="Cutoff point", c="green")
 
         # finalize and show plot
         plt.legend()
         plt.show()
-
 
     def cutoff_point(self, cutoff_percentile: float) -> tuple[float, int]:
         """Calculates the cutoff point.
@@ -341,14 +341,14 @@ class SearchspaceStatistics:
             # get the totals
             self.objective_times_total = nansumwrapper(self.objective_times_array, axis=0)
             assert self.objective_times_total.shape == tuple([self.size])
-            # NOTE more of a test than a necessary assert
+            # more of a test than a necessary assert
             assert (
                 np.nansum(self.objective_times_array[:, 0]) == self.objective_times_total[0]
             ), f"""Sums of objective performances do not match:
                 {np.nansum(self.objective_times_array[:, 0])} vs. {self.objective_times_total[0]}"""
             self.objective_performances_total = nansumwrapper(self.objective_performances_array, axis=0)
             assert self.objective_performances_total.shape == tuple([self.size])
-            # NOTE more of a test than a necessary assert
+            # more of a test than a necessary assert
             assert (
                 np.nansum(self.objective_performances_array[:, 0]) == self.objective_performances_total[0]
             ), f"""Sums of objective performances do not match:
@@ -378,7 +378,23 @@ class SearchspaceStatistics:
 
         return True
 
-    def get_time_per_feval(self, time_per_feval_operator: str) -> float:
+    def get_num_duplicate_values(self, value: float) -> int:
+        """Get the number of duplicate values in the searchspace."""
+        duplicates = np.count_nonzero(np.where(self.objective_performances_total == value, 1, 0)) - 1
+        if duplicates < 0:
+            raise ValueError(f"Value {value} not in distribution")
+        return duplicates
+
+    def mean_strategy_time_per_feval(self) -> float:
+        """Gets the average time spent on the strategy per function evaluation."""
+        if "strategy" in self.objective_times:
+            strategy_times = self.objective_times
+            invalid_mask = np.isnan(self.objective_performances_total)
+            if not all(invalid_mask):
+                return np.mean(strategy_times)
+        return 0
+
+    def get_time_per_feval(self, time_per_feval_operator: str, strategy_offset=False) -> float:
         """Gets the average time per function evaluation. Several methods available.
 
         Args:
@@ -403,7 +419,12 @@ class SearchspaceStatistics:
         else:
             raise ValueError(f"Invalid {time_per_feval_operator=}")
         assert not np.isnan(time_per_feval) and time_per_feval > 0, f"Invalid {time_per_feval=}"
-        return time_per_feval
+        # add a small amount of strategy time if necessary
+        offset = 0
+        if strategy_offset and self.mean_strategy_time_per_feval() == 0:
+            # offset should not be more than 10% of actual time per feval
+            offset = min(time_per_feval * 0.1, 0.001)
+        return time_per_feval + offset
 
     def total_time_minimum(self) -> float:
         """Get the minimum value of total time."""
@@ -435,6 +456,7 @@ class SearchspaceStatistics:
     def total_time_mean_per_feval(self) -> float:
         """Get the true mean per function evaluation by adding the chance of an invalid."""
         invalid_mask = np.isnan(self.objective_performances_total)
+        # TODO maybe it has to do with how objective_times_total is calculated? Or with the time taken by actual random search
         if all(~invalid_mask):  # if there are no invalid values, this is the same as the normal mean
             return self.total_time_mean()
         mean_time_per_invalid_feval = np.mean(self.objective_times_total[invalid_mask])

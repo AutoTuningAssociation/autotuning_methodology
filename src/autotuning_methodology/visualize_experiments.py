@@ -625,7 +625,7 @@ class Visualize:
                 baseline = baseline_curve.get_curve(x_axis_range, x_type)
                 if y_type == "normalized":
                     baseline = normalize(baseline)
-                ax.plot(x_axis_range, baseline, label="random search baseline", color="black", ls="--")
+                ax.plot(x_axis_range, baseline, label="Calculated baseline", color="black", ls="--")
 
         # plot additional baselines if provided
         baselines_extra_curves = list()
@@ -859,7 +859,7 @@ class Visualize:
             plot_settings: dictionary of additional plot settings.
         """
         # plot the random baseline and absolute optimum
-        ax.axhline(0, label="Random search", c="black", ls=":")
+        ax.axhline(0, label="Calculated baseline", c="black", ls=":")
         ax.axhline(1, label="Absolute optimum", c="black", ls="-.")
 
         # get the relative aggregated performance for each strategy

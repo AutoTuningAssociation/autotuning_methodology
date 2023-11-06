@@ -33,7 +33,8 @@
         ],
         "plot_y_value_types": [
             "normalized",
-            "baseline"
+            "baseline",
+            "scatter"
         ],
         "confidence_level": 0.95,
         "compare_baselines": false,

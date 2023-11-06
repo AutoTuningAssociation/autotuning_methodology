@@ -18,11 +18,11 @@
     "cutoff_percentile": 0.99,
     "cutoff_percentile_start": 0.7,
     "objective_time_keys": [
-        "strategy_time",
-        "compile_time",
-        "benchmark_time",
-        "verification_time",
-        "framework_time"
+        "compilation",
+        "benchmark",
+        "framework",
+        "search_algorithm",
+        "validation"
     ],
     "objective_performance_keys": [
         "time"
@@ -30,6 +30,7 @@
     "cutoff_type": "fevals",
     "plot": {
         "plot_x_value_types": [
+            "fevals",
             "time",
             "aggregated"
         ],
@@ -52,16 +53,16 @@
     },
     "strategies": [
         {
-            "name": "random_sample_500_iter",
+            "name": "random_sample_500_iter_1",
             "strategy": "random_sample",
-            "display_name": "Random sampling 500 iters",
+            "display_name": "Random sampling 500 iter.",
             "repeats": 500
         },
         {
-            "name": "random_sample_1000_iter",
+            "name": "random_sample_500_iter_2",
             "strategy": "random_sample",
-            "display_name": "Random sampling 1000 iters",
-            "repeats": 1000
+            "display_name": "Random sampling 500 iter.",
+            "repeats": 500
         }
     ]
 }
