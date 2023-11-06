@@ -1,11 +1,10 @@
 """Code for curve generation."""
 
-from __future__ import \
-    annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
-import warnings
 from abc import ABC, abstractmethod
 from math import ceil, floor, sqrt
+from warnings import warn
 
 import numpy as np
 from sklearn.ensemble import BaggingRegressor
@@ -91,6 +90,25 @@ def get_indices_in_array(values: np.ndarray, array: np.ndarray) -> np.ndarray:
     indices_found_unsorted[nan_mask] = array_sorter[indices_found[nan_mask].astype(int)]
 
     return indices_found_unsorted
+
+
+def moving_average(y: np.ndarray, window_size=3) -> np.ndarray:
+    """Function to calculate the moving average over an array.
+
+    Output array is the same size as input array.
+    After https://stackoverflow.com/a/47490020.
+
+    Args:
+        y: the 1-dimensional array to calculate the moving average over.
+        window_size: the moving average window size. Defaults to 3.
+
+    Returns:
+        the smoothed 1-dimensional array with the same size as input array.
+    """
+    assert y.ndim == 1
+    y_padded = np.pad(y, (window_size // 2, window_size - 1 - window_size // 2), mode="edge")
+    y_smooth = np.convolve(y_padded, np.ones((window_size,)) / window_size, mode="valid")
+    return y_smooth
 
 
 class CurveBasis(ABC):
@@ -342,14 +360,7 @@ class Curve(CurveBasis):
             increasing=not self.minimization, y_min=y_min, y_max=y_max, out_of_bounds=out_of_bounds
         )
 
-    def get_isotonic_curve(
-        self,
-        x: np.ndarray,
-        y: np.ndarray,
-        x_new: np.ndarray,
-        ymin=None,
-        ymax=None,
-    ) -> np.ndarray:
+    def get_isotonic_curve(self, x: np.ndarray, y: np.ndarray, x_new: np.ndarray, ymin=None, ymax=None) -> np.ndarray:
         """Get the isotonic regression curve fitted to x_new using package 'sklearn' or 'isotonic'.
 
         Args:
@@ -368,14 +379,17 @@ class Curve(CurveBasis):
         assert isinstance(x_new, np.ndarray)
         assert x_new.ndim == 1
 
+        # flatten the input arrays if necessary
         if x.ndim > 1:
             x = x.flatten()
         if y.ndim > 1:
             y = y.flatten()
 
+        # apply isotonic regression
         ir = self.get_isotonic_regressor(y_min=ymin, y_max=ymax)
         ir.fit(x, y)
-        return ir.predict(x_new)
+        isotonic_curve = ir.predict(x_new)
+        return isotonic_curve
 
 
 class StochasticOptimizationAlgorithm(Curve):
@@ -388,6 +402,7 @@ class StochasticOptimizationAlgorithm(Curve):
         curve: np.ndarray,
         curve_lower_err: np.ndarray,
         curve_upper_err: np.ndarray,
+        smoothing_factor=0.005,
     ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Split the provided curves based on the real_stopping_point_index.
 
@@ -411,7 +426,7 @@ class StochasticOptimizationAlgorithm(Curve):
             curve_lower_err_fictional = curve_lower_err[real_stopping_point_index:]
             curve_upper_err_fictional = curve_upper_err[real_stopping_point_index:]
 
-        # check and return
+        # check the consistency
         self._check_curve_real_fictional_consistency(
             x_axis_range,
             curve,
@@ -426,6 +441,21 @@ class StochasticOptimizationAlgorithm(Curve):
             curve_lower_err_fictional,
             curve_upper_err_fictional,
         )
+
+        # smooth the curve if applicable
+        if smoothing_factor > 0.0:
+            if smoothing_factor >= 1:
+                raise ValueError(f"Smoothing factor can't be >= 1, is {smoothing_factor}")
+            elif smoothing_factor >= 0.05:
+                warn(
+                    f"Smoothing factor {smoothing_factor} >= 0.05, likely making curves too smooth. 0.005 recommended",
+                    category=UserWarning,
+                )
+            window_size = min(x_axis_range.size, ceil(x_axis_range.size * smoothing_factor))
+            if window_size > 1:
+                curve_real = moving_average(curve_real, window_size)
+                curve_lower_err_real = moving_average(curve_lower_err_real, window_size)
+                curve_upper_err_real = moving_average(curve_upper_err_real, window_size)
 
         return (
             real_stopping_point_index,
@@ -541,7 +571,7 @@ class StochasticOptimizationAlgorithm(Curve):
             early_ending_repeats = np.where(indices < target_index)
             greatest_common_non_NaN_index = min(floor(np.median(indices)), target_index)
             if np.count_nonzero(early_ending_repeats) > 0:
-                warnings.warn(
+                warn(
                     f"""For optimization algorithm {self.display_name},
                     {np.count_nonzero(early_ending_repeats)} of the {num_repeats} runs ended before
                      the end of fevals_range ({target_index + 1}).
@@ -634,10 +664,11 @@ class StochasticOptimizationAlgorithm(Curve):
         # if necessary, extend the curves up to target_index
         target_index: int = fevals_range.shape[0] - 1
         if real_stopping_point_index < target_index:
-            warnings.warn(
+            warn(
                 f"""For optimization algorithm {self.display_name},
                 all runs end at {real_stopping_point_index + 1} fevals,
-                which is before the target number of function evals of {target_index + 1}."""
+                which is before the target number of function evals of {target_index + 1}.""",
+                category=UserWarning,
             )
             # take the last non-NaN value and overwrite the curves up to the target index with it
             curve[real_stopping_point_index : target_index + 1] = curve[real_stopping_point_index]
@@ -935,8 +966,9 @@ class StochasticOptimizationAlgorithm(Curve):
             assert np.all(~np.isnan(_y))
             fraction_valid = _y.shape[0] / num_fevals
             if fraction_valid < 0.05:
-                warnings.warn(
-                    f"{round(fraction_valid * 100, 1)}% data left after removing NaN ({_y.shape[0]} / {num_fevals})"
+                warn(
+                    f"{round(fraction_valid * 100, 1)}% data left after removing NaN ({_y.shape[0]} / {num_fevals})",
+                    category=UserWarning,
                 )
 
             # get the prediction
