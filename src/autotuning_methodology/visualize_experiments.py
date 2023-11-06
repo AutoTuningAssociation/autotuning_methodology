@@ -39,15 +39,15 @@ class Visualize:
 
     y_metric_displayname = dict(
         {
-            "objective_absolute": "Best found objective value",
-            "objective_scatter": "Best found objective value",
+            "objective_absolute": "Best-found objective value",
+            "objective_scatter": "Best-found objective value",
             "objective_relative_median": "Fraction of absolute optimum relative to median",
-            "objective_normalized": "Best found objective value normalized \n from median to absolute optimum",
-            "objective_baseline": "Best found objective value \n relative to baseline",
+            "objective_normalized": "Best-found objective value\n(normalized from median to optimum)",
+            "objective_baseline": "Best-found objective value\n(relative to baseline)",
             "objective_baseline_max": "Improvement over random sampling",
-            "aggregate_objective": "Aggregate best found objective function value relative to baseline",
+            "aggregate_objective": "Aggregate best-found objective value relative to baseline",
             "aggregate_objective_max": "Aggregate improvement over random sampling",
-            "time": "Best found kernel time in miliseconds",
+            "time": "Best-found kernel time in miliseconds",
             "GFLOP/s": "GFLOP/s",
         }
     )
@@ -233,7 +233,7 @@ class Visualize:
                     fig, axs = plt.subplots(
                         nrows=len(plot_y_value_types),
                         ncols=1,
-                        figsize=(9, 3.4 * len(plot_y_value_types)),
+                        figsize=(8, 3.4 * len(plot_y_value_types)),
                         sharex=True,
                         dpi=300,
                     )
