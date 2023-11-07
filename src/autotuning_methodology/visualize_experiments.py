@@ -723,7 +723,7 @@ class Visualize:
                         color=color,
                         ls="dashed",
                     )
-                ax.plot(x_axis_range_fictional, curve_fictional, color=color, ls="dashed")
+                ax.plot(x_axis_range_fictional, curve_fictional, color=color, alpha=0.8, ls="dashed")
 
         # # plot cutoff point
         # def plot_cutoff_point(cutoff_percentiles: np.ndarray, show_label=True):
@@ -904,12 +904,12 @@ class Visualize:
                 )
                 if (
                     real_stopping_point_index < time_range.shape[0]
-                    and real_stopping_point_index < len(strategies_lower_err) - 1
+                    and real_stopping_point_index < len(strategy_lower_err) - 1
                 ):
                     ax.fill_between(
                         time_range[real_stopping_point_index:],
-                        strategies_lower_err[real_stopping_point_index:],
-                        strategies_upper_err[real_stopping_point_index:],
+                        strategy_lower_err[real_stopping_point_index:],
+                        strategy_upper_err[real_stopping_point_index:],
                         alpha=0.15,
                         antialiased=True,
                         color=color,
@@ -928,6 +928,7 @@ class Visualize:
                     time_range[real_stopping_point_index:],
                     strategy_performance[real_stopping_point_index:],
                     color=color,
+                    alpha=0.8,
                     ls="dashed",
                 )
             print(f" | performance of {displayname}: {round(np.mean(strategy_performance), 3)}")

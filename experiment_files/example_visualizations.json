@@ -51,11 +51,6 @@
     },
     "strategies": [
         {
-            "name": "greedy_mls",
-            "strategy": "greedy_mls",
-            "display_name": "Greedy Multi-Start Local Search"
-        },
-        {
             "name": "greedy_ils",
             "strategy": "greedy_ils",
             "display_name": "Greedy Iterative Local Search"

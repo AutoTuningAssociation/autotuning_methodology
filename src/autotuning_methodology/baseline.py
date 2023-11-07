@@ -9,7 +9,7 @@ from typing import Callable, Optional
 import numpy as np
 from scipy.interpolate import PchipInterpolator
 
-from autotuning_methodology.curves import CurveBasis, get_indices_in_array
+from autotuning_methodology.curves import CurveBasis, get_indices_in_array, moving_average
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
@@ -170,7 +170,13 @@ class RandomSearchCalculatedBaseline(Baseline):
 
     def get_curve_over_time(self, time_range: np.ndarray, dist=None, confidence_level=None) -> np.ndarray:  # noqa: D102
         fevals_range = self.time_to_fevals(time_range)
-        return self.get_curve_over_fevals(fevals_range, dist, confidence_level)
+        curve_over_time = self.get_curve_over_fevals(fevals_range, dist, confidence_level)
+        smoothing_factor = 0.0
+        if smoothing_factor > 0.0:
+            window_size = min(time_range.size, ceil(time_range.size * smoothing_factor))
+            if time_range.size > 1 and window_size < 1:
+                curve_over_time = moving_average(curve_over_time, window_size)
+        return curve_over_time
 
     def get_standardised_curve(  # noqa: D102
         self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str

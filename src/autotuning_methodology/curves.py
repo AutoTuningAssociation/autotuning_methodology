@@ -402,7 +402,7 @@ class StochasticOptimizationAlgorithm(Curve):
         curve: np.ndarray,
         curve_lower_err: np.ndarray,
         curve_upper_err: np.ndarray,
-        smoothing_factor=0.005,
+        smoothing_factor=0.0,
     ) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Split the provided curves based on the real_stopping_point_index.
 
