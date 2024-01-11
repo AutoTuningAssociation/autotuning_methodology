@@ -174,7 +174,7 @@ class RandomSearchCalculatedBaseline(Baseline):
         smoothing_factor = 0.0
         if smoothing_factor > 0.0:
             window_size = min(time_range.size, ceil(time_range.size * smoothing_factor))
-            if time_range.size > 1 and window_size < 1:
+            if time_range.size > 1 and window_size > 1:
                 curve_over_time = moving_average(curve_over_time, window_size)
         return curve_over_time
 
