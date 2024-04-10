@@ -1,12 +1,12 @@
 # Autotuning Methodology Software Package
 
 <p align="center">
-  <img width="25%" src="https://fjwillemsen.github.io/autotuning_methodology/_static/logo_autotuning_methodology.svg" />
+  <img width="25%" src="https://autotuningassociation.github.io/autotuning_methodology/_static/logo_autotuning_methodology.svg" />
 </p>
 
 ![PyPI - License](https://img.shields.io/pypi/l/autotuning_methodology)
-[![Build Status](https://github.com/fjwillemsen/autotuning_methodology/actions/workflows/build-test-python-package.yml/badge.svg)](https://github.com/fjwillemsen/autotuning_methodology/actions/workflows/build-test-python-package.yml)
-[![Docs](https://img.shields.io/github/actions/workflow/status/fjwillemsen/autotuning_methodology/publish-documentation.yml?label=docs)](https://fjwillemsen.github.io/autotuning_methodology/)
+[![Build Status](https://github.com/autotuningassociation/autotuning_methodology/actions/workflows/build-test-python-package.yml/badge.svg)](https://github.com/autotuningassociation/autotuning_methodology/actions/workflows/build-test-python-package.yml)
+[![Docs](https://img.shields.io/github/actions/workflow/status/autotuningassociation/autotuning_methodology/publish-documentation.yml?label=docs](https://autotuningassociation.github.io/autotuning_methodology/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
 ![PyPI - Status](https://img.shields.io/pypi/status/autotuning_methodology)
@@ -51,7 +51,7 @@ Plots outputted by this package are placed in a folder called `generated_plots` 
 ## Pipeline
 The below schematics show the pipeline implemented by this tool as described in the paper. 
 
-<!-- <img width="100%" alt="flowchart performance curve generation" src="https://fjwillemsen.github.io/autotuning_methodology/_static/flowchart_performance_curve_generation.svg"> -->
+<!-- <img width="100%" alt="flowchart performance curve generation" src="https://autotuningassociation.github.io/autotuning_methodology/_static/flowchart_performance_curve_generation.svg"> -->
 ![flowchart performance curve generation](docs/source/flowchart_performance_curve_generation.png)
 The first flowchart shows the tranformation of raw, stochastic optimization algorithm data to a performance curve. 
 
@@ -71,7 +71,7 @@ When using Visual Studio Code, use the `settings.json` found in `.vscode` to aut
 In addition, install the extensions recommended by us by searching for `@recommended:workspace` in the extensions tab for a better development experience. 
 
 ### Documentation
-The documentation can be found [here](https://fjwillemsen.github.io/autotuning_methodology/). 
+The documentation can be found [here](https://autotuningassociation.github.io/autotuning_methodology/). 
 Locally, the documentation can be build with `make clean html` from the `docs` folder, but the package must have been installed in editable mode with `pip install -e .`. 
 Upon pushing to main or publishing a version, this documentation will be built and published to the GitHub Pages. 
 The Docstring format used is Google. Type hints are to be included in the function signature and therefor omitted from the docstring. In Visual Studio Code, the `autoDocstring` extension can be used to automatically infer docstrings. When referrring to functions and parameters in the docstring outside of their definition, use double backquotes to be compatible with both MarkDown and ReStructuredText, e.g.: *"skip_draws_check: skips checking that each value in ``draws`` is in the ``dist``."*.
