@@ -6,7 +6,7 @@
 
 ![PyPI - License](https://img.shields.io/pypi/l/autotuning_methodology)
 [![Build Status](https://github.com/autotuningassociation/autotuning_methodology/actions/workflows/build-test-python-package.yml/badge.svg)](https://github.com/autotuningassociation/autotuning_methodology/actions/workflows/build-test-python-package.yml)
-[![Docs](https://img.shields.io/github/actions/workflow/status/autotuningassociation/autotuning_methodology/publish-documentation.yml?label=docs](https://autotuningassociation.github.io/autotuning_methodology/)
+[![Docs](https://img.shields.io/github/actions/workflow/status/autotuningassociation/autotuning_methodology/publish-documentation.yml?label=docs)](https://autotuningassociation.github.io/autotuning_methodology/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
 ![PyPI - Status](https://img.shields.io/pypi/status/autotuning_methodology)
