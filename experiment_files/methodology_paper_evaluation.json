@@ -43,6 +43,7 @@
         "compare_split_times": false
     },
     "strategy_defaults": {
+        "tuner": "kerneltuner",
         "repeats": 100,
         "minimum_number_of_evaluations": 20,
         "stochastic": true,
@@ -71,6 +72,12 @@
             "name": "differential_evolution",
             "strategy": "diff_evo",
             "display_name": "Differential Evolution"
+        },
+        {
+            "name": "ktt_profile_searcher",
+            "tuner": "KTT",
+            "strategy": "profile_searcher",
+            "display_name": "KTT Profile Searcher"
         }
     ]
 }

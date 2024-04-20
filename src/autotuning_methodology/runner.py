@@ -114,7 +114,7 @@ def get_results_and_metadata(
 
 
 def tune(
-    kernel, kernel_name: str, device_name: str, strategy: dict, tune_options: dict, profiling: bool
+    kernel, kernel_name: str, device_name: str, tuner_name: str, strategy: dict, tune_options: dict, profiling: bool
 ) -> tuple[list, list, int]:
     """Tune a program using an optimization algorithm and collect the results.
 
@@ -124,9 +124,10 @@ def tune(
         kernel: the program (kernel) to tune.
         kernel_name: the name of the program to tune.
         device_name: the device (GPU) to tune on.
+        tuner_name: the autotuning framework to use.
         strategy: the optimization algorithm to optimize with.
-        tune_options: a special options dictionary passed along to Kernel Tuner.
-        profiling: whether profiling statistics must be collected.
+        tune_options: a special options dictionary passed along to the autotuning framework.
+        profiling: whether profiling statistics should be collected.
 
     Raises:
         ValueError: if tuning fails multiple times in a row.
@@ -171,13 +172,22 @@ def tune(
         """Interface to tune with the BAT benchmarking suite."""
         # TODO integrate with BAT
 
+    def import_from_KTT():
+        """Import the output files of KTT."""
+        raise NotImplementedError()
+
     total_start_time = python_time.perf_counter()
     warnings.simplefilter("ignore", UserWarning)
-    try:
-        metadata, results = tune_with_kerneltuner()
-    except ValueError:
-        print("Something went wrong, trying once more.")
-        metadata, results = tune_with_kerneltuner()
+    if tuner_name == "kerneltuner" or tuner_name is None:
+        try:
+            metadata, results = tune_with_kerneltuner()
+        except ValueError:
+            print("Something went wrong, trying once more.")
+            metadata, results = tune_with_kerneltuner()
+    elif tuner_name == "KTT":
+        metadata, results = import_from_KTT()
+    else:
+        raise ValueError(f"Invalid autotuning framework '{tuner_name}'")
     warnings.simplefilter("default", UserWarning)
     total_end_time = python_time.perf_counter()
     total_time_ms = round((total_end_time - total_start_time) * 1000)
@@ -240,6 +250,7 @@ def collect_results(
                 kernel,
                 results_description.kernel_name,
                 results_description.device_name,
+                results_description.tuner_name,
                 strategy,
                 tune_options,
                 profiling,

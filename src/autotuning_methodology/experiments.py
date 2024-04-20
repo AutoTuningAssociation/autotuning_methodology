@@ -176,6 +176,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
             print(f" | - optimizing kernel '{kernel_name}'")
             results_descriptions[gpu_name][kernel_name] = dict()
             for strategy in strategies:
+                tuner_name: str = strategy["tuner"]
                 strategy_name: str = strategy["name"]
                 strategy_display_name: str = strategy["display_name"]
                 stochastic = strategy["stochastic"]
@@ -197,6 +198,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
                     experiment_folder_id,
                     kernel_name,
                     gpu_name,
+                    tuner_name,
                     strategy_name,
                     strategy_display_name,
                     stochastic,
@@ -213,7 +215,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
                     results_description = collect_results(kernel, strategy, results_description, profiling=profiling)
 
                 # set the results
-                results_descriptions[gpu_name][kernel_name][strategy_name] = results_description
+                results_descriptions[gpu_name][kernel_name][tuner_name][strategy_name] = results_description
 
     return experiment, strategies, results_descriptions
 
