@@ -17,6 +17,8 @@ import yappi
 from autotuning_methodology.caching import ResultsDescription
 
 error_types_strings = ["", "InvalidConfig", "CompilationFailedConfig", "RuntimeFailedConfig"]
+folder = Path(__file__).parent.parent.parent
+import_runs_path = Path(folder, "cached_data_used/import_runs")
 kernel_tuner_error_value = 1e20
 
 
@@ -91,9 +93,16 @@ def is_valid_config_result(config: dict) -> bool:
     return "invalidity" in config and config["invalidity"] == "correct"
 
 
+def load_json(path: Path):
+    """Helper function to load a JSON file."""
+    assert path.exists(), f"File {path.name} does not exist relative to {os.getcwd()}"
+    with path.open() as file_results:
+        return json.load(file_results)
+
+
 def get_results_and_metadata(
-    filename_results: str = "../last_run/_tune_configuration-results.json",
-    filename_metadata: str = "../last_run/_tune_configuration-metadata.json",
+    filename_results: str = f"{folder}../last_run/_tune_configuration-results.json",
+    filename_metadata: str = f"{folder}../last_run/_tune_configuration-metadata.json",
 ) -> tuple[list, list]:
     """Load the results and metadata files (relative to kernel directory) in accordance with the defined T4 standards.
 
@@ -104,23 +113,27 @@ def get_results_and_metadata(
     Returns:
         A tuple of the results and metadata lists respectively.
     """
-    assert Path(filename_results).exists(), f"File {filename_results} does not exist relative to {os.getcwd()}"
-    assert Path(filename_metadata).exists(), f"File {filename_metadata} does not exist relative to {os.getcwd()}"
-    with open(filename_results, "r") as file_results:
-        results: list = json.load(file_results)["results"]
-    with open(filename_metadata, "r") as file_metadata:
-        metadata: list = json.load(file_metadata)["metadata"]
+    metadata: list = load_json(Path(filename_metadata))["metadata"]
+    results: list = load_json(Path(filename_results))["results"]
     return metadata, results
 
 
 def tune(
-    kernel, kernel_name: str, device_name: str, tuner_name: str, strategy: dict, tune_options: dict, profiling: bool
+    run_number: int,
+    kernel,
+    kernel_name: str,
+    device_name: str,
+    tuner_name: str,
+    strategy: dict,
+    tune_options: dict,
+    profiling: bool,
 ) -> tuple[list, list, int]:
     """Tune a program using an optimization algorithm and collect the results.
 
     Optionally collects profiling statistics.
 
     Args:
+        run_number: the run number (only relevant when importing).
         kernel: the program (kernel) to tune.
         kernel_name: the name of the program to tune.
         device_name: the device (GPU) to tune on.
@@ -173,18 +186,94 @@ def tune(
         # TODO integrate with BAT
 
     def import_from_KTT():
-        """Import the output files of KTT."""
-        raise NotImplementedError()
+        """Import a KTT output file."""
+        # import the file
+        assert import_runs_path.exists() and import_runs_path.is_dir()
+        expected_filename = f"f~'ktt'k~'{kernel_name}'s~'{strategy}'r~{run_number}"
+        matching_runs: list[dict] = list()
+        for file in import_runs_path.iterdir():
+            if file.name == expected_filename:
+                matching_runs.append(load_json(file))
+        if len(matching_runs) < 1:
+            raise FileNotFoundError(f"No files to import found with name '{expected_filename}'")
+        if len(matching_runs) > 1:
+            raise FileExistsError(
+                f"{len(matching_runs)} files exist with name '{expected_filename}', there can be only one"
+            )
+        run = matching_runs[0]
+
+        timeunit_mapping = {
+            "seconds": "s",
+            "microseconds": "ms",
+        }
+        status_mapping = {
+            "ok": "correct",
+            "devicelimitsexceeded": "compile",
+            "computationfailed": "runtime",
+        }
+
+        # convert to the T4 format
+        metadata = None  # TODO implement the metadata conversion when necessary
+        results = list()
+        run_metadata: dict = run["Metadata"]
+        run_results: list[dict] = run["Results"]
+        timeunit = timeunit_mapping[run_metadata["TimeUnit"].lower()]
+        for config_attempt in run_results:
+            if len(config_attempt["ComputationResults"]) > 0:
+                if len(config_attempt["ComputationResults"]) == 1:
+                    config_result = config_attempt["ComputationResults"][0]
+                    duration = config_result["Duration"]
+                    times_runtimes = [duration]
+                else:
+                    times_runtimes = list()
+                    for config_result in config_attempt["ComputationResults"]:
+                        times_runtimes.append(config_result["Duration"])
+                    duration = np.mean(times_runtimes)
+            else:
+                duration = ""
+                times_runtimes = []
+            times_search_algorithm = config_attempt.get("SearcherOverhead", 0)
+            times_validation = config_attempt.get("ValidationOverhead", 0)
+            times_framework = config_attempt.get("DataMovementOverhead", 0) + config_attempt.get("ExtraDuration", 0)
+            times_benchmark = config_attempt.get("TotalDuration", 0)
+            times_compilation = (
+                config_attempt.get("TotalOverhead", 0) - times_search_algorithm - times_validation - times_framework
+            )
+
+            converted = {
+                "invalidity": status_mapping[config_attempt["Status"]],
+                "correctness": 1,
+                "measurements": [
+                    {
+                        "name": "time",
+                        "value": duration,
+                        "unit": timeunit,
+                    }
+                ],
+                "objectives": ["time"],
+                "times": {
+                    "compilation": times_compilation,
+                    "benchmark": times_benchmark,
+                    "framework": times_framework,
+                    "search_algorithm": times_search_algorithm,
+                    "validation": times_validation,
+                    "runtimes": times_runtimes,
+                },
+            }
+            results.append(converted)
+
+        # print(strategy)
+        return metadata, results
 
     total_start_time = python_time.perf_counter()
     warnings.simplefilter("ignore", UserWarning)
-    if tuner_name == "kerneltuner" or tuner_name is None:
+    if tuner_name.lower() == "kerneltuner" or tuner_name is None:
         try:
             metadata, results = tune_with_kerneltuner()
         except ValueError:
             print("Something went wrong, trying once more.")
             metadata, results = tune_with_kerneltuner()
-    elif tuner_name == "KTT":
+    elif tuner_name.lower() == "ktt":
         metadata, results = import_from_KTT()
     else:
         raise ValueError(f"Invalid autotuning framework '{tuner_name}'")
@@ -247,6 +336,7 @@ def collect_results(
             if attempt > 0:
                 report_multiple_attempts(rep, len_res, strategy["repeats"])
             metadata, results, total_time_ms = tune(
+                rep,
                 kernel,
                 results_description.kernel_name,
                 results_description.device_name,
