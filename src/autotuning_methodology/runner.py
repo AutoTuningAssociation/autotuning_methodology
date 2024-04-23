@@ -123,7 +123,6 @@ def tune(
     kernel,
     kernel_name: str,
     device_name: str,
-    tuner_name: str,
     strategy: dict,
     tune_options: dict,
     profiling: bool,
@@ -137,7 +136,6 @@ def tune(
         kernel: the program (kernel) to tune.
         kernel_name: the name of the program to tune.
         device_name: the device (GPU) to tune on.
-        tuner_name: the autotuning framework to use.
         strategy: the optimization algorithm to optimize with.
         tune_options: a special options dictionary passed along to the autotuning framework.
         profiling: whether profiling statistics should be collected.
@@ -189,7 +187,7 @@ def tune(
         """Import a KTT output file."""
         # import the file
         assert import_runs_path.exists() and import_runs_path.is_dir()
-        expected_filename = f"f~'ktt'k~'{kernel_name}'s~'{strategy}'r~{run_number}"
+        expected_filename = f"t~'ktt'k~'{kernel_name}'s~'{strategy['strategy']}'r~{run_number}.json"
         matching_runs: list[dict] = list()
         for file in import_runs_path.iterdir():
             if file.name == expected_filename:
@@ -217,8 +215,13 @@ def tune(
         results = list()
         run_metadata: dict = run["Metadata"]
         run_results: list[dict] = run["Results"]
-        timeunit = timeunit_mapping[run_metadata["TimeUnit"].lower()]
+        timeunit = timeunit_mapping[str(run_metadata["TimeUnit"]).lower()]
+        total_time_ms = 0
         for config_attempt in run_results:
+            # add to total time
+            total_duration = config_attempt.get("TotalDuration", 0)
+            total_overhead = config_attempt.get("TotalOverhead", 0)
+            total_time_ms += total_duration + total_overhead
 
             # convert the times data
             times_runtimes = []
@@ -230,10 +233,8 @@ def tune(
             times_search_algorithm = config_attempt.get("SearcherOverhead", 0)
             times_validation = config_attempt.get("ValidationOverhead", 0)
             times_framework = config_attempt.get("DataMovementOverhead", 0)
-            times_benchmark = config_attempt.get("TotalDuration", 0)
-            times_compilation = (
-                config_attempt.get("TotalOverhead", 0) - times_search_algorithm - times_validation - times_framework
-            )
+            times_benchmark = total_duration
+            times_compilation = total_overhead - times_search_algorithm - times_validation - times_framework
 
             # convert the configuration data
             configuration = dict()
@@ -243,7 +244,7 @@ def tune(
             # assemble the converted data
             converted = {
                 "configuration": configuration,
-                "invalidity": status_mapping[config_attempt["Status"]],
+                "invalidity": status_mapping[str(config_attempt["Status"]).lower()],
                 "correctness": 1,
                 "measurements": [
                     {
@@ -263,25 +264,24 @@ def tune(
                 },
             }
             results.append(converted)
+        return metadata, results, round(total_time_ms)
 
-        # print(strategy)
-        return metadata, results
-
-    total_start_time = python_time.perf_counter()
-    warnings.simplefilter("ignore", UserWarning)
-    if tuner_name.lower() == "kerneltuner" or tuner_name is None:
+    strategy_name = str(strategy["name"]).lower()
+    if strategy_name.startswith("ktt_"):
+        metadata, results, total_time_ms = import_from_KTT()
+    elif strategy_name.startswith("kerneltuner_") or True:
+        total_start_time = python_time.perf_counter()
+        warnings.simplefilter("ignore", UserWarning)
         try:
             metadata, results = tune_with_kerneltuner()
         except ValueError:
             print("Something went wrong, trying once more.")
             metadata, results = tune_with_kerneltuner()
-    elif tuner_name.lower() == "ktt":
-        metadata, results = import_from_KTT()
+        warnings.simplefilter("default", UserWarning)
+        total_end_time = python_time.perf_counter()
+        total_time_ms = round((total_end_time - total_start_time) * 1000)
     else:
-        raise ValueError(f"Invalid autotuning framework '{tuner_name}'")
-    warnings.simplefilter("default", UserWarning)
-    total_end_time = python_time.perf_counter()
-    total_time_ms = round((total_end_time - total_start_time) * 1000)
+        raise ValueError(f"Invalid autotuning framework '{strategy_name}'")
     # be careful not to rely on total_time_ms when profiling, because it will include profiling time
     return metadata, results, total_time_ms
 
@@ -342,7 +342,6 @@ def collect_results(
                 kernel,
                 results_description.kernel_name,
                 results_description.device_name,
-                results_description.tuner_name,
                 strategy,
                 tune_options,
                 profiling,

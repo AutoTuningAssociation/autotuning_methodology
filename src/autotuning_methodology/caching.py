@@ -33,7 +33,6 @@ class ResultsDescription:
         folder_id: str,
         kernel_name: str,
         device_name: str,
-        tuner_name: str,
         strategy_name: str,
         strategy_display_name: str,
         stochastic: bool,
@@ -62,7 +61,6 @@ class ResultsDescription:
         self.__folder_id = folder_id
         self.kernel_name = kernel_name
         self.device_name = device_name
-        self.tuner_name = tuner_name
         self.strategy_name = strategy_name
         self.strategy_display_name = strategy_display_name
         self.stochastic = stochastic
