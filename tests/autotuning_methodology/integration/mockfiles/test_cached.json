@@ -39,7 +39,6 @@
         "compare_split_times": false
     },
     "strategy_defaults": {
-        "tuner": "kerneltuner",
         "repeats": 100,
         "minimum_number_of_evaluations": 20,
         "stochastic": true,

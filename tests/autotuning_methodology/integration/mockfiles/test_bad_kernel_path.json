@@ -50,7 +50,6 @@
     "strategies": [
         {
             "name": "random_sample_100_iter",
-            "tuner": "kerneltuner",
             "strategy": "random_sample",
             "display_name": "Random sampling 100 iters",
             "repeats": 5

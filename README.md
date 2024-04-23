@@ -38,7 +38,7 @@ There are two entry points defined: `autotuning_experiment` and `autotuning_visu
 
 ### Input files
 To get started, all you need is an experiments file. This is a `json` file that describes the details of your comparison: which algorithms to use, which programs to tune on which devices, the graphs to output and so on. 
-You can find the API and an example `experiments.json` in the [documentation](). 
+You can find the API and an example `experiments.json` in the [documentation](https://autotuningassociation.github.io/autotuning_methodology/modules.html). 
 
 ### File references
 As we are dealing with input and output files, file references matter. 
