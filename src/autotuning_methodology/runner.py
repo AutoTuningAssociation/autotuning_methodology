@@ -219,28 +219,30 @@ def tune(
         run_results: list[dict] = run["Results"]
         timeunit = timeunit_mapping[run_metadata["TimeUnit"].lower()]
         for config_attempt in run_results:
+
+            # convert the times data
+            times_runtimes = []
+            duration = ""
             if len(config_attempt["ComputationResults"]) > 0:
-                if len(config_attempt["ComputationResults"]) == 1:
-                    config_result = config_attempt["ComputationResults"][0]
-                    duration = config_result["Duration"]
-                    times_runtimes = [duration]
-                else:
-                    times_runtimes = list()
-                    for config_result in config_attempt["ComputationResults"]:
-                        times_runtimes.append(config_result["Duration"])
-                    duration = np.mean(times_runtimes)
-            else:
-                duration = ""
-                times_runtimes = []
+                for config_result in config_attempt["ComputationResults"]:
+                    times_runtimes.append(config_result["Duration"])
+                duration = np.mean(times_runtimes)
             times_search_algorithm = config_attempt.get("SearcherOverhead", 0)
             times_validation = config_attempt.get("ValidationOverhead", 0)
-            times_framework = config_attempt.get("DataMovementOverhead", 0) + config_attempt.get("ExtraDuration", 0)
+            times_framework = config_attempt.get("DataMovementOverhead", 0)
             times_benchmark = config_attempt.get("TotalDuration", 0)
             times_compilation = (
                 config_attempt.get("TotalOverhead", 0) - times_search_algorithm - times_validation - times_framework
             )
 
+            # convert the configuration data
+            configuration = dict()
+            for config in config_attempt["Configuration"]:
+                configuration[config["Name"]] = config["Value"]
+
+            # assemble the converted data
             converted = {
+                "configuration": configuration,
                 "invalidity": status_mapping[config_attempt["Status"]],
                 "correctness": 1,
                 "measurements": [
