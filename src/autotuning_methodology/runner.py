@@ -183,7 +183,7 @@ def tune(
         """Interface to tune with the BAT benchmarking suite."""
         # TODO integrate with BAT
 
-    def import_from_KTT():
+    def import_from_KTT(use_param_mapping=True):
         """Import a KTT output file."""
         # import the file
         assert import_runs_path.exists() and import_runs_path.is_dir()
@@ -208,6 +208,25 @@ def tune(
             "ok": "correct",
             "devicelimitsexceeded": "compile",
             "computationfailed": "runtime",
+        }
+
+        # Imported runs must be remapped to have the same keys, values and order of parameters as the other runs.
+        # This mapping provides both the order and mapping, so all keys must be present.
+        # Default value is a tuple where the first element is the new parameter name and the second the mapped value.
+        # Arrays of tuples allow mapping from one parameter to multiple.
+        # 'None' values are skipped.
+        param_mapping = {
+            "convolution": {
+                "BLOCK_SIZE_X": ("block_size_x", lambda x: x),
+                "BLOCK_SIZE_Y": ("block_size_y", lambda x: x),
+                "HFS": [("filter_height", 15), ("filter_width", 15)],
+                "READ_ONLY": ("read_only", lambda x: x),
+                "TILE_SIZE_X": ("tile_size_x", lambda x: x),
+                "TILE_SIZE_Y": ("tile_size_y", lambda x: x),
+                "PADDING": ("use_padding", lambda x: x),
+                "IMAGE_WIDTH": None,
+                "IMAGE_HEIGHT": None,
+            }
         }
 
         # convert to the T4 format
@@ -236,10 +255,39 @@ def tune(
             times_benchmark = total_duration
             times_compilation = total_overhead - times_search_algorithm - times_validation - times_framework
 
-            # convert the configuration data
+            # convert the configuration to T4 style dictionary for fast lookups in the mapping
+            configuration_ktt = dict()
+            for param in config_attempt["Configuration"]:
+                configuration_ktt[param["Name"]] = param["Value"]
+
+            # convert the configuration data with the mapping in the correct order
             configuration = dict()
-            for config in config_attempt["Configuration"]:
-                configuration[config["Name"]] = config["Value"]
+            if use_param_mapping and kernel_name in param_mapping:
+                param_map = param_mapping[kernel_name]
+                assert len(param_map) == len(
+                    configuration_ktt
+                ), f"Mapping provided for {len(param_map)} params, but configuration has {len(configuration_ktt)}"
+                for param_name, mapping in param_map.items():
+                    param_value = configuration_ktt[param_name]
+                    # if the mapping is None, do not include the parameter
+                    if mapping is None:
+                        pass
+                    # if the mapping is a tuple, the first argument is the new parameter name and the second the value
+                    elif isinstance(mapping, tuple):
+                        param_mapped_name, param_mapped_value = mapping
+                        if callable(param_mapped_value):
+                            param_mapped_value = param_mapped_value(param_value)
+                        configuration[param_mapped_name] = param_mapped_value
+                    # if it's a list of tuples, map to multiple parameters
+                    elif isinstance(mapping, list):
+                        for param_mapped_name, param_mapped_value in mapping:
+                            if callable(param_mapped_value):
+                                param_mapped_value = param_mapped_value(param_value)
+                            configuration[param_mapped_name] = param_mapped_value
+                    else:
+                        raise ValueError(f"Can not apply parameter mapping of {type(mapping)} ({mapping})")
+            else:
+                configuration = configuration_ktt
 
             # assemble the converted data
             converted = {
