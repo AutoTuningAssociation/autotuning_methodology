@@ -1,6 +1,5 @@
 """Code for obtaining search space statistics."""
 
-
 from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
 import json
@@ -9,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from autotuning_methodology.runner import is_invalid_objective_performance, is_invalid_objective_time
+from autotuning_methodology.validators import is_invalid_objective_performance, is_invalid_objective_time
 
 
 def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
@@ -94,9 +93,11 @@ class SearchspaceStatistics:
             List of Kernel Tuner-style time keys.
         """
         return list(
-            self.T4_time_keys_to_kernel_tuner_time_keys_mapping[key]
-            if key in self.T4_time_keys_to_kernel_tuner_time_keys_mapping
-            else key
+            (
+                self.T4_time_keys_to_kernel_tuner_time_keys_mapping[key]
+                if key in self.T4_time_keys_to_kernel_tuner_time_keys_mapping
+                else key
+            )
             for key in time_keys
         )
 
@@ -292,6 +293,7 @@ class SearchspaceStatistics:
                     contents = orig_contents[:-2] + "}\n}"
                     data = json.loads(contents)
             cache: dict = data["cache"]
+            self.cache = cache
 
             # get the time values per configuration
             cache_values = list(cache.values())
@@ -382,6 +384,10 @@ class SearchspaceStatistics:
             )
 
         return True
+
+    def get_value_in_config(self, config: str, key: str):
+        """Get the value for a key given a configuration."""
+        return self.cache[config][key]
 
     def get_num_duplicate_values(self, value: float) -> int:
         """Get the number of duplicate values in the searchspace."""
