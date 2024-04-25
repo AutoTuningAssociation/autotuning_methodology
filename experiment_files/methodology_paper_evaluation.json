@@ -41,6 +41,7 @@
         "compare_split_times": false
     },
     "strategy_defaults": {
+        "iterations": 32,
         "repeats": 100,
         "minimum_number_of_evaluations": 20,
         "stochastic": true,

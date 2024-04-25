@@ -131,6 +131,15 @@ def tune(
             metadata, results = get_results_and_metadata(
                 filename_results=kernel.file_path_results, filename_metadata=kernel.file_path_metadata
             )
+            # check that the number of iterations is correct
+            if "iterations" in strategy:
+                for result in results:
+                    if "runtime" in result:
+                        num_iters = len(results[0]["runtimes"])
+                        assert (
+                            strategy["iterations"] == num_iters
+                        ), f"Specified {strategy['iterations']=} not equal to actual number of iterations ({num_iters})"
+                        break
         if "max_fevals" in strategy["options"]:
             max_fevals = strategy["options"]["max_fevals"]
             if len(results) < max_fevals * 0.1:
@@ -250,6 +259,16 @@ def tune(
                     duration = searchspace_stats.get_value_in_config(config_string_key, "time")
                 else:
                     duration = np.mean(times_runtimes)
+                assert (
+                    "iterations" in strategy
+                ), "For imported KTT runs, the number of iterations must be specified in the strategy in the experiments file"
+                if strategy["iterations"] != len(times_runtimes):
+                    times_runtimes = [np.mean(times_runtimes)] * strategy["iterations"]
+                    warnings.warn(
+                        f"The specified number of iterations ({strategy['iterations']}) did not equal"
+                        + f"the actual number of iterations ({len(times_runtimes)}). "
+                        + "The average has been used."
+                    )
             times_search_algorithm = timemapper(config_attempt.get("SearcherOverhead", 0))
             times_validation = timemapper(config_attempt.get("ValidationOverhead", 0))
             times_framework = timemapper(config_attempt.get("DataMovementOverhead", 0))
