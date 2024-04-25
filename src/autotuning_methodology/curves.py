@@ -46,9 +46,10 @@ def get_indices_in_distribution(
     if not skip_draws_check:
         assert np.all(
             np.in1d(draws[~np.isnan(draws)], dist)
-        ), f"""Each value in draws should be in dist,
+        ), f"""
+            Each value in draws should be in dist,
             but {np.size(draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)])} values
-             of the {np.size(draws)} are missing: {draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)]}"""
+            of the {np.size(draws)} are missing: {draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)]}"""
 
     # check the sorter
     if sorter is not None:

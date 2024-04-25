@@ -210,7 +210,9 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
                 if "ignore_cache" not in strategy and results_description.has_results():
                     print(" | - |-> retrieved from cache")
                 else:  # execute each strategy that is not in the cache
-                    results_description = collect_results(kernel, strategy, results_description, profiling=profiling)
+                    results_description = collect_results(
+                        kernel, strategy, results_description, searchspace_stats, profiling=profiling
+                    )
 
                 # set the results
                 results_descriptions[gpu_name][kernel_name][strategy_name] = results_description

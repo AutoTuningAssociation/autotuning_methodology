@@ -15,11 +15,15 @@ import progressbar
 import yappi
 
 from autotuning_methodology.caching import ResultsDescription
+from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
+from autotuning_methodology.validators import (
+    is_invalid_objective_performance,
+    is_invalid_objective_time,
+    is_valid_config_result,
+)
 
-error_types_strings = ["", "InvalidConfig", "CompilationFailedConfig", "RuntimeFailedConfig"]
 folder = Path(__file__).parent.parent.parent
 import_runs_path = Path(folder, "cached_data_used/import_runs")
-kernel_tuner_error_value = 1e20
 
 
 @contextlib.contextmanager
@@ -45,52 +49,6 @@ def temporary_working_directory_change(new_WD: Path):
     finally:
         # potentially raises an exception, left to the caller
         os.chdir(original_working_directory)
-
-
-def is_invalid_objective_performance(objective_performance: float) -> bool:
-    """Returns whether an objective value is invalid by checking against NaN and the error value.
-
-    Args:
-        objective_performance: the objective performance value to check.
-
-    Raises:
-        TypeError: if the ``objective_performance`` value has an unexpected type.
-
-    Returns:
-        True if the ``objective_performance`` value is invalid, False otherwise.
-    """
-    if any(str(objective_performance) == error_type_string for error_type_string in error_types_strings):
-        return True
-    if not isinstance(objective_performance, (int, float)):
-        raise TypeError(
-            f"""Objective value should be of type float,
-                but is of type {type(objective_performance)} with value {objective_performance}"""
-        )
-    return np.isnan(objective_performance) or objective_performance == kernel_tuner_error_value
-
-
-def is_invalid_objective_time(objective_time: float) -> bool:
-    """Returns whether an objective time is invalid.
-
-    Args:
-        objective_time: the objective time value to check.
-
-    Returns:
-        True if the ``objective_time`` value is invalid, False otherwise.
-    """
-    return np.isnan(objective_time) or objective_time < 0
-
-
-def is_valid_config_result(config: dict) -> bool:
-    """Returns whether a given configuration is valid.
-
-    Args:
-        config: the configuration to check.
-
-    Returns:
-         True if the ``config`` is valid, False otherwise.
-    """
-    return "invalidity" in config and config["invalidity"] == "correct"
 
 
 def load_json(path: Path):
@@ -126,6 +84,7 @@ def tune(
     strategy: dict,
     tune_options: dict,
     profiling: bool,
+    searchspace_stats: SearchspaceStatistics,
 ) -> tuple[list, list, int]:
     """Tune a program using an optimization algorithm and collect the results.
 
@@ -139,6 +98,7 @@ def tune(
         strategy: the optimization algorithm to optimize with.
         tune_options: a special options dictionary passed along to the autotuning framework.
         profiling: whether profiling statistics should be collected.
+        searchspace_stats: a ``SearchspaceStatistics`` object passed to convert imported runs.
 
     Raises:
         ValueError: if tuning fails multiple times in a row.
@@ -183,7 +143,7 @@ def tune(
         """Interface to tune with the BAT benchmarking suite."""
         # TODO integrate with BAT
 
-    def import_from_KTT(use_param_mapping=True):
+    def import_from_KTT(use_param_mapping=True, use_bruteforce_objective=True):
         """Import a KTT output file."""
         # import the file
         assert import_runs_path.exists() and import_runs_path.is_dir()
@@ -200,9 +160,11 @@ def tune(
             )
         run = matching_runs[0]
 
+        # map all timeunits to miliseconds
         timeunit_mapping = {
-            "seconds": "s",
-            "microseconds": "ms",
+            "seconds": lambda x: x * 1000,
+            "miliseconds": lambda x: x,
+            "microseconds": lambda x: x / 1000,
         }
         status_mapping = {
             "ok": "correct",
@@ -234,26 +196,9 @@ def tune(
         results = list()
         run_metadata: dict = run["Metadata"]
         run_results: list[dict] = run["Results"]
-        timeunit = timeunit_mapping[str(run_metadata["TimeUnit"]).lower()]
+        timemapper = timeunit_mapping[str(run_metadata["TimeUnit"]).lower()]
         total_time_ms = 0
         for config_attempt in run_results:
-            # add to total time
-            total_duration = config_attempt.get("TotalDuration", 0)
-            total_overhead = config_attempt.get("TotalOverhead", 0)
-            total_time_ms += total_duration + total_overhead
-
-            # convert the times data
-            times_runtimes = []
-            duration = ""
-            if len(config_attempt["ComputationResults"]) > 0:
-                for config_result in config_attempt["ComputationResults"]:
-                    times_runtimes.append(config_result["Duration"])
-                duration = np.mean(times_runtimes)
-            times_search_algorithm = config_attempt.get("SearcherOverhead", 0)
-            times_validation = config_attempt.get("ValidationOverhead", 0)
-            times_framework = config_attempt.get("DataMovementOverhead", 0)
-            times_benchmark = total_duration
-            times_compilation = total_overhead - times_search_algorithm - times_validation - times_framework
 
             # convert the configuration to T4 style dictionary for fast lookups in the mapping
             configuration_ktt = dict()
@@ -289,6 +234,28 @@ def tune(
             else:
                 configuration = configuration_ktt
 
+            # add to total time
+            total_duration = timemapper(config_attempt["TotalDuration"])
+            total_overhead = timemapper(config_attempt["TotalOverhead"])
+            total_time_ms += total_duration + total_overhead
+
+            # convert the times data
+            times_runtimes = []
+            duration = ""
+            if len(config_attempt["ComputationResults"]) > 0:
+                for config_result in config_attempt["ComputationResults"]:
+                    times_runtimes.append(timemapper(config_result["Duration"]))
+                if use_bruteforce_objective:
+                    config_string_key = ",".join(str(x) for x in configuration.values())
+                    duration = searchspace_stats.get_value_in_config(config_string_key, "time")
+                else:
+                    duration = np.mean(times_runtimes)
+            times_search_algorithm = timemapper(config_attempt.get("SearcherOverhead", 0))
+            times_validation = timemapper(config_attempt.get("ValidationOverhead", 0))
+            times_framework = timemapper(config_attempt.get("DataMovementOverhead", 0))
+            times_benchmark = total_duration
+            times_compilation = total_overhead - times_search_algorithm - times_validation - times_framework
+
             # assemble the converted data
             converted = {
                 "configuration": configuration,
@@ -298,7 +265,7 @@ def tune(
                     {
                         "name": "time",
                         "value": duration,
-                        "unit": timeunit,
+                        "unit": "ms",
                     }
                 ],
                 "objectives": ["time"],
@@ -335,13 +302,18 @@ def tune(
 
 
 def collect_results(
-    kernel, strategy: dict, results_description: ResultsDescription, profiling: bool
+    kernel,
+    strategy: dict,
+    results_description: ResultsDescription,
+    searchspace_stats: SearchspaceStatistics,
+    profiling: bool,
 ) -> ResultsDescription:
     """Executes optimization algorithms on tuning problems to capture their behaviour.
 
     Args:
         kernel: the program (kernel) to tune.
         strategy: the optimization algorithm to optimize with.
+        searchspace_stats: the ``SearchspaceStatistics`` object, only used for conversion of imported runs.
         results_description: the ``ResultsDescription`` object to write the results to.
         profiling: whether profiling statistics must be collected.
 
@@ -393,6 +365,7 @@ def collect_results(
                 strategy,
                 tune_options,
                 profiling,
+                searchspace_stats,
             )
             len_res = len(results)
             # check if there are only invalid configs in the first min_num_evals, if so, try again
