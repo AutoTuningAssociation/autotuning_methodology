@@ -62,6 +62,8 @@ def setup_module():
     # assert cached_visualization_path.exists()
     # copy the import run test files to the import run folder
     assert import_runs_source_path.exists()
+    import_runs_path.mkdir(parents=True, exist_ok=True)
+    assert import_runs_path.exists()
     for import_run_file in import_runs_source_path.iterdir():
         if not import_run_file.is_file():
             continue
