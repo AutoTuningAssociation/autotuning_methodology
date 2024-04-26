@@ -3,6 +3,7 @@
 import json
 from importlib.resources import files
 from pathlib import Path
+from shutil import copyfile
 
 import numpy as np
 import pytest
@@ -37,7 +38,9 @@ normal_cachefiles_path = package_path / Path(f"cached_data_used/cachefiles/{kern
 normal_cachefile_destination = normal_cachefiles_path / "mock_gpu.json"
 experiment_import_filepath_test = mockfiles_path / "test_import_runs.json"
 assert experiment_import_filepath_test.exists()
+import_runs_source_path = mockfiles_path / "import_runs"
 import_runs_path = package_path / Path("cached_data_used/import_runs")
+import_runs_filepaths: list[Path] = list()
 
 
 def _remove_dir(path: Path):
@@ -57,6 +60,10 @@ def setup_module():
     assert normal_cachefile_destination.exists()
     # cached_visualization_path.mkdir(parents=True, exist_ok=True)
     # assert cached_visualization_path.exists()
+    # copy the import run test files to the import run folder
+    assert import_runs_source_path.exists()
+    for import_run_file in import_runs_source_path.iterdir():
+        import_runs_filepaths.append(Path(copyfile(import_run_file, import_runs_path / import_run_file.name)))
 
 
 def teardown_module():
@@ -70,6 +77,9 @@ def teardown_module():
     if cached_visualization_imported_file.exists():
         cached_visualization_imported_file.unlink()
     _remove_dir(cached_visualization_imported_path)
+    # delete the import run test files from the import run folder
+    for import_run_file in import_runs_filepaths:
+        import_run_file.unlink()
 
 
 def test_CLI_input():
