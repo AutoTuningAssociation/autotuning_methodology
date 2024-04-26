@@ -199,6 +199,7 @@ def tune(
                 "IMAGE_HEIGHT": None,
             }
         }
+        param_mapping["mocktest_kernel_convolution"] = param_mapping["convolution"]
 
         # convert to the T4 format
         metadata = None  # TODO implement the metadata conversion when necessary
@@ -261,7 +262,7 @@ def tune(
                     duration = np.mean(times_runtimes)
                 assert (
                     "iterations" in strategy
-                ), "For imported KTT runs, the number of iterations must be specified in the strategy in the experiments file"
+                ), "For imported KTT runs, the number of iterations must be specified in the experiments file"
                 if strategy["iterations"] != len(times_runtimes):
                     times_runtimes = [np.mean(times_runtimes)] * strategy["iterations"]
                     warnings.warn(

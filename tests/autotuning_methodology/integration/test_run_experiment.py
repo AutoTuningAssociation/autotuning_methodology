@@ -29,8 +29,15 @@ assert experiment_filepath_test.exists()
 kernel_id = "mocktest_kernel_convolution"
 cached_visualization_path = package_path / Path(f"cached_data_used/visualizations/test_run_experiment/{kernel_id}")
 cached_visualization_file = cached_visualization_path / "mock_GPU_random_sample_10_iter.npz"
+cached_visualization_imported_path = package_path / Path(
+    f"cached_data_used/visualizations/test_output_file_writer/{kernel_id}"
+)
+cached_visualization_imported_file = cached_visualization_imported_path / "mock_GPU_ktt_profile_searcher.npz"
 normal_cachefiles_path = package_path / Path(f"cached_data_used/cachefiles/{kernel_id}")
 normal_cachefile_destination = normal_cachefiles_path / "mock_gpu.json"
+experiment_import_filepath_test = mockfiles_path / "test_import_runs.json"
+assert experiment_import_filepath_test.exists()
+import_runs_path = package_path / Path("cached_data_used/import_runs")
 
 
 def _remove_dir(path: Path):
@@ -60,6 +67,9 @@ def teardown_module():
     if cached_visualization_file.exists():
         cached_visualization_file.unlink()
     _remove_dir(cached_visualization_path)
+    if cached_visualization_imported_file.exists():
+        cached_visualization_imported_file.unlink()
+    _remove_dir(cached_visualization_imported_path)
 
 
 def test_CLI_input():
@@ -117,6 +127,17 @@ def test_cached_experiment():
     assert cached_visualization_path.exists()
     assert cached_visualization_file.exists()
     (experiment, strategies, results_descriptions) = execute_experiment(str(experiment_filepath_test), profiling=False)
+    validate_experiment_results(experiment, strategies, results_descriptions)
+
+
+def test_import_run_experiment():
+    """Import runs from an experiment."""
+    assert import_runs_path.exists()
+    (experiment, strategies, results_descriptions) = execute_experiment(
+        str(experiment_import_filepath_test), profiling=False
+    )
+    assert cached_visualization_imported_path.exists()
+    assert cached_visualization_imported_file.exists()
     validate_experiment_results(experiment, strategies, results_descriptions)
 
 

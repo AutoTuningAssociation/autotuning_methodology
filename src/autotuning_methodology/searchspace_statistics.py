@@ -244,7 +244,9 @@ class SearchspaceStatistics:
             # if the file is not found, raise an error
             from os import getcwd
 
-            raise FileNotFoundError(f"{filepath} does not exist relative to current working directory {getcwd()}")
+            raise FileNotFoundError(
+                f"{filepath.resolve()} does not exist relative to current working directory {getcwd()}"
+            )
         return filepath
 
     def _is_not_invalid_value(self, value, performance: bool) -> bool:

@@ -1,0 +1,58 @@
+{
+    "version": "0.1.2",
+    "name": "Test import runs",
+    "folder_id": "test_output_file_writer",
+    "kernels_path": "../mockfiles",
+    "bruteforced_caches_path": "../../../../cached_data_used/cachefiles",
+    "visualization_caches_path": "../../../../cached_data_used/visualizations",
+    "kernels": [
+        "mocktest_kernel_convolution"
+    ],
+    "GPUs": [
+        "mock_GPU"
+    ],
+    "minimization": true,
+    "resolution": 1e3,
+    "cutoff_percentile": 0.99,
+    "cutoff_percentile_start": 0.7,
+    "objective_time_keys": [
+        "compilation",
+        "benchmark",
+        "framework",
+        "search_algorithm",
+        "validation"
+    ],
+    "objective_performance_keys": [
+        "time"
+    ],
+    "cutoff_type": "fevals",
+    "plot": {
+        "plot_x_value_types": [
+            "aggregated"
+        ],
+        "plot_y_value_types": [
+            "normalized",
+            "baseline"
+        ],
+        "confidence_level": 0.95,
+        "compare_baselines": false,
+        "compare_split_times": false
+    },
+    "strategy_defaults": {
+        "iterations": 32,
+        "repeats": 2,
+        "minimum_number_of_evaluations": 20,
+        "stochastic": true,
+        "record_data": [
+            "time",
+            "GFLOP/s"
+        ]
+    },
+    "strategies": [
+        {
+            "name": "ktt_profile_searcher",
+            "strategy": "profile_searcher",
+            "display_name": "KTT Profile Searcher"
+        }
+    ]
+}
