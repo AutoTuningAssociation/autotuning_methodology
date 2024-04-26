@@ -63,8 +63,11 @@ def setup_module():
     # copy the import run test files to the import run folder
     assert import_runs_source_path.exists()
     for import_run_file in import_runs_source_path.iterdir():
+        if not import_run_file.is_file():
+            continue
+        assert import_run_file.exists()
         destination = Path(import_runs_path / import_run_file.name).resolve()
-        import_runs_filepaths.append(Path(copyfile(import_run_file, destination)))
+        import_runs_filepaths.append(Path(copyfile(str(import_run_file), str(destination))))
         assert destination == import_runs_filepaths[-1].resolve()
         assert destination.exists() and destination.is_file()
 
