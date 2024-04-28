@@ -10,7 +10,8 @@
         "pnpoly"
     ],
     "GPUs": [
-        "RTX_3090"
+        "RTX_3090",
+        "RTX_2080_Ti"
     ],
     "minimization": true,
     "resolution": 1e3,

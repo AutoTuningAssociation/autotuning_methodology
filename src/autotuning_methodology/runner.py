@@ -156,7 +156,9 @@ def tune(
         """Import a KTT output file."""
         # import the file
         assert import_runs_path.exists() and import_runs_path.is_dir()
-        expected_filename = f"t~'ktt'k~'{kernel_name}'s~'{strategy['strategy']}'r~{run_number}.json"
+        expected_filename = (
+            f"t~'ktt'd~'{device_name}'k~'{kernel_name}'s~'{strategy['strategy']}'r~{run_number}.json".lower()
+        )
         matching_runs: list[dict] = list()
         for file in import_runs_path.iterdir():
             if file.name == expected_filename:
