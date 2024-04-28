@@ -6,10 +6,12 @@
     "bruteforced_caches_path": "../cached_data_used/cachefiles",
     "visualization_caches_path": "../cached_data_used/visualizations",
     "kernels": [
-        "convolution"
+        "convolution",
+        "pnpoly"
     ],
     "GPUs": [
-        "RTX_3090"
+        "RTX_3090",
+        "RTX_2080_Ti"
     ],
     "minimization": true,
     "resolution": 1e3,

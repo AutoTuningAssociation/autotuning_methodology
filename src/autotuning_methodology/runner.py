@@ -156,7 +156,9 @@ def tune(
         """Import a KTT output file."""
         # import the file
         assert import_runs_path.exists() and import_runs_path.is_dir()
-        expected_filename = f"t~'ktt'k~'{kernel_name}'s~'{strategy['strategy']}'r~{run_number}.json"
+        expected_filename = (
+            f"t~'ktt'd~'{device_name}'k~'{kernel_name}'s~'{strategy['strategy']}'r~{run_number}.json".lower()
+        )
         matching_runs: list[dict] = list()
         for file in import_runs_path.iterdir():
             if file.name == expected_filename:
@@ -197,7 +199,14 @@ def tune(
                 "PADDING": ("use_padding", lambda x: x),
                 "IMAGE_WIDTH": None,
                 "IMAGE_HEIGHT": None,
-            }
+            },
+            "pnpoly": {
+                "BETWEEN_METHOD": ("between_method", lambda x: x),
+                "BLOCK_SIZE_X": ("block_size_x", lambda x: x),
+                "TILE_SIZE": ("tile_size", lambda x: x),
+                "USE_METHOD": ("use_method", lambda x: x),
+                "VERTICES": None,
+            },
         }
         param_mapping["mocktest_kernel_convolution"] = param_mapping["convolution"]
 
