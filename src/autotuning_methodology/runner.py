@@ -197,7 +197,14 @@ def tune(
                 "PADDING": ("use_padding", lambda x: x),
                 "IMAGE_WIDTH": None,
                 "IMAGE_HEIGHT": None,
-            }
+            },
+            "pnpoly": {
+                "BETWEEN_METHOD": ("between_method", lambda x: x),
+                "BLOCK_SIZE_X": ("block_size_x", lambda x: x),
+                "TILE_SIZE": ("tile_size", lambda x: x),
+                "USE_METHOD": ("use_method", lambda x: x),
+                "VERTICES": None,
+            },
         }
         param_mapping["mocktest_kernel_convolution"] = param_mapping["convolution"]
 

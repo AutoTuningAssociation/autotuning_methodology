@@ -6,7 +6,8 @@
     "bruteforced_caches_path": "../cached_data_used/cachefiles",
     "visualization_caches_path": "../cached_data_used/visualizations",
     "kernels": [
-        "convolution"
+        "convolution",
+        "pnpoly"
     ],
     "GPUs": [
         "RTX_3090"
