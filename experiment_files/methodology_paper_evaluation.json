@@ -74,6 +74,19 @@
             "display_name": "Dual Annealing"
         },
         {
+            "name": "greedy_ils",
+            "strategy": "greedy_ils",
+            "display_name": "Greedy ILS"
+        },
+        {
+            "name": "minimize_neldermead",
+            "strategy": "minimize",
+            "display_name": "Minimize Nelder-Mead",
+            "options": {
+                "method": "Nelder-Mead"
+            }
+        },
+        {
             "name": "ktt_profile_searcher",
             "strategy": "profile_searcher",
             "display_name": "KTT Profile Searcher"
