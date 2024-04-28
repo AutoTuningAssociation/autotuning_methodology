@@ -62,6 +62,16 @@
             "display_name": "Firefly"
         },
         {
+            "name": "simulated_annealing",
+            "strategy": "simulated_annealing",
+            "display_name": "Simulated Annealing"
+        },
+        {
+            "name": "dual_annealing",
+            "strategy": "dual_annealing",
+            "display_name": "Dual Annealing"
+        },
+        {
             "name": "ktt_profile_searcher",
             "strategy": "profile_searcher",
             "display_name": "KTT Profile Searcher"

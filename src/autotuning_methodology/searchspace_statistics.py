@@ -241,6 +241,8 @@ class SearchspaceStatistics:
         """
         filepath = self._get_filepath()
         if not filepath.exists():
+            filepath = self._get_filepath(lowercase=False)
+        if not filepath.exists():
             # if the file is not found, raise an error
             from os import getcwd
 
