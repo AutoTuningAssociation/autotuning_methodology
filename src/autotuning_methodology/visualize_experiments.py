@@ -933,7 +933,9 @@ class Visualize:
                     color=color,
                     ls="dashed",
                 )
-            print(f" | performance of {displayname}: {round(np.mean(strategy_performance), 3)}")
+            performance_score = round(np.mean(strategy_performance), 3)
+            performance_score_std = round(np.std(strategy_performance), 3)
+            print(f" | performance of {displayname}: {performance_score} (±{performance_score_std})")
 
         # set the axis
         cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
