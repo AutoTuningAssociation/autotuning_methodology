@@ -279,6 +279,8 @@ def tune(
                         + f"the actual number of iterations ({len(times_runtimes)}). "
                         + "The average has been used."
                     )
+            if (not isinstance(duration, (float, int, np.number))) or np.isnan(duration):
+                duration = ""
             times_search_algorithm = timemapper(config_attempt.get("SearcherOverhead", 0))
             times_validation = timemapper(config_attempt.get("ValidationOverhead", 0))
             times_framework = timemapper(config_attempt.get("DataMovementOverhead", 0))
@@ -308,6 +310,7 @@ def tune(
                 },
             }
             results.append(converted)
+
         return metadata, results, round(total_time_ms)
 
     strategy_name = str(strategy["name"]).lower()
