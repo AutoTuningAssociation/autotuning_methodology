@@ -54,19 +54,14 @@
     },
     "strategies": [
         {
+            "name": "genetic_algorithm",
+            "strategy": "genetic_algorithm",
+            "display_name": "Genetic Algorithm"
+        },
+        {
             "name": "particle_swarm_optimization",
             "strategy": "pso",
             "display_name": "PSO"
-        },
-        {
-            "name": "firefly",
-            "strategy": "firefly_algorithm",
-            "display_name": "Firefly"
-        },
-        {
-            "name": "simulated_annealing",
-            "strategy": "simulated_annealing",
-            "display_name": "Simulated Annealing"
         },
         {
             "name": "dual_annealing",
@@ -77,14 +72,6 @@
             "name": "greedy_ils",
             "strategy": "greedy_ils",
             "display_name": "Greedy ILS"
-        },
-        {
-            "name": "minimize_neldermead",
-            "strategy": "minimize",
-            "display_name": "Minimize Nelder-Mead",
-            "options": {
-                "method": "Nelder-Mead"
-            }
         },
         {
             "name": "ktt_profile_searcher",
