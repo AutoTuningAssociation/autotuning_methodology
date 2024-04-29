@@ -59,11 +59,6 @@
             "display_name": "Genetic Algorithm"
         },
         {
-            "name": "particle_swarm_optimization",
-            "strategy": "pso",
-            "display_name": "PSO"
-        },
-        {
             "name": "dual_annealing",
             "strategy": "dual_annealing",
             "display_name": "Dual Annealing"
