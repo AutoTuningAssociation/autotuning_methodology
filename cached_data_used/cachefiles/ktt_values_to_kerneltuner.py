@@ -20,8 +20,8 @@ kt_objective_name = "time"
 
 error_status_mapping = {
     "ok": None,
-    "devicelimitsexceeded": "CompilationFailedConfig",
-    "computationfailed": "RuntimeFailedConfig",
+    "devicelimitsexceeded": '"CompilationFailedConfig"',
+    "computationfailed": '"RuntimeFailedConfig"',
 }
 
 for file in files_to_import:
