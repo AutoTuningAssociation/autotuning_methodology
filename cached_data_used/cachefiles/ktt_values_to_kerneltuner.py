@@ -38,6 +38,7 @@ for file in files_to_import:
     print(f"Importing objective values from KTT to KernelTuner file for '{kernel}' on {device}")
 
     # for each configuration in the KTT file, use the value in the KernelTuner file
+    config_to_change = dict()
     kerneltuner_data = dict(json.loads(kerneltuner_cachefile.read_bytes()))
     ktt_results = ktt_data["Results"]
     cache = kerneltuner_data["cache"]
@@ -90,7 +91,26 @@ for file in files_to_import:
         else:
             kt_new_objective_value = status
         kerneltuner_data["cache"][lookup_string][kt_objective_name] = kt_new_objective_value
+        config_to_change[lookup_string] = (kt_old_objective_value, kt_new_objective_value)
         # print(f"Replacing {kt_old_objective_value} with {kt_new_objective_value}")
 
+    # load the individual lines of the file
+    with kerneltuner_cachefile.open(mode="r") as fp:
+        lines = fp.readlines()
+        cache_start = False
     # write the new data to file
-    kerneltuner_cachefile.write_text(json.dumps(kerneltuner_data))
+    with kerneltuner_cachefile.open(mode="w") as fp:
+        # for each line in the cache part of the file, lookup the config string in the changes dictionary and replace
+        for line in lines:
+            if '"cache":' in line:
+                cache_start = True
+                fp.write(line)
+            elif not cache_start or line[:1] == "}" or len(line) < 3:
+                fp.write(line)
+            else:
+                lookup_string = line.split(":")[0].replace('"', "").strip()
+                old_value, new_value = config_to_change[lookup_string]
+                line = line.replace(f'"time": {old_value},', f'"time": {new_value},', 1)
+                fp.write(line)
+
+    # kerneltuner_cachefile.write_text(json.dumps(kerneltuner_data, indent=3))
