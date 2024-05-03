@@ -26,6 +26,34 @@ folder = Path(__file__).parent.parent.parent
 import_runs_path = Path(folder, "cached_data_used/import_runs")
 
 
+# Imported runs must be remapped to have the same keys, values and order of parameters as the other runs.
+# This mapping provides both the order and mapping, so all keys must be present.
+# Default value is a tuple where the first element is the new parameter name and the second the mapped value.
+# Arrays of tuples allow mapping from one parameter to multiple.
+# 'None' values are skipped.
+ktt_param_mapping = {
+    "convolution": {
+        "BLOCK_SIZE_X": ("block_size_x", lambda x: x),
+        "BLOCK_SIZE_Y": ("block_size_y", lambda x: x),
+        "HFS": [("filter_height", 15), ("filter_width", 15)],
+        "READ_ONLY": ("read_only", lambda x: x),
+        "TILE_SIZE_X": ("tile_size_x", lambda x: x),
+        "TILE_SIZE_Y": ("tile_size_y", lambda x: x),
+        "PADDING": ("use_padding", lambda x: x),
+        "IMAGE_WIDTH": None,
+        "IMAGE_HEIGHT": None,
+    },
+    "pnpoly": {
+        "BETWEEN_METHOD": ("between_method", lambda x: x),
+        "BLOCK_SIZE_X": ("block_size_x", lambda x: x),
+        "TILE_SIZE": ("tile_size", lambda x: x),
+        "USE_METHOD": ("use_method", lambda x: x),
+        "VERTICES": None,
+    },
+}
+ktt_param_mapping["mocktest_kernel_convolution"] = ktt_param_mapping["convolution"]
+
+
 @contextlib.contextmanager
 def temporary_working_directory_change(new_WD: Path):
     """Temporarily change to the given working directory in a context. Based on https://stackoverflow.com/questions/75048986/way-to-temporarily-change-the-directory-in-python-to-execute-code-without-affect.
@@ -172,50 +200,23 @@ def tune(
         run = matching_runs[0]
 
         # map all timeunits to miliseconds
-        timeunit_mapping = {
+        ktt_timeunit_mapping = {
             "seconds": lambda x: x * 1000,
             "miliseconds": lambda x: x,
             "microseconds": lambda x: x / 1000,
         }
-        status_mapping = {
+        ktt_status_mapping = {
             "ok": "correct",
             "devicelimitsexceeded": "compile",
             "computationfailed": "runtime",
         }
-
-        # Imported runs must be remapped to have the same keys, values and order of parameters as the other runs.
-        # This mapping provides both the order and mapping, so all keys must be present.
-        # Default value is a tuple where the first element is the new parameter name and the second the mapped value.
-        # Arrays of tuples allow mapping from one parameter to multiple.
-        # 'None' values are skipped.
-        param_mapping = {
-            "convolution": {
-                "BLOCK_SIZE_X": ("block_size_x", lambda x: x),
-                "BLOCK_SIZE_Y": ("block_size_y", lambda x: x),
-                "HFS": [("filter_height", 15), ("filter_width", 15)],
-                "READ_ONLY": ("read_only", lambda x: x),
-                "TILE_SIZE_X": ("tile_size_x", lambda x: x),
-                "TILE_SIZE_Y": ("tile_size_y", lambda x: x),
-                "PADDING": ("use_padding", lambda x: x),
-                "IMAGE_WIDTH": None,
-                "IMAGE_HEIGHT": None,
-            },
-            "pnpoly": {
-                "BETWEEN_METHOD": ("between_method", lambda x: x),
-                "BLOCK_SIZE_X": ("block_size_x", lambda x: x),
-                "TILE_SIZE": ("tile_size", lambda x: x),
-                "USE_METHOD": ("use_method", lambda x: x),
-                "VERTICES": None,
-            },
-        }
-        param_mapping["mocktest_kernel_convolution"] = param_mapping["convolution"]
 
         # convert to the T4 format
         metadata = None  # TODO implement the metadata conversion when necessary
         results = list()
         run_metadata: dict = run["Metadata"]
         run_results: list[dict] = run["Results"]
-        timemapper = timeunit_mapping[str(run_metadata["TimeUnit"]).lower()]
+        timemapper = ktt_timeunit_mapping[str(run_metadata["TimeUnit"]).lower()]
         total_time_ms = 0
         for config_attempt in run_results:
 
@@ -226,8 +227,8 @@ def tune(
 
             # convert the configuration data with the mapping in the correct order
             configuration = dict()
-            if use_param_mapping and kernel_name in param_mapping:
-                param_map = param_mapping[kernel_name]
+            if use_param_mapping and kernel_name in ktt_param_mapping:
+                param_map = ktt_param_mapping[kernel_name]
                 assert len(param_map) == len(
                     configuration_ktt
                 ), f"Mapping provided for {len(param_map)} params, but configuration has {len(configuration_ktt)}"
@@ -290,7 +291,7 @@ def tune(
             # assemble the converted data
             converted = {
                 "configuration": configuration,
-                "invalidity": status_mapping[str(config_attempt["Status"]).lower()],
+                "invalidity": ktt_status_mapping[str(config_attempt["Status"]).lower()],
                 "correctness": 1,
                 "measurements": [
                     {

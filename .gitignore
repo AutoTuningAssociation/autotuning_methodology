@@ -11,6 +11,9 @@ cached_data_used/visualizations/*
 cached_data_used/last_run/*
 cached_data_used/import_runs/*
 
+# exceptions
+!cached_data_used/cachefiles/ktt_values_to_kerneltuner.py
+
 # ignore specific experiment files
 experiment_files/milo.json
 
