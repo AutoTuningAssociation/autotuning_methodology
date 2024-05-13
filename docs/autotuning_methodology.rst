@@ -6,7 +6,7 @@ Module contents
    :undoc-members:
    :show-inheritance:
 
-autotuning\_methodology.baseline module
+Baseline module
 ---------------------------------------
 .. inheritance-diagram:: src.autotuning_methodology.baseline
     :parts: 1
@@ -16,7 +16,7 @@ autotuning\_methodology.baseline module
    :undoc-members:
    :show-inheritance:
 
-autotuning\_methodology.caching module
+Caching module
 --------------------------------------
 .. inheritance-diagram:: src.autotuning_methodology.caching
     :parts: 1
@@ -26,7 +26,7 @@ autotuning\_methodology.caching module
    :undoc-members:
    :show-inheritance:
 
-autotuning\_methodology.curves module
+Curves module
 -------------------------------------
 .. inheritance-diagram:: src.autotuning_methodology.curves
     :parts: 1
@@ -36,7 +36,7 @@ autotuning\_methodology.curves module
    :undoc-members:
    :show-inheritance:
 
-autotuning\_methodology.experiments module
+Experiments module
 ------------------------------------------
 
 .. automodule:: autotuning_methodology.experiments
@@ -44,7 +44,7 @@ autotuning\_methodology.experiments module
    :undoc-members:
    :show-inheritance:
 
-autotuning\_methodology.runner module
+Runner module
 -------------------------------------
 
 .. automodule:: autotuning_methodology.runner
@@ -52,7 +52,7 @@ autotuning\_methodology.runner module
    :undoc-members:
    :show-inheritance:
 
-autotuning\_methodology.searchspace\_statistics module
+Searchspace statistics module
 ------------------------------------------------------
 .. inheritance-diagram:: src.autotuning_methodology.searchspace_statistics
     :parts: 1
@@ -62,7 +62,7 @@ autotuning\_methodology.searchspace\_statistics module
    :undoc-members:
    :show-inheritance:
 
-autotuning\_methodology.visualize\_experiments module
+Visualize experiments module
 -----------------------------------------------------
 .. inheritance-diagram:: src.autotuning_methodology.visualize_experiments
     :parts: 1

@@ -8,7 +8,6 @@ Getting started
 ---------------
  .. include:: getting_started.rst
 
-
 .. .. automodule:: src.autotuning_methodology.experiments
 ..     :members:
 
@@ -17,7 +16,7 @@ Getting started
 
 .. toctree::
    :caption: Contents:
-   :maxdepth: 2
+   :maxdepth: 1
 
    modules
 

@@ -1,0 +1,56 @@
+{
+    "version": "0.1.2", // schema version
+    "name": "Example", // experiment name
+    "folder_id": "example", // folder ID to write to (must be unique)
+    "kernels_path": "../cached_data_used/kernels", // path to the kernels
+    "bruteforced_caches_path": "../cached_data_used/cachefiles", // path to the bruteforced cachefiles
+    "visualization_caches_path": "../cached_data_used/visualizations", // path to the folder ID
+    "kernels": [
+        "convolution"
+    ], // list of kernels to evaluate with
+    "GPUs": [
+        "RTX_3090"
+    ], // list of GPUs to evaluate on
+    "cutoff_percentile": 0.96, // percentile of distance between median and optimum at which to stop 
+    "objective_time_keys": [ // list of keys to use as time objective
+        "compilation",
+        "benchmark",
+        "framework",
+        "search_algorithm",
+        "validation"
+    ],
+    "objective_performance_keys": [ // list of keys to use as performance objective
+        "time"
+    ],
+    "plot": {
+        "plot_x_value_types": [
+            "aggregated"
+        ], // list of plot x-axis types
+        "plot_y_value_types": [
+            "baseline"
+        ], // list of plot y-axis types
+        "confidence_level": 0.95 // confidence level for the error shade
+    },
+    "strategy_defaults": { // these defaults are applied to all strategies
+        "record_data": [
+            "time",
+            "GFLOP/s"
+        ] // the data to record
+        "stochastic": true, // whether the strategy has stochastic behaviour
+        "iterations": 32, // number of times an individual configuration is repeated
+        "repeats": 100, // number of times a strategy is repeated
+        "minimum_number_of_evaluations": 20, // minimum number of non-error results to count as a single run
+    },
+    "strategies": [ // the list of strategies or algorithm to evaluate
+        {
+            "name": "genetic_algorithm", // the name of the strategy (for internal use, must be unique)
+            "strategy": "genetic_algorithm", // the strategy as specified by the auto-tuning framework
+            "display_name": "Genetic Algorithm" // the name of the strategy used in plots and other visualization
+        },
+        {
+            "name": "ktt_profile_searcher",
+            "strategy": "profile_searcher",
+            "display_name": "KTT Profile Searcher"
+        }
+    ]
+}
