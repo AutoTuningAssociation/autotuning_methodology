@@ -1,5 +1,5 @@
-autotuning_methodology
-======================
+.. autotuning_methodology
+.. ======================
 
 .. toctree::
    :maxdepth: 4

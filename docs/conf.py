@@ -16,7 +16,7 @@ import time
 
 from sphinx_pyproject import SphinxConfig
 
-sys.path.insert(0, os.path.abspath(".."))
+# sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -47,6 +47,8 @@ extensions = [
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+add_module_names = False
+toc_object_entries_show_parents = "hide"
 
 # -- Options for inheritance diagrams ----------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/inheritance.html
