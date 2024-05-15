@@ -7,7 +7,6 @@ Python 3.9 and up are supported.
 
 Defining an experiment
 ^^^^^^^^^^^^^^^^^^^^^^
-
 To get started, all you need is an experiments file. 
 This is a `json` file that describes the details of your comparison: which algorithms to use, which programs to tune on which devices, the graphs to output and so on. 
 A simple example experiments file is as follows:
@@ -18,7 +17,6 @@ A simple example experiments file is as follows:
 
 Running experiments
 ^^^^^^^^^^^^^^^^^^^
-
 To use these experiment files, two entry points are defined: ``autotuning_experiment`` and ``autotuning_visualize``. 
 Both entrypoints take one argument: the path to the experiments file. 
 The first runs the experiment and saves the results, the second visualizes the results. 
@@ -28,7 +26,6 @@ If the results do not yet exists, ``autotuning_visualize`` will automatically tr
 
 A note on file references
 ^^^^^^^^^^^^^^^^^^^^^^^^^
-
 File references in experiments files are relative to the location of the experiment file itself. 
 File references in tuning scripts are relative to the location of the tuning script itself. Tuning scripts need to have the global literals `file_path_results` and `file_path_metadata` for this package to know where to get the results. 
 Plots outputted by this package are placed in a folder called `generated_plots` relative to the current working directory. 
@@ -36,7 +33,6 @@ Plots outputted by this package are placed in a folder called `generated_plots` 
 
 Processing Pipeline
 ^^^^^^^^^^^^^^^^^^^
-
 To clarify the complex process of this package to obtain the results and visualize, the flowcharts below illustrate this pipeline.
 
 .. image:: source/flowchart_performance_curve_generation.png

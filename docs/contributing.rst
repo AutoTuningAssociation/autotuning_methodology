@@ -1,6 +1,7 @@
 Contributing
 ------------
 If you're looking to contribute to this package: welcome!
+Please check the open `issues <https://github.com/AutoTuningAssociation/autotuning_methodology/issues>`_ and `pull requests <https://github.com/AutoTuningAssociation/autotuning_methodology/pulls>`_ to avoid duplicate work.
 
 Setup
 ^^^^^
@@ -21,5 +22,6 @@ When referrring to functions and parameters in the docstring outside of their de
 
 Testing
 ^^^^^^^
-Before contributing a pull request, please run ``nox`` and ensure it has no errors. This will test against all Python versions explicitely supported by this package, and will check whether the correct formatting has been applied.
+Before contributing a pull request, please run ``nox`` and ensure it has no errors. 
+This will test against all Python versions explicitely supported by this package, and will check whether the correct formatting has been applied.
 Upon submitting a pull request or pushing to main, these same checks will be ran remotely via GitHub Actions. 
