@@ -43,6 +43,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.graphviz",
     "sphinx.ext.inheritance_diagram",
+    "sphinx.ext.githubpages",
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 templates_path = ["_templates"]
