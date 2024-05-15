@@ -52,11 +52,11 @@ Plots outputted by this package are placed in a folder called `generated_plots` 
 The below schematics show the pipeline implemented by this tool as described in the paper. 
 
 <!-- <img width="100%" alt="flowchart performance curve generation" src="https://autotuningassociation.github.io/autotuning_methodology/_static/flowchart_performance_curve_generation.svg"> -->
-![flowchart performance curve generation](docs/source/flowchart_performance_curve_generation.png)
+![flowchart performance curve generation](https://github.com/AutoTuningAssociation/autotuning_methodology/blob/8af7773dea8a858f84a868b06c2695175e54fc05/docs/source/flowchart_performance_curve_generation.png?raw=true)
 The first flowchart shows the tranformation of raw, stochastic optimization algorithm data to a performance curve. 
 
 <!-- <img width="100%" alt="flowchart output generation" src="docs/source/flowchart_output_generation.svg"> -->
-![flowchart output generation](docs/source/flowchart_output_generation.png)
+![flowchart output generation](https://github.com/AutoTuningAssociation/autotuning_methodology/blob/8af7773dea8a858f84a868b06c2695175e54fc05/docs/source/flowchart_output_generation.png?raw=true)
 The second flowchart shows the adaption of performance curves of various optimization algorithms and search spaces to the desired output.
 
 

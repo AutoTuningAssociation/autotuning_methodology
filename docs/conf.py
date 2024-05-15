@@ -10,11 +10,13 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import os
+import sys
 import time
 
 from sphinx_pyproject import SphinxConfig
 
-# sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -26,7 +28,7 @@ year = time.strftime("%Y")
 
 project = "Autotuning Methodology"
 author = config.author
-copyright = f"{year}, {author}"
+copyright = f"2022-{year}, {author}"
 version = config.version  # major version (e.g. 2.6)
 release = config.version  # full version (e.g. 2.6rc1)
 

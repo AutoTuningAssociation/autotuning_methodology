@@ -4,9 +4,9 @@ requires = ["flit_core >=3.8.0,<4"]
 
 [project] # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
 name = "autotuning_methodology"
-version = "1.0.0b1"
+version = "1.0.0b2"
 authors = [{ name = "Floris-Jan Willemsen", email = "fjwillemsen97@gmail.com" }]
-description = "Software package easing implementation of the guidelines of the 2023 paper 'A Methodology for Comparing Auto-Tuning Optimization Algorithms'."
+description = "Software package easing implementation of the guidelines of the 2024 paper 'A Methodology for Comparing Auto-Tuning Optimization Algorithms'."
 keywords = ["autotuning", "auto-tuning", "methodology", "scientific"]
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -35,9 +35,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pylint >=2.14.4", "black >= 23.3.0"]
 docs = [
-    "sphinx >= 6.2.1",
-    "sphinx_rtd_theme >= 1.2.0",
-    "sphinx-pyproject >= 0.1.0",
+    "sphinx >= 7.2.1",
+    "sphinx_rtd_theme >= 2.0.0",
+    "sphinx-pyproject >= 0.3.0",
 ]
 test = [
     "ruff >= 0.0.263",
