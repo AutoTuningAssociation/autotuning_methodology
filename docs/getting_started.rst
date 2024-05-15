@@ -44,10 +44,3 @@ The first flowchart shows the tranformation of raw, stochastic optimization algo
    :alt: Flowchart output generation
 
 The second flowchart shows the adaption of performance curves of various optimization algorithms and search spaces to the desired output.
-
-
-.. graphviz::
-
-   digraph foo {
-      "bar" -> "baz";
-   }
