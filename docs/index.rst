@@ -24,6 +24,7 @@ This is an example output of this methodology package. It depicts the aggregated
    :maxdepth: 1
 
    getting_started
+   contributing
    autotuning_methodology
 
 
