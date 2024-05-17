@@ -10,6 +10,7 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/autotuning_methodology)](https://pypi.org/project/autotuning_methodology/)
 ![PyPI - Status](https://img.shields.io/pypi/status/autotuning_methodology)
+![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.11207515.svg)
 
  
 This repository contains the software package accompanying the paper "A Methodology for Comparing Auto-Tuning Optimization Algorithms". 
