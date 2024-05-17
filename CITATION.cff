@@ -29,9 +29,6 @@ keywords:
     - Performance Metrics
     - Performance Optimization
 license: MIT
-commit: 1c096e7ceabed2ffed53838a052c7188ac93124d
-version: 1.0.0b3
-date-released: "2024-05-17"
 preferred-citation:
     type: article
     title: A Methodology for Comparing Optimization Algorithms for Auto-Tuning
