@@ -1,0 +1,78 @@
+cff-version: 1.2.0
+title: Autotuning Methodology
+message: >-
+    If you use this software, please cite both the article from preferred-citation and the software itself.
+type: software
+authors:
+    - given-names: Floris-Jan
+      family-names: Willemsen
+      email: f.q.willemsen@umail.leidenuniv.nl
+      affiliation: "Leiden University, Netherlands eScience Center"
+      orcid: "https://orcid.org/0000-0003-2295-8263"
+identifiers:
+    - type: doi
+      value: 10.5281/zenodo.11207516
+      description: Zenodo DOI
+repository-code: >-
+    https://github.com/AutoTuningAssociation/autotuning_methodology
+url: >-
+    https://autotuningassociation.github.io/autotuning_methodology/
+abstract: >-
+    This software package accompanies the paper "A Methodology
+    for Comparing Auto-Tuning Optimization Algorithms", making
+    the guidelines in the methodology easy to apply.
+keywords:
+    - Auto-tuning
+    - Methodology
+    - Optimization Algorithms
+    - Performance Comparison
+    - Performance Metrics
+    - Performance Optimization
+license: MIT
+commit: 1c096e7ceabed2ffed53838a052c7188ac93124d
+version: 1.0.0b3
+date-released: "2024-05-17"
+preferred-citation:
+    type: article
+    title: A Methodology for Comparing Optimization Algorithms for Auto-Tuning
+    journal: "Future Generation Computer Systems"
+    year: 2024
+    abstract: >-
+        Adapting applications to optimally utilize available hardware is no mean feat: the plethora of choices for optimization techniques are infeasible to maximize manually. 
+        To this end, auto-tuning frameworksauto-tuning frameworks are used to automate this task, which in turn use optimization algorithms to efficiently search the vast search spaces. 
+        However, there is a lack of comparability in studies presenting advances in auto-tuning frameworks and the optimization algorithms incorporated. 
+        As each publication varies in the way experiments are conducted, metrics used, and results reported, comparing the performance of optimization algorithms among publications is infeasible. 
+        The auto-tuning community identified this as a key challenge at the 2022 Lorentz Center workshop on auto-tuning.
+        The examination of the current state of the practice in this paper further underlines this. 
+        We propose a community-driven methodology composed of four steps regarding experimental setup, tuning budget, dealing with stochasticity, and quantifying performance. 
+        This methodology builds upon similar methodologies in other fields while taking into account the constraints and specific characteristics of the auto-tuning field, resulting in novel techniques. 
+        The methodology is demonstrated in a simple case study that compares the performance of several optimization algorithms used to auto-tune CUDA kernels on a set of modern GPUs. 
+        We provide a software tool to make the application of the methodology easy for authors, and simplifies reproducibility of results.
+    authors:
+        - given-names: Floris-Jan
+          family-names: Willemsen
+          email: f.q.willemsen@umail.leidenuniv.nl
+          affiliation: "Leiden University, Netherlands eScience Center"
+          orcid: "https://orcid.org/0000-0003-2295-8263"
+        - given-names: Richard
+          family-names: Schoonhoven
+          affiliation: Centrum Wiskunde & Informatica
+          orcid: "https://orcid.org/0000-0003-3659-929X"
+        - orcid: "https://orcid.org/0000-0002-5703-9673"
+          given-names: Jiří
+          family-names: Filipovič
+          affiliation: Masaryk University
+        - given-names: Jacob Odgård
+          family-names: Tørring
+          orcid: "https://orcid.org/0000-0002-9385-7948"
+          affiliation: Norwegian University of Science and Technology
+        - given-names: Rob
+          name-particle: van
+          family-names: Nieuwpoort
+          affiliation: Leiden University
+          orcid: "https://orcid.org/0000-0002-2947-9444"
+        - given-names: Ban
+          name-particle: van
+          family-names: Werkhoven
+          orcid: "https://orcid.org/0000-0002-7508-3272"
+          affiliation: "Leiden University, Netherlands eScience Center"
