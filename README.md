@@ -15,6 +15,9 @@
 This repository contains the software package accompanying the paper "A Methodology for Comparing Auto-Tuning Optimization Algorithms". 
 It makes the guidelines in the methodology easy to apply: simply specify the  `.json` file, run `autotuning_visualize [path_to_json]` and wait for the results!
 
+### Limitations & Future Work
+Currently, the stable releases of this software package are compatible with [Kernel Tuner](https://github.com/KernelTuner/kernel_tuner) and [KTT](https://github.com/HiPerCoRe/KTT), as in the paper. We plan to soon extend this to support more frameworks. 
+
 ## Installation
 The package can be installed with `pip install autotuning_methodology`. 
 Alternatively, it can be installed by cloning this repository and running `pip install .` in the root of the cloned project. 
