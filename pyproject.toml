@@ -4,7 +4,7 @@ requires = ["flit_core >=3.8.0,<4"]
 
 [project] # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
 name = "autotuning_methodology"
-version = "1.0.0b4"
+version = "1.0.0b5"
 authors = [{ name = "Floris-Jan Willemsen", email = "fjwillemsen97@gmail.com" }]
 description = "Software package easing implementation of the guidelines of the 2024 paper 'A Methodology for Comparing Auto-Tuning Optimization Algorithms'."
 keywords = ["autotuning", "auto-tuning", "methodology", "scientific"]
@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ] # https://pypi.org/classifiers/
 dependencies = [
     "numpy >= 1.22.4",
@@ -29,7 +30,7 @@ dependencies = [
     "progressbar2 >= 4.2.0",
     "jsonschema >= 4.17.3",
     "nonconformist >= 2.1.0",
-    "kernel_tuner >= 1.0.0b5",
+    "kernel_tuner >= 1.0.1",
 ]
 
 [project.optional-dependencies]
@@ -73,11 +74,12 @@ line-length = 120
 src = ["src"]
 respect-gitignore = true
 exclude = ["extra", "UML", "tests/autotuning_methodology/*mockfiles*"]
+# target-version = "py310"   # inferred from project.requires-python
+[tool.ruff.lint]
 select = [
     "E", # pycodestyle
     "F", # pyflakes,
     "D", # pydocstyle,
 ]
-# target-version = "py310"   # inferred from project.requires-python
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
