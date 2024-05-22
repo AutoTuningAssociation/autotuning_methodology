@@ -139,7 +139,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
     assert cutoff_type == "fevals" or cutoff_type == "time", f"cutoff_type must be 'fevals' or 'time', is {cutoff_type}"
     curve_segment_factor: float = experiment.get("curve_segment_factor", 0.05)
     assert isinstance(curve_segment_factor, float), f"curve_segment_factor is not float, {type(curve_segment_factor)}"
-    strategies = get_strategies(experiment)
+    strategies: list[dict] = get_strategies(experiment)
 
     # add the kernel directory to the path to import the module, relative to the experiment file
     kernels_path = experiment_folderpath / Path(experiment["kernels_path"])
@@ -179,20 +179,22 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
                 strategy_name: str = strategy["name"]
                 strategy_display_name: str = strategy["display_name"]
                 stochastic = strategy["stochastic"]
+                cutoff_margin = strategy.get(
+                    "cutoff_margin", 1.1
+                )  # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations  # noqa: E501
                 print(f" | - | using strategy '{strategy['display_name']}'")
 
                 # setup the results description
                 if "options" not in strategy:
                     strategy["options"] = dict()
-                cutoff_margin = 1.1  # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations  # noqa: E501
 
-                # TODO make sure this works correctly
-                # if cutoff_type == 'time':
-                #     strategy['options']['time_limit'] = cutoff_point_time * cutoff_margin
-                # else:
-                strategy["options"]["max_fevals"] = min(
-                    int(ceil(cutoff_point_fevals * cutoff_margin)), searchspace_stats.size
-                )
+                # set when to stop
+                if cutoff_type == "time":
+                    strategy["options"]["time_limit"] = cutoff_point_time * cutoff_margin
+                else:
+                    strategy["options"]["max_fevals"] = min(
+                        int(ceil(cutoff_point_fevals * cutoff_margin)), searchspace_stats.size
+                    )
                 results_description = ResultsDescription(
                     experiment_folder_id,
                     kernel_name,

@@ -26,7 +26,7 @@
     "objective_performance_keys": [
         "time"
     ],
-    "cutoff_type": "fevals",
+    "cutoff_type": "time",
     "plot": {
         "plot_x_value_types": [
             "fevals",
@@ -44,6 +44,7 @@
     "strategy_defaults": {
         "repeats": 100,
         "minimum_number_of_evaluations": 20,
+        "cutoff_margin": 1.1,
         "stochastic": true,
         "record_data": [
             "time",
