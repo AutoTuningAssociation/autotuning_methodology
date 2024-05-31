@@ -13,7 +13,7 @@
 ![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.11207515.svg)
 
  
-This repository contains the software package accompanying the paper "A Methodology for Comparing Auto-Tuning Optimization Algorithms". 
+This repository contains the software package accompanying [the paper "A Methodology for Comparing Auto-Tuning Optimization Algorithms"](https://doi.org/10.1016/j.future.2024.05.021). 
 It makes the guidelines in the methodology easy to apply: simply specify the  `.json` file, run `autotuning_visualize [path_to_json]` and wait for the results!
 
 ### Limitations & Future Work
@@ -26,7 +26,7 @@ Python >= 3.9 is supported.
 
 ## Notable features
 - Official software by the authors of the methodology-defining paper. 
-- Supports [BAT benchmark suite](https://github.com/NTNU-HPC-Lab/BAT) and [Kernel Tuner](https://github.com/KernelTuner/kernel_tuner).
+- Supports [BAT benchmark suite](https://github.com/NTNU-HPC-Lab/BAT), [KTT](https://github.com/HiPerCoRe/KTT), and [Kernel Tuner](https://github.com/KernelTuner/kernel_tuner).
 - Split executer and visualizer to allow running the algorithms on a cluster and visualize locally. 
 - Caching built-in to avoid duplicate executions.  
 - Planned support for T1 input and T4 output files.
