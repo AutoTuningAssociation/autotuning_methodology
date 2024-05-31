@@ -4,15 +4,15 @@ requires = ["flit_core >=3.8.0,<4"]
 
 [project] # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#declaring-project-metadata
 name = "autotuning_methodology"
-version = "1.0.0b6"
+version = "1.1.0"
 authors = [{ name = "Floris-Jan Willemsen", email = "fjwillemsen97@gmail.com" }]
-description = "Software package easing implementation of the guidelines of the 2024 paper 'A Methodology for Comparing Auto-Tuning Optimization Algorithms'."
+description = "Software package easing implementation of the guidelines of the 2024 paper 'A Methodology for Comparing Auto-Tuning Optimization Algorithms' (https://doi.org/10.1016/j.future.2024.05.021). The DOI of this software is https://doi.org/10.5281/zenodo.11243974."
 keywords = ["autotuning", "auto-tuning", "methodology", "scientific"]
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
