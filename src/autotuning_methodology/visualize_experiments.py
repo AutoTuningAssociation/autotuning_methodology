@@ -1043,7 +1043,7 @@ def entry_point():  #  pragma: no cover
     else:
         experiment_filepath = get_args_from_cli()
 
-    Visualize(experiment_filepath, save_figs=not is_notebook, use_strategy_as_baseline="genetic_algorithm")
+    Visualize(experiment_filepath, save_figs=not is_notebook)
 
 
 if __name__ == "__main__":
