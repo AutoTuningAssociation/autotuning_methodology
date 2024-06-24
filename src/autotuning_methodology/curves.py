@@ -814,7 +814,7 @@ class StochasticOptimizationAlgorithm(Curve):
         ), f"{curve_lower_err.shape=} != {curve_upper_err.shape=} != {curve.shape=}"
 
         # print(f"{self.display_name}: {np.median(curve - curve_lower_err)}, {np.median(curve_upper_err - curve)}")
-        # for t, e, i in zip(time_range, curve_lower_err, prediction[:, 0]):
+        # for t, e, i in zip(time_range, curve_lower_err, prediction_interval[:, 0]):
         #     print(f"{t}: {e} ({i})")
         # exit(0)
 

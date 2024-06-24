@@ -9,7 +9,12 @@ from typing import Callable, Optional
 import numpy as np
 from scipy.interpolate import PchipInterpolator
 
-from autotuning_methodology.curves import CurveBasis, get_indices_in_array, moving_average
+from autotuning_methodology.curves import (
+    CurveBasis,
+    StochasticOptimizationAlgorithm,
+    get_indices_in_array,
+    moving_average,
+)
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
@@ -353,3 +358,95 @@ class RandomSearchSimulatedBaseline(Baseline):
         self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
     ) -> np.ndarray:
         return super().get_split_times_at_feval(fevals_range, searchspace_stats)  # pragma: no cover
+
+
+class ExecutedStrategyBaseline(Baseline):
+    """Baseline object using an executed strategy."""
+
+    def __init__(
+        self,
+        searchspace_stats: SearchspaceStatistics,
+        strategy: StochasticOptimizationAlgorithm,
+        confidence_level: float,
+    ) -> None:
+        """Instantiation method.
+
+        Args:
+            searchspace_stats: Searchspace statistics object.
+            strategy: the stochastic optimization algorithm curve.
+            confidence_level: the confidence level.
+        """
+        self.searchspace_stats = searchspace_stats
+        self.strategy = strategy
+        self.confidence_level = confidence_level
+        self.label = f"Executed {strategy.display_name} baseline"
+        super().__init__()
+
+    def stochastic_curve_to_deterministic(
+        self,
+        range: np.ndarray,
+        curve: tuple[
+            int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+        ],
+    ) -> np.ndarray:
+        """Turn the tuple of a stochastic curve into a single deterministic curve."""
+        assert range.shape[0] == curve[1].shape[0] + curve[5].shape[0]
+        assembled_curve = np.concatenate((curve[2], curve[6]))
+        return assembled_curve
+
+    def get_curve(self, range: np.ndarray, x_type: str, dist=None, confidence_level=None) -> np.ndarray:  # noqa: D102
+        if dist is None:
+            dist = self.searchspace_stats.objective_performances_total_sorted
+        if confidence_level is None:
+            confidence_level = self.confidence_level
+        stochastic_curve = self.strategy.get_curve(
+            range=range, x_type=x_type, dist=dist, confidence_level=confidence_level
+        )
+        return self.stochastic_curve_to_deterministic(range=range, curve=stochastic_curve)
+
+    def get_curve_over_fevals(  # noqa: D102
+        self, fevals_range: np.ndarray, dist=None, confidence_level=None
+    ) -> np.ndarray:
+        if dist is None:
+            dist = self.searchspace_stats.objective_performances_total_sorted
+        if confidence_level is None:
+            confidence_level = self.confidence_level
+        stochastic_curve = self.strategy.get_curve_over_fevals(
+            fevals_range=fevals_range, dist=dist, confidence_level=confidence_level
+        )
+        return self.stochastic_curve_to_deterministic(range=fevals_range, curve=stochastic_curve)
+
+    def get_curve_over_time(self, time_range: np.ndarray, dist=None, confidence_level=None) -> np.ndarray:  # noqa: D102
+        if dist is None:
+            dist = self.searchspace_stats.objective_performances_total_sorted
+        if confidence_level is None:
+            confidence_level = self.confidence_level
+        stochastic_curve = self.strategy.get_curve_over_time(
+            time_range=time_range, dist=dist, confidence_level=confidence_level
+        )
+        return self.stochastic_curve_to_deterministic(range=time_range, curve=stochastic_curve)
+
+    def get_standardised_curve(  # noqa: D102
+        self, range: np.ndarray, strategy_curve: np.ndarray, x_type: str
+    ) -> np.ndarray:
+        return super().get_standardised_curve(range, strategy_curve, x_type)  # pragma: no cover
+
+    def get_standardised_curves(  # noqa: D102
+        self, range: np.ndarray, strategy_curves: list[np.ndarray], x_type: str
+    ) -> tuple[np.ndarray]:
+        return super().get_standardised_curves(range, strategy_curves, x_type)  # pragma: no cover
+
+    def get_split_times(  # noqa: D102
+        self, range: np.ndarray, x_type: str, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
+        return self.strategy.get_split_times(range=range, x_type=x_type, searchspace_stats=searchspace_stats)
+
+    def get_split_times_at_time(  # noqa: D102
+        self, time_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
+        return self.strategy.get_split_times_at_time(range=range, searchspace_stats=searchspace_stats)
+
+    def get_split_times_at_feval(  # noqa: D102
+        self, fevals_range: np.ndarray, searchspace_stats: SearchspaceStatistics
+    ) -> np.ndarray:
+        return self.strategy.get_split_times_at_feval(fevals_range=fevals_range, searchspace_stats=searchspace_stats)

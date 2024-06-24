@@ -8,7 +8,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from autotuning_methodology.baseline import Baseline, RandomSearchCalculatedBaseline, RandomSearchSimulatedBaseline
+from autotuning_methodology.baseline import (
+    Baseline,
+    ExecutedStrategyBaseline,
+    RandomSearchCalculatedBaseline,
+)
 from autotuning_methodology.curves import Curve, CurveBasis, StochasticOptimizationAlgorithm
 from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
@@ -71,6 +75,7 @@ class Visualize:
         save_extra_figs=False,
         continue_after_comparison=False,
         compare_extra_baselines=False,
+        use_strategy_as_baseline=None,
     ) -> None:
         """Initialization method for the Visualize class.
 
@@ -80,6 +85,7 @@ class Visualize:
             save_extra_figs: whether to save split times and baseline comparisons figures to file. Defaults to False.
             continue_after_comparison: whether to continue plotting after processing comparisons. Defaults to False.
             compare_extra_baselines: whether to include additional baselines for comparison. Defaults to False.
+            use_strategy_as_baseline: whether to use an executed strategy as the baseline. WARNING: likely destroys comparability. Defaults to None.
 
         Raises:
             ValueError: on various invalid inputs.
@@ -143,6 +149,7 @@ class Visualize:
 
                 # get the cached strategy results as curves
                 strategies_curves: list[Curve] = list()
+                baseline_executed_strategy = None
                 for strategy in self.strategies:
                     results_description = self.results_descriptions[gpu_name][kernel_name][strategy["name"]]
                     if results_description is None:
@@ -150,7 +157,12 @@ class Visualize:
                             f"""Strategy {strategy['display_name']} not in results_description,
                                 make sure execute_experiment() has ran first"""
                         )
-                    strategies_curves.append(StochasticOptimizationAlgorithm(results_description))
+                    curve = StochasticOptimizationAlgorithm(results_description)
+                    strategies_curves.append(curve)
+                    if use_strategy_as_baseline is not None and strategy["name"] == use_strategy_as_baseline:
+                        baseline_executed_strategy = curve
+                if use_strategy_as_baseline is not None and baseline_executed_strategy is None:
+                    raise ValueError(f"Could not find '{use_strategy_as_baseline}' in executed strategies")
 
                 # set the x-axis range
                 _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(
@@ -207,13 +219,24 @@ class Visualize:
                     continue
 
                 # get the random baseline
-                random_baseline = RandomSearchCalculatedBaseline(searchspace_stats)
+                random_baseline = (
+                    RandomSearchCalculatedBaseline(searchspace_stats)
+                    if baseline_executed_strategy is None
+                    else ExecutedStrategyBaseline(
+                        searchspace_stats, strategy=baseline_executed_strategy, confidence_level=confidence_level
+                    )
+                )
 
                 # set additional baselines for comparison
                 baselines_extra: list[Baseline] = []
                 if compare_extra_baselines is True:
-                    baselines_extra.append(RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000))
+                    # baselines_extra.append(RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000))
                     # baselines_extra.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True))
+                    baselines_extra.append(
+                        ExecutedStrategyBaseline(
+                            searchspace_stats, strategy=baseline_executed_strategy, confidence_level=confidence_level
+                        )
+                    )
 
                 # collect aggregatable data
                 aggregation_data.append(tuple([random_baseline, strategies_curves, searchspace_stats, time_range]))
@@ -332,16 +355,23 @@ class Visualize:
         # baselines.append(
         #     RandomSearchCalculatedBaseline(searchspace_stats, include_nan=False, time_per_feval_operator="median")
         # )
-        baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, time_per_feval_operator="mean"))
+        # baselines.append(RandomSearchCalculatedBaseline(searchspace_stats, time_per_feval_operator="mean"))
+        # baselines.append(
+        #     RandomSearchCalculatedBaseline(
+        #         searchspace_stats, include_nan=True, time_per_feval_operator="median_per_feval"
+        #     )
+        # )
         baselines.append(
-            RandomSearchCalculatedBaseline(
-                searchspace_stats, include_nan=True, time_per_feval_operator="median_per_feval"
+            ExecutedStrategyBaseline(
+                searchspace_stats, strategy=strategies_curves[0], confidence_level=confidence_level
             )
         )
 
         # plot random baseline implementations
         for baseline in baselines:
-            plt.plot(time_range, baseline.get_curve_over_time(time_range), label=baseline.label)
+            timecurve = baseline.get_curve_over_time(time_range)
+            print(f"{baseline.label}: {timecurve[-1]}")
+            plt.plot(time_range, timecurve, label=baseline.label)
 
         # plot normal strategies
         for strategy_curve in strategies_curves:
@@ -686,7 +716,7 @@ class Visualize:
                 curve_real, curve_lower_err_real, curve_upper_err_real = baseline_curve.get_standardised_curves(
                     x_axis_range_real, [curve_real, curve_lower_err_real, curve_upper_err_real], x_type
                 )
-                if x_axis_range_fictional.ndim > 0:
+                if x_axis_range_fictional.ndim > 0 and x_axis_range_fictional.shape[0] > 0:
                     (
                         curve_fictional,
                         curve_lower_err_fictional,
@@ -1013,7 +1043,7 @@ def entry_point():  #  pragma: no cover
     else:
         experiment_filepath = get_args_from_cli()
 
-    Visualize(experiment_filepath, save_figs=not is_notebook)
+    Visualize(experiment_filepath, save_figs=not is_notebook, use_strategy_as_baseline="genetic_algorithm")
 
 
 if __name__ == "__main__":
