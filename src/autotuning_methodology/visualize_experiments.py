@@ -696,6 +696,8 @@ class Visualize:
         ylim_min = 0
         for strategy_index, strategy in enumerate(self.strategies):
             if "hide" in strategy.keys() and strategy["hide"]:
+                if strategy["name"] not in self.plot_skip_strategies:
+                    self.plot_skip_strategies.append(strategy["name"])
                 continue
 
             # get the data
