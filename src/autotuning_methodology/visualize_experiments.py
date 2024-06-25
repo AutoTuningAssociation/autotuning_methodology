@@ -12,6 +12,7 @@ from autotuning_methodology.baseline import (
     Baseline,
     ExecutedStrategyBaseline,
     RandomSearchCalculatedBaseline,
+    RandomSearchSimulatedBaseline,
 )
 from autotuning_methodology.curves import Curve, CurveBasis, StochasticOptimizationAlgorithm
 from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
@@ -230,11 +231,17 @@ class Visualize:
                 # set additional baselines for comparison
                 baselines_extra: list[Baseline] = []
                 if compare_extra_baselines is True:
-                    # baselines_extra.append(RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000))
-                    # baselines_extra.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True))
+                    baselines_extra.append(RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000))
+                    baselines_extra.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True))
                     baselines_extra.append(
                         ExecutedStrategyBaseline(
-                            searchspace_stats, strategy=baseline_executed_strategy, confidence_level=confidence_level
+                            searchspace_stats,
+                            strategy=(
+                                baseline_executed_strategy
+                                if baseline_executed_strategy is not None
+                                else strategies_curves[0]
+                            ),
+                            confidence_level=confidence_level,
                         )
                     )
 
