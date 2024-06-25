@@ -129,6 +129,9 @@ class Visualize:
         compare_baselines: bool = plot_settings.get("compare_baselines", False)
         compare_split_times: bool = plot_settings.get("compare_split_times", False)
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
+        self.plot_skip_strategies: list[str] = list()
+        if use_strategy_as_baseline is not None:
+            self.plot_skip_strategies.append(use_strategy_as_baseline)
 
         # visualize
         aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]] = list()
@@ -382,6 +385,8 @@ class Visualize:
 
         # plot normal strategies
         for strategy_curve in strategies_curves:
+            if strategy_curve.name in self.plot_skip_strategies:
+                continue
             (
                 _,
                 x_axis_range_real,
@@ -448,6 +453,9 @@ class Visualize:
         #     )
         # )
         lines: list[CurveBasis] = strategies_curves + baselines
+        for line in lines:
+            if isinstance(line, Curve) and line.name in self.plot_skip_strategies:
+                lines.remove(line)
 
         # setup the subplots
         num_rows = len(lines)
@@ -538,11 +546,13 @@ class Visualize:
         data_dict = dict.fromkeys(objective_time_keys)
         data_table = list(
             list(list() for _ in range(len(objective_time_keys) - len(print_skip)))
-            for _ in range(len(strategies_curves) + 1)
+            for _ in range((len(strategies_curves) - len(self.plot_skip_strategies)) + 1)
         )
         for objective_time_key in objective_time_keys:
             data_dict[objective_time_key] = np.full((len(strategies_curves)), np.NaN)
         for strategy_index, strategy_curve in enumerate(strategies_curves):
+            if strategy_curve.name in self.plot_skip_strategies:
+                continue
             print_skip_counter = 0
             strategy_labels.append(strategy_curve.display_name)
             strategy_split_times = strategy_curve.get_split_times(fevals_or_time_range, x_type, searchspace_stats)
@@ -692,6 +702,8 @@ class Visualize:
             color = self.colors[strategy_index]
             label = f"{strategy['display_name']}"
             strategy_curve = strategies_curves[strategy_index]
+            if strategy_curve.name in self.plot_skip_strategies:
+                continue
 
             # get the plot data
             if y_type == "scatter":
@@ -919,6 +931,8 @@ class Visualize:
         print("\n-------")
         print("Quantification of aggregate performance across all search spaces:")
         for strategy_index, strategy_performance in enumerate(strategies_performance):
+            if self.strategies[strategy_index]["name"] in self.plot_skip_strategies:
+                continue
             displayname = self.strategies[strategy_index]["display_name"]
             color = self.colors[strategy_index]
             real_stopping_point_fraction = strategies_real_stopping_point_fraction[strategy_index]
