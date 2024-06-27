@@ -69,7 +69,7 @@ def get_colors(strategies: list[dict], scale_margin_left=0.4, scale_margin_right
             main_color_counter += 1
             parented_colors[name] = dict()
             for index, child_index in enumerate(children_index):
-                parented_colors[name][child_index] = color_scale[index]
+                parented_colors[name][child_index] = color_scale[(len(children_index) - 1) - index]
             color = color_scale[len(children_index)]
         else:
             if "color_parent" in strategy:
