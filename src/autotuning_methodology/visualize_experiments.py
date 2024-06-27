@@ -3,10 +3,13 @@
 from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
 
 import warnings
+from collections import defaultdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.cm import get_cmap
+from matplotlib.colors import rgb2hex
 
 from autotuning_methodology.baseline import (
     Baseline,
@@ -23,6 +26,60 @@ marker_variatons = ["v", "s", "*", "1", "2", "d", "P", "X"]
 
 # total set of objective time keys
 objective_time_keys_values = ["compilation", "benchmark", "framework", "search_algorithm", "validation"]
+
+
+def get_colors(strategies: list[dict], scale_margin_left=0.4, scale_margin_right=0.15):
+    """Function to get the colors for each of the strategies."""
+    default_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    main_colors = ["Blues", "Greens", "Reds", "Purples", "Greys"]
+    main_color_counter = 0
+    strategy_parents = defaultdict(list)
+
+    # get the dictionary of parents with the index of their child strategies
+    for strategy_index, strategy in enumerate(strategies):
+        if "color_parent" in strategy:
+            parent = strategy["color_parent"]
+            strategy_parents[parent].append(strategy_index)
+    if len(strategy_parents) == 0:
+        return default_colors
+    if len(strategy_parents) > len(main_colors):
+        raise ValueError(f"Can't use parent colors with more than {len(main_colors)} strategies")
+
+    def get_next_single_color_list(main_color_counter: int, num_colors: int):
+        colorname = main_colors[main_color_counter]
+        cmap = get_cmap(colorname)
+        spacing = np.linspace(scale_margin_left, 1 - scale_margin_right, num=num_colors) if num_colors > 1 else [0.5]
+        colormap = cmap(spacing)
+        color_list = [rgb2hex(c) for c in colormap]
+        return color_list
+
+    parented_colors = dict()
+    colors = list()
+    for strategy_index, strategy in enumerate(strategies):
+        name = strategy["name"]
+        if name in strategy_parents:
+            children_index = strategy_parents[name]
+            if len(children_index) == 3:
+                warnings.warn(f"Color parent '{name}' has three children, check if lines in plot are visually distinct")
+            if len(children_index) > 3:
+                raise ValueError(
+                    f"Color parent '{name}' should not have more than three children to maintain visual distinction"
+                )
+            color_scale = get_next_single_color_list(main_color_counter, len(children_index) + 1)
+            main_color_counter += 1
+            parented_colors[name] = dict()
+            for index, child_index in enumerate(children_index):
+                parented_colors[name][child_index] = color_scale[index]
+            color = color_scale[len(children_index)]
+        else:
+            if "color_parent" in strategy:
+                parent = strategy["color_parent"]
+                color = parented_colors[parent][strategy_index]
+            else:
+                color = get_next_single_color_list(main_color_counter, 1)[0]
+                main_color_counter += 1
+        colors.append(color)
+    return colors
 
 
 class Visualize:
@@ -66,8 +123,6 @@ class Visualize:
     ]  # absolute values, scatterplot, median-absolute normalized, improvement over baseline
 
     plot_filename_prefix_parent = "generated_plots"
-
-    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     def __init__(
         self,
@@ -129,6 +184,11 @@ class Visualize:
         compare_baselines: bool = plot_settings.get("compare_baselines", False)
         compare_split_times: bool = plot_settings.get("compare_split_times", False)
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
+        self.colors = get_colors(
+            self.strategies,
+            scale_margin_left=plot_settings.get("color_parent_scale_margin_left", 0.4),
+            scale_margin_right=plot_settings.get("color_parent_scale_margin_right", 0.1),
+        )
         self.plot_skip_strategies: list[str] = list()
         if use_strategy_as_baseline is not None:
             self.plot_skip_strategies.append(use_strategy_as_baseline)
