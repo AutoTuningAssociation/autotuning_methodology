@@ -17,8 +17,13 @@ from autotuning_methodology.baseline import (
     RandomSearchCalculatedBaseline,
     RandomSearchSimulatedBaseline,
 )
-from autotuning_methodology.curves import Curve, CurveBasis, StochasticOptimizationAlgorithm
+from autotuning_methodology.curves import Curve, CurveBasis
 from autotuning_methodology.experiments import execute_experiment, get_args_from_cli
+from autotuning_methodology.report_experiments import (
+    get_aggregation_data,
+    get_aggregation_data_key,
+    get_strategies_aggregated_performance,
+)
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 # The kernel information per device and device information for visualization purposes
@@ -175,7 +180,6 @@ class Visualize:
             raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
         time_resolution = int(time_resolution)
         objective_time_keys: list[str] = self.experiment["objective_time_keys"]
-        objective_performance_keys: list[str] = self.experiment["objective_performance_keys"]
 
         # plot settings
         plot_settings: dict = self.experiment["plot"]
@@ -194,49 +198,29 @@ class Visualize:
             self.plot_skip_strategies.append(use_strategy_as_baseline)
 
         # visualize
-        aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]] = list()
+        aggregation_data = get_aggregation_data(
+            experiment_folderpath,
+            self.experiment,
+            self.strategies,
+            self.results_descriptions,
+            cutoff_percentile,
+            cutoff_percentile_start,
+            confidence_level,
+            self.minimization,
+            time_resolution,
+            use_strategy_as_baseline,
+        )
         for gpu_name in self.experiment["GPUs"]:
             for kernel_name in self.experiment["kernels"]:
                 print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
                 title = f"{kernel_name} on {gpu_name}"
                 title = title.replace("_", " ")
 
-                # get the statistics
-                searchspace_stats = SearchspaceStatistics(
-                    kernel_name=kernel_name,
-                    device_name=gpu_name,
-                    minimization=self.minimization,
-                    objective_time_keys=objective_time_keys,
-                    objective_performance_keys=objective_performance_keys,
-                    bruteforced_caches_path=experiment_folderpath / self.experiment["bruteforced_caches_path"],
-                )
+                # unpack the aggregation data
+                random_baseline, strategies_curves, searchspace_stats, time_range, fevals_range = aggregation_data[
+                    get_aggregation_data_key(gpu_name=gpu_name, kernel_name=kernel_name)
+                ]
 
-                # get the cached strategy results as curves
-                strategies_curves: list[Curve] = list()
-                baseline_executed_strategy = None
-                for strategy in self.strategies:
-                    results_description = self.results_descriptions[gpu_name][kernel_name][strategy["name"]]
-                    if results_description is None:
-                        raise ValueError(
-                            f"""Strategy {strategy['display_name']} not in results_description,
-                                make sure execute_experiment() has ran first"""
-                        )
-                    curve = StochasticOptimizationAlgorithm(results_description)
-                    strategies_curves.append(curve)
-                    if use_strategy_as_baseline is not None and strategy["name"] == use_strategy_as_baseline:
-                        baseline_executed_strategy = curve
-                if use_strategy_as_baseline is not None and baseline_executed_strategy is None:
-                    raise ValueError(f"Could not find '{use_strategy_as_baseline}' in executed strategies")
-
-                # set the x-axis range
-                _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(
-                    cutoff_percentile
-                )
-                _, cutoff_point_fevals_start, cutoff_point_time_start = searchspace_stats.cutoff_point_fevals_time(
-                    cutoff_percentile_start
-                )
-                fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals)
-                time_range = np.linspace(start=cutoff_point_time_start, stop=cutoff_point_time, num=time_resolution)
                 # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
                 # baseline = get_random_curve(cutoff_point_fevals, sorted_times, time_resolution)
 
@@ -246,9 +230,9 @@ class Visualize:
                         time_range,
                         searchspace_stats,
                         objective_time_keys,
+                        strategies_curves=strategies_curves,
                         confidence_level=confidence_level,
                         title=title,
-                        strategies_curves=strategies_curves,
                         save_fig=save_extra_figs,
                     )
                 if compare_split_times is True:
@@ -282,34 +266,22 @@ class Visualize:
                 if not continue_after_comparison and (compare_baselines is True or compare_split_times is True):
                     continue
 
-                # get the random baseline
-                random_baseline = (
-                    RandomSearchCalculatedBaseline(searchspace_stats)
-                    if baseline_executed_strategy is None
-                    else ExecutedStrategyBaseline(
-                        searchspace_stats, strategy=baseline_executed_strategy, confidence_level=confidence_level
-                    )
-                )
-
                 # set additional baselines for comparison
                 baselines_extra: list[Baseline] = []
                 if compare_extra_baselines is True:
                     baselines_extra.append(RandomSearchSimulatedBaseline(searchspace_stats, repeats=1000))
                     baselines_extra.append(RandomSearchCalculatedBaseline(searchspace_stats, include_nan=True))
-                    baselines_extra.append(
-                        ExecutedStrategyBaseline(
-                            searchspace_stats,
-                            strategy=(
-                                baseline_executed_strategy
-                                if baseline_executed_strategy is not None
-                                else strategies_curves[0]
-                            ),
-                            confidence_level=confidence_level,
-                        )
-                    )
-
-                # collect aggregatable data
-                aggregation_data.append(tuple([random_baseline, strategies_curves, searchspace_stats, time_range]))
+                    # baselines_extra.append(
+                    #     ExecutedStrategyBaseline(
+                    #         searchspace_stats,
+                    #         strategy=(
+                    #             baseline_executed_strategy
+                    #             if baseline_executed_strategy is not None
+                    #             else strategies_curves[0]
+                    #         ),
+                    #         confidence_level=confidence_level,
+                    #     )
+                    # )
 
                 # visualize the results
                 for x_type in plot_x_value_types:
@@ -399,9 +371,9 @@ class Visualize:
         time_range: np.ndarray,
         searchspace_stats: SearchspaceStatistics,
         objective_time_keys: list,
+        strategies_curves: list[Curve],
         confidence_level: float,
         title: str = None,
-        strategies_curves: list[Curve] = list(),
         save_fig=False,
     ):
         """Plots a comparison of baselines on a time range.
@@ -412,9 +384,9 @@ class Visualize:
             time_range: range of time to plot on.
             searchspace_stats: Searchspace statistics object.
             objective_time_keys: objective time keys.
+            strategies_curves: the strategy curves to draw in the plot.
             confidence_level: the confidence interval used for the confidence / prediction interval.
             title: the title for this plot, if not given, a title is generated. Defaults to None.
-            strategies_curves: the strategy curves to draw in the plot. Defaults to list().
             save_fig: whether to save the resulting figure to file. Defaults to False.
         """
         dist = searchspace_stats.objective_performances_total_sorted
@@ -878,92 +850,10 @@ class Visualize:
         elif y_type == "baseline":
             ax.set_ylim((min(-normalized_ylim_margin, ylim_min - normalized_ylim_margin), 1 + normalized_ylim_margin))
 
-    def get_strategies_aggregated_performance(
-        self,
-        aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
-        confidence_level: float,
-    ) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray], list[int]]:
-        """Combines the performances across searchspaces.
-
-        Args:
-            aggregation_data: the aggregated data from the various searchspaces.
-            confidence_level: the confidence interval used for the confidence / prediction interval.
-
-        Returns:
-            The aggregated relative performances of each strategy.
-        """
-        # for each strategy, collect the relative performance in each search space
-        strategies_performance = [list() for _ in aggregation_data[0][1]]
-        strategies_performance_lower_err = [list() for _ in aggregation_data[0][1]]
-        strategies_performance_upper_err = [list() for _ in aggregation_data[0][1]]
-        strategies_performance_real_stopping_point_fraction = [list() for _ in range(len(aggregation_data[0][1]))]
-        for random_baseline, strategies_curves, searchspace_stats, time_range in aggregation_data:
-            dist = searchspace_stats.objective_performances_total_sorted
-            for strategy_index, strategy_curve in enumerate(strategies_curves):
-                # get the real and fictional performance curves
-                (
-                    real_stopping_point_index,
-                    x_axis_range_real,
-                    curve_real,
-                    curve_lower_err_real,
-                    curve_upper_err_real,
-                    x_axis_range_fictional,
-                    curve_fictional,
-                    curve_lower_err_fictional,
-                    curve_upper_err_fictional,
-                ) = strategy_curve.get_curve_over_time(time_range, dist=dist, confidence_level=confidence_level)
-                # combine the real and fictional parts to get the full curve
-                combine = x_axis_range_fictional.ndim > 0
-                x_axis_range = (
-                    np.concatenate([x_axis_range_real, x_axis_range_fictional]) if combine else x_axis_range_real
-                )
-                assert np.array_equal(time_range, x_axis_range, equal_nan=True), "time_range != x_axis_range"
-                curve = np.concatenate([curve_real, curve_fictional]) if combine else curve_real
-                curve_lower_err = (
-                    np.concatenate([curve_lower_err_real, curve_lower_err_fictional])
-                    if combine
-                    else curve_lower_err_real
-                )
-                curve_upper_err = (
-                    np.concatenate([curve_upper_err_real, curve_upper_err_fictional])
-                    if combine
-                    else curve_upper_err_real
-                )
-                # get the standardised curves and write them to the collector
-                curve, curve_lower_err, curve_upper_err = random_baseline.get_standardised_curves(
-                    time_range, [curve, curve_lower_err, curve_upper_err], x_type="time"
-                )
-                strategies_performance[strategy_index].append(curve)
-                strategies_performance_lower_err[strategy_index].append(curve_lower_err)
-                strategies_performance_upper_err[strategy_index].append(curve_upper_err)
-                strategies_performance_real_stopping_point_fraction[strategy_index].append(
-                    real_stopping_point_index / x_axis_range.shape[0]
-                )
-
-        # for each strategy, get the mean performance per step in time_range
-        strategies_aggregated_performance: list[np.ndarray] = list()
-        strategies_aggregated_lower_err: list[np.ndarray] = list()
-        strategies_aggregated_upper_err: list[np.ndarray] = list()
-        strategies_aggregated_real_stopping_point_fraction: list[float] = list()
-        for index in range(len(strategies_performance)):
-            strategies_aggregated_performance.append(np.mean(np.array(strategies_performance[index]), axis=0))
-            strategies_aggregated_lower_err.append(np.mean(np.array(strategies_performance_lower_err[index]), axis=0))
-            strategies_aggregated_upper_err.append(np.mean(np.array(strategies_performance_upper_err[index]), axis=0))
-            strategies_aggregated_real_stopping_point_fraction.append(
-                np.median(strategies_performance_real_stopping_point_fraction[index])
-            )
-
-        return (
-            strategies_aggregated_performance,
-            strategies_aggregated_lower_err,
-            strategies_aggregated_upper_err,
-            strategies_aggregated_real_stopping_point_fraction,
-        )
-
     def plot_strategies_aggregated(
         self,
         ax: plt.Axes,
-        aggregation_data: list[tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]],
+        aggregation_data,
         plot_settings: dict,
     ):
         """Plots all optimization strategies combined accross search spaces.
@@ -984,7 +874,7 @@ class Visualize:
             strategies_lower_err,
             strategies_upper_err,
             strategies_real_stopping_point_fraction,
-        ) = self.get_strategies_aggregated_performance(aggregation_data, confidence_level)
+        ) = get_strategies_aggregated_performance(aggregation_data, confidence_level)
 
         # plot each strategy
         y_axis_size = strategies_performance[0].shape[0]
