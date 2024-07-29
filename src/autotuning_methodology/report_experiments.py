@@ -133,7 +133,7 @@ def get_strategies_aggregated_performance(
     strategies_performance_lower_err = [list() for _ in aggregation_data[0][1]]
     strategies_performance_upper_err = [list() for _ in aggregation_data[0][1]]
     strategies_performance_real_stopping_point_fraction = [list() for _ in range(len(aggregation_data[0][1]))]
-    for random_baseline, strategies_curves, searchspace_stats, time_range in aggregation_data:
+    for random_baseline, strategies_curves, searchspace_stats, time_range, _ in aggregation_data:
         dist = searchspace_stats.objective_performances_total_sorted
         for strategy_index, strategy_curve in enumerate(strategies_curves):
             # get the real and fictional performance curves

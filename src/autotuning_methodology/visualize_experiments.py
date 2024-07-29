@@ -874,7 +874,7 @@ class Visualize:
             strategies_lower_err,
             strategies_upper_err,
             strategies_real_stopping_point_fraction,
-        ) = get_strategies_aggregated_performance(aggregation_data, confidence_level)
+        ) = get_strategies_aggregated_performance(list(aggregation_data.values()), confidence_level)
 
         # plot each strategy
         y_axis_size = strategies_performance[0].shape[0]
