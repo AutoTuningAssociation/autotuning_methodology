@@ -283,7 +283,7 @@ class SearchspaceStatistics:
     def _load(self) -> bool:
         """Load the contents of the cache file."""
         filepath = self.get_valid_filepath()
-        with open(filepath, "r") as fh:
+        with open(filepath, "r", encoding="utf-8") as fh:
             print(f"Loading statistics for {filepath}...")
             # get the cache from the .json file
             orig_contents = fh.read()

@@ -11,7 +11,7 @@ hyperparam_nonconstant_names: list[str] = list()
 
 
 def reload_cache():
-    with open("../cached_data_used/cache_files/bootstrap_hyperparamtuning.json", "r") as fh:
+    with open("../cached_data_used/cache_files/bootstrap_hyperparamtuning.json", "r", encoding="utf-8") as fh:
         contents = fh.read()
         try:
             data = json.loads(contents)
@@ -329,8 +329,10 @@ while True:
         scaled_cmap = cmap(y_valid)
     else:
         diff = y_valid_max - y_valid_min
+
         def rescale(v):
             return (v - y_valid_min) / diff
+
         scaled_cmap = cmap(rescale(y_valid))
 
     # obtain the hyperparameters for a parallel coordinates plot

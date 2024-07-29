@@ -1,4 +1,4 @@
-"""Integration test for visualization and quantification."""
+"""Integration test for visualization."""
 
 from pathlib import Path
 

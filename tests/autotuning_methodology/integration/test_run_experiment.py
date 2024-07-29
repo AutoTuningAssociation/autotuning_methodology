@@ -204,7 +204,7 @@ def validate_experiment_results(
 
     # validate the contents
     schemafilepath = get_experiment_schema_filepath()
-    with open(schemafilepath) as schemafile:
+    with open(schemafilepath, "r", encoding="utf-8") as schemafile:
         schema = json.load(schemafile)
         validate(instance=experiment, schema=schema)
     kernel_name = experiment["kernels"][0]

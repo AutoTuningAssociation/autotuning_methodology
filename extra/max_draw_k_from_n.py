@@ -118,7 +118,7 @@ if __name__ == "__main__":
     # path = '../../old_cached_data_used/cache_files/pnpoly_RTX_2070_SUPER.json'
     # path = '../../old_cached_data_used/cache_files/GEMM_RTX_2070_SUPER.json'
     path = "../../cached_data_used/cachefiles/GEMM/RTX_2080_Ti.json"
-    with open(path, "r") as myfile:
+    with open(path, "r", encoding="utf-8") as myfile:
         data = myfile.read()
     data = json.loads(data)
     times = []

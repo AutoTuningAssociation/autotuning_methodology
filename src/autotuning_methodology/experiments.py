@@ -77,7 +77,7 @@ def get_experiment(filename: str) -> dict:
     schemafile = get_experiment_schema_filepath()
 
     # open the experiment file and validate using the schema file
-    with open(path) as file, open(schemafile) as schemafile:
+    with open(path, "r", encoding="utf-8") as file, open(schemafile, "r", encoding="utf-8") as schemafile:
         schema = json.load(schemafile)
         experiment: dict = json.load(file)
         validate(instance=experiment, schema=schema)

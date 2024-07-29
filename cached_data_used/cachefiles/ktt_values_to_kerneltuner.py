@@ -95,7 +95,7 @@ for file in files_to_import:
         # print(f"Replacing {kt_old_objective_value} with {kt_new_objective_value}")
 
     # load the individual lines of the file
-    with kerneltuner_cachefile.open(mode="r") as fp:
+    with kerneltuner_cachefile.open(mode="r", encoding="utf-8") as fp:
         lines = fp.readlines()
         cache_start = False
     # write the new data to file
