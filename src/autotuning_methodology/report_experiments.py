@@ -10,6 +10,7 @@ from autotuning_methodology.baseline import (
     RandomSearchCalculatedBaseline,
 )
 from autotuning_methodology.curves import Curve, StochasticOptimizationAlgorithm
+from autotuning_methodology.experiments import execute_experiment
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
@@ -189,3 +190,59 @@ def get_strategies_aggregated_performance(
         strategies_aggregated_upper_err,
         strategies_aggregated_real_stopping_point_fraction,
     )
+
+
+def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None):
+    """Function to get performance scores per strategy by running the passed experiments file.
+
+    Args:
+        experiment_filepath: the path to the experiment-filename.json to run.
+        use_strategy_as_baseline: whether to use an executed strategy as the baseline. Defaults to None.
+
+    Returns:
+        a dictionary of the strategies, with the performance score and error for each strategy.
+    """
+    # execute the experiment if necessary, else retrieve it
+    experiment, strategies, results_descriptions = execute_experiment(experiment_filepath, profiling=False)
+    experiment_folderpath = Path(experiment_filepath).parent
+
+    # get the settings
+    minimization: bool = experiment.get("minimization", True)
+    cutoff_percentile: float = experiment["cutoff_percentile"]
+    cutoff_percentile_start: float = experiment.get("cutoff_percentile_start", 0.01)
+    time_resolution: float = experiment.get("resolution", 1e4)
+    confidence_level: float = experiment["plot"].get("confidence_level", 0.95)
+
+    # aggregate the data
+    aggregation_data = get_aggregation_data(
+        experiment_folderpath,
+        experiment,
+        strategies,
+        results_descriptions,
+        cutoff_percentile,
+        cutoff_percentile_start,
+        confidence_level,
+        minimization,
+        time_resolution,
+        use_strategy_as_baseline,
+    )
+
+    # get the aggregated performance per strategy
+    (
+        strategies_performance,
+        strategies_lower_err,
+        strategies_upper_err,
+        strategies_real_stopping_point_fraction,
+    ) = get_strategies_aggregated_performance(list(aggregation_data.values()), confidence_level)
+
+    # calculate the average performance score and error per strategy
+    results: dict[str, dict[str, float]] = dict()
+    for strategy_index, strategy_performance in enumerate(strategies_performance):
+        performance = round(np.mean(strategy_performance), 3)
+        error = round(np.std(strategy_performance), 3)
+        strategy_name = strategies[strategy_index]["name"]
+        results[strategy_name] = {
+            "score": performance,
+            "error": error,
+        }
+    return results
