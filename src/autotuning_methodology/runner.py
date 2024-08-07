@@ -9,6 +9,7 @@ import time as python_time
 import warnings
 from inspect import getfile
 from pathlib import Path
+import subprocess
 
 import numpy as np
 import progressbar
@@ -22,9 +23,8 @@ from autotuning_methodology.validators import (
     is_valid_config_result,
 )
 
+#TODO this does not conform to new intedned dicrectory structure
 folder = Path(__file__).parent.parent.parent
-import_runs_path = Path(folder, "cached_data_used/import_runs")
-
 
 # Imported runs must be remapped to have the same keys, values and order of parameters as the other runs.
 # This mapping provides both the order and mapping, so all keys must be present.
@@ -55,19 +55,19 @@ ktt_param_mapping["mocktest_kernel_convolution"] = ktt_param_mapping["convolutio
 
 
 @contextlib.contextmanager
-def temporary_working_directory_change(new_WD: Path):
+def temporary_working_directory_change(new_wd: Path):
     """Temporarily change to the given working directory in a context. Based on https://stackoverflow.com/questions/75048986/way-to-temporarily-change-the-directory-in-python-to-execute-code-without-affect.
 
     Args:
-        new_WD: path of the working directory to temporarily change to.
+        new_wd: path of the working directory to temporarily change to.
     """
-    assert new_WD.exists()
+    assert new_wd.exists()
 
     # save the current working directory so we can revert to it
     original_working_directory = os.getcwd()
 
     # potentially raises an exception, left to the caller
-    os.chdir(new_WD)
+    os.chdir(new_wd)
 
     # yield control to the caller
     try:
@@ -81,12 +81,78 @@ def temporary_working_directory_change(new_WD: Path):
 
 def load_json(path: Path):
     """Helper function to load a JSON file."""
-    assert path.exists(), f"File {path.name} does not exist relative to {os.getcwd()}"
+    assert path.exists(), f"File {str(path)} does not exist relative to {os.getcwd()}"
     with path.open() as file_results:
         return json.load(file_results)
 
+def convert_KTT_output_to_standard(output_filename: Path) -> dict:
+    with open(output_filename, 'r', encoding="utf-8") as fp:
+        ktt_output = json.load(fp)
 
-def get_results_and_metadata(
+    ktt_result_status_mapping = {
+        "Ok":"correct",
+        "ComputationFailed":"runtime",
+        "ValidationFailed":"correctness",
+        "CompilationFailed":"compile",
+        "DeviceLimitsExceeded":"runtime"
+        # timeout is marked as ComputationFailed in KTT
+        # constraints is marked as CompilationFailed in KTT
+    }
+    # map all timeunits to milliseconds
+    ktt_timeunit_mapping = {
+        "seconds": lambda x: x * 1000,
+        "milliseconds": lambda x: x,
+        "microseconds": lambda x: x / 1000,
+        "nanoseconds": lambda x: x / 1000000,
+    }
+
+    converted_output = {}
+
+    converted_output["schema_version"] = "1.0.0"
+    converted_output["results"] = []
+    timemapper = ktt_timeunit_mapping[str(ktt_output["Metadata"]["TimeUnit"]).lower()]
+
+    for ktt_result in ktt_output["Results"]:
+        converted_result = {}
+        converted_result["timestamp"] = ktt_output["Metadata"]["Timestamp"]
+        # note that KTT outputs each run separately, it does not merge the output for the same configuration
+        converted_result["configuration"] = {}
+        for tp in ktt_result["Configuration"]:
+            converted_result["configuration"][tp["Name"]] = tp["Value"]
+        # TODO PowerUsage also possible
+        converted_result["objectives"] = ["TotalDuration"]
+        converted_result["times"] = {}
+        # compilation time can be also calculated as sum of "Overhead" in all ComputationResults, it's just easier to do it this way in case of multiple kernel functions within one application
+        converted_result["times"]["compilation_time"] = timemapper(
+            ktt_result["TotalOverhead"] -
+            ktt_result["DataMovementOverhead"] -
+            ktt_result["SearcherOverhead"] -
+            ktt_result["ValidationOverhead"]
+        )
+        converted_result["times"]["runtimes"] = [timemapper(ktt_result["TotalDuration"])]
+        converted_result["times"]["framework"] = timemapper(ktt_result["DataMovementOverhead"])
+        converted_result["times"]["search_algorithm"] = timemapper(ktt_result["SearcherOverhead"])
+        converted_result["times"]["validation"] = timemapper(ktt_result["ValidationOverhead"])
+        # timeout, compile, runtime, correctness, constraints, correct
+        converted_result["invalidity"] = ktt_result_status_mapping[ktt_result["Status"]]
+        if ktt_result["Status"] == "ValidationFailed":
+            converted_result["correctness"] = 0
+        else:
+            converted_result["correctness"] = 1
+        converted_result["measurements"] = []
+        converted_result["measurements"].append({
+            "name": "TotalDuration",
+            "value": timemapper(ktt_result["TotalDuration"]),
+            "unit": "milliseconds"
+            })
+        # TODO what do we want here in case of multiple ComputationResults for multiple kernel functions?
+        if "ProfilingData" in ktt_result["ComputationResults"][0]:
+            for pc in ktt_result["ComputationResults"][0]["ProfilingData"]["Counters"]:
+                converted_result["measurements"].append({"name":pc["Name"], "value":pc["Value"], "unit": ""})
+        converted_output["results"].append(converted_result)
+    return converted_output
+
+def get_kerneltuner_results_and_metadata(
     filename_results: str = f"{folder}../last_run/_tune_configuration-results.json",
     filename_metadata: str = f"{folder}../last_run/_tune_configuration-metadata.json",
 ) -> tuple[list, list]:
@@ -105,12 +171,11 @@ def get_results_and_metadata(
 
 
 def tune(
-    run_number: int,
-    kernel,
-    kernel_name: str,
+    input_file,
+    application_name: str,
     device_name: str,
-    strategy: dict,
-    tune_options: dict,
+    group: dict,
+    tune_options: dict, #TODO check if still necessary when we have input json file
     profiling: bool,
     searchspace_stats: SearchspaceStatistics,
 ) -> tuple[list, list, int]:
@@ -119,11 +184,10 @@ def tune(
     Optionally collects profiling statistics.
 
     Args:
-        run_number: the run number (only relevant when importing).
-        kernel: the program (kernel) to tune.
-        kernel_name: the name of the program to tune.
+        input_file: the json input file for tuning the application.
+        application_name: the name of the program to tune.
         device_name: the device (GPU) to tune on.
-        strategy: the optimization algorithm to optimize with.
+        group: the experimental group (usually the search method).
         tune_options: a special options dictionary passed along to the autotuning framework.
         profiling: whether profiling statistics should be collected.
         searchspace_stats: a ``SearchspaceStatistics`` object passed to convert imported runs.
@@ -156,7 +220,7 @@ def tune(
                 )
             if profiling:
                 yappi.stop()
-            metadata, results = get_results_and_metadata(
+            metadata, results = get_kerneltuner_results_and_metadata(
                 filename_results=kernel.file_path_results, filename_metadata=kernel.file_path_metadata
             )
             # check that the number of iterations is correct
@@ -180,144 +244,92 @@ def tune(
         """Interface to tune with the BAT benchmarking suite."""
         # TODO integrate with BAT
 
-    def import_from_KTT(use_param_mapping=True, use_bruteforce_objective=True):
-        """Import a KTT output file."""
-        # import the file
-        assert import_runs_path.exists() and import_runs_path.is_dir()
-        expected_filename = (
-            f"t~'ktt'd~'{device_name}'k~'{kernel_name}'s~'{strategy['strategy']}'r~{run_number}.json".lower()
-        )
-        matching_runs: list[dict] = list()
-        for file in import_runs_path.iterdir():
-            if file.name == expected_filename:
-                matching_runs.append(load_json(file))
-        if len(matching_runs) < 1:
-            raise FileNotFoundError(f"No files to import found with name '{expected_filename}'")
-        if len(matching_runs) > 1:
-            raise FileExistsError(
-                f"{len(matching_runs)} files exist with name '{expected_filename}', there can be only one"
+    def tune_with_KTT():
+        """Interface with KTT to tune the kernel and return the results."""
+        if profiling:
+            yappi.set_clock_type("cpu")
+            yappi.start()
+        # run KttTuningLauncher with input file
+        # change the directory to application folder
+        # TODO check if changing the directory is necessary, I think it was just looking for cu file, which is not actually necessary in simulated execution
+        with temporary_working_directory_change(group["application_folder"]):
+            # copy the modified input file (with inserted search method, budget, etc.)
+            subprocess.run(
+                ["cp", str(group["input_file"]), str(group["application_folder"])],
+                check=False
             )
-        run = matching_runs[0]
+            try:
+                # execute KttTuningLauncher from autotuner_path directory
+                executable = Path(group["autotuner_path"]).joinpath("KttTuningLauncher")
+                if group.get("set_this_to_pythonpath") is None:
+                    proc_result = subprocess.run([str(executable), group["input_file"].name],
+                        capture_output=True, check=True,
+                        env = os.environ | {'PYTHONPATH':group["autotuner_path"]}
+                    )
+                else:
+                    subprocess.run([str(executable), group["input_file"].name],
+                        capture_output=True, check=True,
+                        env = os.environ | {'PYTHONPATH':group["set_this_to_pythonpath"]}
+                    )
 
-        # map all timeunits to miliseconds
-        ktt_timeunit_mapping = {
-            "seconds": lambda x: x * 1000,
-            "miliseconds": lambda x: x,
-            "microseconds": lambda x: x / 1000,
-        }
-        ktt_status_mapping = {
-            "ok": "correct",
-            "devicelimitsexceeded": "compile",
-            "computationfailed": "runtime",
-        }
+                # TODO this is a bug in KTT, sometimes it returns non-zero exit code even though nothing bad happened
+                # catching the expcetion here then covers even the situation when KTT fails, but I write the output just to let the user know what is going on if there is a runtime error
+            except subprocess.CalledProcessError as er:
+                print(er.stdout)
+                print(er.stderr)
+                pass
+            # remove the modified input file, output file was written in experiment_parent_folder/run/group_name/
+            subprocess.run(["rm", group["input_file"].name], check=False)
+        if profiling:
+            yappi.stop()
+        metadata, results, total_time_ms = get_KTT_results_and_metadata(group["output_file"])
+        if "max_fevals" in group["budget"]:
+            max_fevals = group["budget"]["max_fevals"]
+            if len(results) < max_fevals * 0.1:
+                warnings.warn(
+                    f"Much fewer configurations were returned ({len(results)}) than the requested {max_fevals}"
+                )
+            if len(results) < 2:
+                raise ValueError("Less than two configurations were returned")
+        return metadata, results, total_time_ms
 
-        # convert to the T4 format
-        metadata = None  # TODO implement the metadata conversion when necessary
-        results = list()
-        run_metadata: dict = run["Metadata"]
-        run_results: list[dict] = run["Results"]
-        timemapper = ktt_timeunit_mapping[str(run_metadata["TimeUnit"]).lower()]
+    def get_KTT_results_and_metadata(
+        output_filename: str
+        #use_param_mapping=True
+    ) -> tuple[dict, list, float] :
+        # TODO not sure what use_param_mapping was for
+        """Retrieves results from KTT run.
+
+        Args:
+            output_filename: file with KTT output
+            use_param_mapping: used in testing?
+
+        Returns:
+            A tuple, a dictionary with metadata, a list of results and a float with total experiment duration in ms.
+        """
+        # convert the KTT-formatted file to dictionary corresponding to standard json format
+        run_output = convert_KTT_output_to_standard(output_filename)
+
+        metadata: dict = {}
+        results: list[dict] = run_output["results"]
+
         total_time_ms = 0
-        for config_attempt in run_results:
-
-            # convert the configuration to T4 style dictionary for fast lookups in the mapping
-            configuration_ktt = dict()
-            for param in config_attempt["Configuration"]:
-                configuration_ktt[param["Name"]] = param["Value"]
-
-            # convert the configuration data with the mapping in the correct order
-            configuration = dict()
-            if use_param_mapping and kernel_name in ktt_param_mapping:
-                param_map = ktt_param_mapping[kernel_name]
-                assert len(param_map) == len(
-                    configuration_ktt
-                ), f"Mapping provided for {len(param_map)} params, but configuration has {len(configuration_ktt)}"
-                for param_name, mapping in param_map.items():
-                    param_value = configuration_ktt[param_name]
-                    # if the mapping is None, do not include the parameter
-                    if mapping is None:
-                        pass
-                    # if the mapping is a tuple, the first argument is the new parameter name and the second the value
-                    elif isinstance(mapping, tuple):
-                        param_mapped_name, param_mapped_value = mapping
-                        if callable(param_mapped_value):
-                            param_mapped_value = param_mapped_value(param_value)
-                        configuration[param_mapped_name] = param_mapped_value
-                    # if it's a list of tuples, map to multiple parameters
-                    elif isinstance(mapping, list):
-                        for param_mapped_name, param_mapped_value in mapping:
-                            if callable(param_mapped_value):
-                                param_mapped_value = param_mapped_value(param_value)
-                            configuration[param_mapped_name] = param_mapped_value
-                    else:
-                        raise ValueError(f"Can not apply parameter mapping of {type(mapping)} ({mapping})")
-            else:
-                configuration = configuration_ktt
+        for result in results:
 
             # add to total time
-            total_duration = timemapper(config_attempt["TotalDuration"])
-            total_overhead = timemapper(config_attempt["TotalOverhead"])
+            total_duration = 0
+            for m in result["measurements"]:
+                if m["name"] is "TotalDuration":
+                    total_duration = m["value"]
+                    break
+            total_overhead = result["times"]["compilation_time"] + result["times"]["framework"] + result["times"]["search_algorithm"] + result["times"]["validation"]
             total_time_ms += total_duration + total_overhead
-
-            # convert the times data
-            times_runtimes = []
-            duration = ""
-            if len(config_attempt["ComputationResults"]) > 0:
-                for config_result in config_attempt["ComputationResults"]:
-                    times_runtimes.append(timemapper(config_result["Duration"]))
-                if use_bruteforce_objective:
-                    config_string_key = ",".join(str(x) for x in configuration.values())
-                    duration = searchspace_stats.get_value_in_config(config_string_key, "time")
-                else:
-                    duration = np.mean(times_runtimes)
-                assert (
-                    "iterations" in strategy
-                ), "For imported KTT runs, the number of iterations must be specified in the experiments file"
-                if strategy["iterations"] != len(times_runtimes):
-                    times_runtimes = [np.mean(times_runtimes)] * strategy["iterations"]
-                    warnings.warn(
-                        f"The specified number of iterations ({strategy['iterations']}) did not equal"
-                        + f"the actual number of iterations ({len(times_runtimes)}). "
-                        + "The average has been used."
-                    )
-            if (not isinstance(duration, (float, int, np.number))) or np.isnan(duration):
-                duration = ""
-            times_search_algorithm = timemapper(config_attempt.get("SearcherOverhead", 0))
-            times_validation = timemapper(config_attempt.get("ValidationOverhead", 0))
-            times_framework = timemapper(config_attempt.get("DataMovementOverhead", 0))
-            times_benchmark = total_duration
-            times_compilation = total_overhead - times_search_algorithm - times_validation - times_framework
-
-            # assemble the converted data
-            converted = {
-                "configuration": configuration,
-                "invalidity": ktt_status_mapping[str(config_attempt["Status"]).lower()],
-                "correctness": 1,
-                "measurements": [
-                    {
-                        "name": "time",
-                        "value": duration,
-                        "unit": "ms",
-                    }
-                ],
-                "objectives": ["time"],
-                "times": {
-                    "compilation": times_compilation,
-                    "benchmark": times_benchmark,
-                    "framework": times_framework,
-                    "search_algorithm": times_search_algorithm,
-                    "validation": times_validation,
-                    "runtimes": times_runtimes,
-                },
-            }
-            results.append(converted)
 
         return metadata, results, round(total_time_ms)
 
-    strategy_name = str(strategy["name"]).lower()
-    if strategy_name.startswith("ktt_"):
-        metadata, results, total_time_ms = import_from_KTT()
-    elif strategy_name.startswith("kerneltuner_") or True:
+    if group["autotuner"] == "KTT":
+        metadata, results, total_time_ms = tune_with_KTT()
+    elif group["autotuner"] == "KernelTuner":
         total_start_time = python_time.perf_counter()
         warnings.simplefilter("ignore", UserWarning)
         try:
@@ -329,14 +341,14 @@ def tune(
         total_end_time = python_time.perf_counter()
         total_time_ms = round((total_end_time - total_start_time) * 1000)
     else:
-        raise ValueError(f"Invalid autotuning framework '{strategy_name}'")
+        raise ValueError(f"Invalid autotuning framework '{group['autotuner']}'")
     # be careful not to rely on total_time_ms when profiling, because it will include profiling time
     return metadata, results, total_time_ms
 
 
 def collect_results(
-    kernel,
-    strategy: dict,
+    input_file,
+    group: dict,
     results_description: ResultsDescription,
     searchspace_stats: SearchspaceStatistics,
     profiling: bool,
@@ -344,33 +356,33 @@ def collect_results(
     """Executes optimization algorithms on tuning problems to capture their behaviour.
 
     Args:
-        kernel: the program (kernel) to tune.
-        strategy: the optimization algorithm to optimize with.
-        searchspace_stats: the ``SearchspaceStatistics`` object, only used for conversion of imported runs.
+        input_file: an input json file to tune.
+        group: a dictionary with settings for experimental group.
         results_description: the ``ResultsDescription`` object to write the results to.
+        searchspace_stats: the ``SearchspaceStatistics`` object, only used for conversion of imported runs.
         profiling: whether profiling statistics must be collected.
 
     Returns:
         The ``ResultsDescription`` object with the results.
     """
-    min_num_evals: int = strategy["minimum_number_of_evaluations"]
+    min_num_evals: int = group["minimum_number_of_valid_search_iterations"]
     # TODO put the tune options in the .json in strategy_defaults? Make it Kernel Tuner independent
     tune_options = {"verbose": False, "quiet": True, "simulation_mode": True}
 
-    def report_multiple_attempts(rep: int, len_res: int, strategy_repeats: int):
+    def report_multiple_attempts(rep: int, len_res: int, group_repeats: int):
         """If multiple attempts are necessary, report the reason."""
         if len_res < 1:
-            print(f"({rep+1}/{strategy_repeats}) No results found, trying once more...")
+            print(f"({rep+1}/{group_repeats}) No results found, trying once more...")
         elif len_res < min_num_evals:
             print(f"Too few results found ({len_res} of {min_num_evals} required), trying once more...")
         else:
-            print(f"({rep+1}/{strategy_repeats}) Only invalid results found, trying once more...")
+            print(f"({rep+1}/{group_repeats}) Only invalid results found, trying once more...")
 
-    # repeat the strategy as specified
-    repeated_results = list()
+    # repeat the run as specified
+    repeated_results = []
     total_time_results = np.array([])
     for rep in progressbar.progressbar(
-        range(strategy["repeats"]),
+        range(group["repeats"]),
         redirect_stdout=True,
         prefix=" | - |-> running: ",
         widgets=[
@@ -389,13 +401,12 @@ def collect_results(
         len_res: int = -1
         while only_invalid or len_res < min_num_evals:
             if attempt > 0:
-                report_multiple_attempts(rep, len_res, strategy["repeats"])
-            metadata, results, total_time_ms = tune(
-                rep,
-                kernel,
-                results_description.kernel_name,
+                report_multiple_attempts(rep, len_res, group["repeats"])
+            _, results, total_time_ms = tune(
+                input_file,
+                results_description.application_name,
                 results_description.device_name,
-                strategy,
+                group,
                 tune_options,
                 profiling,
                 searchspace_stats,
@@ -413,7 +424,7 @@ def collect_results(
     if profiling:
         stats = yappi.get_func_stats()
         # stats.print_all()
-        path = "../old_experiments/profilings/random/profile-v2.prof"
+        path = results_description.run_folder + "/profile-v2.prof"
         stats.save(path, type="pstat")  # pylint: disable=no-member
         yappi.clear_stats()
 
@@ -447,7 +458,9 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
     objective_performance_results = get_nan_array()
     objective_performance_best_results = get_nan_array()
     objective_performance_stds = get_nan_array()
-    objective_time_results_per_key = np.full((len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan)
+    objective_time_results_per_key = np.full(
+        (len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan
+    )
     objective_performance_results_per_key = np.full(
         (len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan
     )
@@ -470,15 +483,19 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
 
             # TODO continue here with implementing switch in output format
             # obtain the objective time per key
-            objective_times_list = list()
+            objective_times_list = []
             for key_index, key in enumerate(objective_time_keys):
                 evaluation_times = evaluation["times"]
                 assert (
                     key in evaluation_times
                 ), f"Objective time key {key} not in evaluation['times'] ({evaluation_times})"
-                value = evaluation_times[key]
+                if isinstance(evaluation_times[key], list):
+                    # this happens when runtimes are in objective_time_keys
+                    value = sum(evaluation_times[key])
+                else:
+                    value = evaluation_times[key]
                 if value is not None and not is_invalid_objective_time(value):
-                    value = value / 1000  # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
+                    #value = value / 1000  # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
                     objective_time_results_per_key[key_index, evaluation_index, repeat_index] = value
                     objective_times_list.append(value)
             # sum the objective times of the keys
@@ -489,7 +506,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
                     objective_time_results[evaluation_index, repeat_index] = cumulative_objective_time
 
             # obtain the objective performance per key (called 'measurements' in the T4 format)
-            objective_performances_list = list()
+            objective_performances_list = []
             for key_index, key in enumerate(objective_performance_keys):
                 evaluation_measurements = evaluation["measurements"]
                 measurements = list(filter(lambda m: m["name"] == key, evaluation_measurements))
