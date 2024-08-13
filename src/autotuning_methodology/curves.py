@@ -230,10 +230,10 @@ class Curve(CurveBasis):
             results_description: the ResultsDescription object containing the data for the Curve.
         """
         # inputs
-        self.name = results_description.strategy_name
-        self.display_name = results_description.strategy_display_name
+        self.name = results_description.group_name
+        self.display_name = results_description.group_display_name
         self.device_name = results_description.device_name
-        self.kernel_name = results_description.kernel_name
+        self.application_name = results_description.application_name
         self.stochastic = results_description.stochastic
         self.minimization = results_description.minimization
 
@@ -265,7 +265,7 @@ class Curve(CurveBasis):
         assert isinstance(self.name, str)
         assert isinstance(self.display_name, str)
         assert isinstance(self.device_name, str)
-        assert isinstance(self.kernel_name, str)
+        assert isinstance(self.application_name, str)
         assert isinstance(self.stochastic, bool)
         assert isinstance(self._x_fevals, np.ndarray)
         assert isinstance(self._x_time, np.ndarray)
