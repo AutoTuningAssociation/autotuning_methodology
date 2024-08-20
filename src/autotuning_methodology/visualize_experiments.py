@@ -127,8 +127,6 @@ class Visualize:
         "baseline",
     ]  # absolute values, scatterplot, median-absolute normalized, improvement over baseline
 
-    plot_filename_prefix_parent = "generated_plots"
-
     def __init__(
         self,
         experiment_filepath: str,
@@ -154,44 +152,44 @@ class Visualize:
         # # silently execute the experiment
         # with warnings.catch_warnings():
         #     warnings.simplefilter("ignore")
-        self.experiment, self.strategies, self.results_descriptions = execute_experiment(
+        self.experiment, self.all_experimental_groups, self.searchspace_statistics, self.results_descriptions = execute_experiment(
             experiment_filepath, profiling=False
         )
-        experiment_folderpath = Path(experiment_filepath).parent
-        experiment_folder_id: str = self.experiment["folder_id"]
-        assert isinstance(experiment_folder_id, str) and len(experiment_folder_id) > 0
-        self.plot_filename_prefix = f"{self.plot_filename_prefix_parent}/{experiment_folder_id}/"
+        experiment_folder: Path = self.experiment["parent_folder_absolute_path"]
+        assert isinstance(experiment_folder, Path)
+        self.plot_filename_prefix = experiment_folder.joinpath("run", "generated_graphs")
         print("\n")
         print("Visualizing")
 
         # preparing filesystem
         if save_figs or save_extra_figs:
-            Path(self.plot_filename_prefix_parent).mkdir(exist_ok=True)
             Path(self.plot_filename_prefix).mkdir(exist_ok=True)
 
+        # search strategies are search methods defined in experiments setup file
+        # self.all_experimental_groups are all combinations of gpu+application+search method that got executed
+        self.strategies = self.experiment["search_strategies"]
         # settings
-        self.minimization: bool = self.experiment.get("minimization", True)
-        cutoff_percentile: float = self.experiment["cutoff_percentile"]
-        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
-        cutoff_type: str = self.experiment.get("cutoff_type", "fevals")
+        self.minimization: bool = self.experiment["statistics_settings"]["minimization"]
+        cutoff_percentile: float = self.experiment["statistics_settings"]["cutoff_percentile"]
+        cutoff_percentile_start: float = self.experiment["statistics_settings"]["cutoff_percentile_start"]
+        cutoff_type: str = self.experiment["statistics_settings"]["cutoff_type"]
         assert cutoff_type == "fevals" or cutoff_type == "time", f"cutoff_type != 'fevals' or 'time', is {cutoff_type}"
-        time_resolution: float = self.experiment.get("resolution", 1e4)
+        time_resolution: float = self.experiment["visualization_settings"]["resolution"]
         if int(time_resolution) != time_resolution:
             raise ValueError(f"The resolution must be an integer, yet is {time_resolution}.")
         time_resolution = int(time_resolution)
-        objective_time_keys: list[str] = self.experiment["objective_time_keys"]
+        objective_time_keys: list[str] = self.experiment["statistics_settings"]["objective_time_keys"]
 
         # plot settings
-        plot_settings: dict = self.experiment["plot"]
-        plot_x_value_types: list[str] = plot_settings["plot_x_value_types"]
-        plot_y_value_types: list[str] = plot_settings["plot_y_value_types"]
-        compare_baselines: bool = plot_settings.get("compare_baselines", False)
-        compare_split_times: bool = plot_settings.get("compare_split_times", False)
-        confidence_level: float = plot_settings.get("confidence_level", 0.95)
+        plot_x_value_types: list[str] = self.experiment["visualization_settings"]["x_axis_value_types"]
+        plot_y_value_types: list[str] = self.experiment["visualization_settings"]["y_axis_value_types"]
+        compare_baselines: bool = self.experiment["visualization_settings"]["compare_baselines"]
+        compare_split_times: bool = self.experiment["visualization_settings"]["compare_split_times"]
+        confidence_level: float = self.experiment["visualization_settings"]["confidence_level"]
         self.colors = get_colors(
             self.strategies,
-            scale_margin_left=plot_settings.get("color_parent_scale_margin_left", 0.4),
-            scale_margin_right=plot_settings.get("color_parent_scale_margin_right", 0.1),
+            scale_margin_left=self.experiment["visualization_settings"].get("color_parent_scale_margin_left", 0.4),
+            scale_margin_right=self.experiment["visualization_settings"].get("color_parent_scale_margin_right", 0.1),
         )
         self.plot_skip_strategies: list[str] = list()
         if use_strategy_as_baseline is not None:
@@ -199,8 +197,9 @@ class Visualize:
 
         # visualize
         aggregation_data = get_aggregation_data(
-            experiment_folderpath,
+            experiment_folder,
             self.experiment,
+            self.searchspace_statistics,
             self.strategies,
             self.results_descriptions,
             cutoff_percentile,
@@ -210,15 +209,15 @@ class Visualize:
             time_resolution,
             use_strategy_as_baseline,
         )
-        for gpu_name in self.experiment["GPUs"]:
-            for kernel_name in self.experiment["kernels"]:
-                print(f" | visualizing optimization of {kernel_name} for {gpu_name}")
-                title = f"{kernel_name} on {gpu_name}"
+        for gpu_name in self.experiment["experimental_groups_defaults"]["gpus"]:
+            for application_name in self.experiment["experimental_groups_defaults"]["applications_names"]:
+                print(f" | visualizing optimization of {application_name} for {gpu_name}")
+                title = f"{application_name} on {gpu_name}"
                 title = title.replace("_", " ")
 
                 # unpack the aggregation data
                 random_baseline, strategies_curves, searchspace_stats, time_range, fevals_range = aggregation_data[
-                    get_aggregation_data_key(gpu_name=gpu_name, kernel_name=kernel_name)
+                    get_aggregation_data_key(gpu_name=gpu_name, application_name=application_name)
                 ]
 
                 # baseline_time_interpolated = np.linspace(mean_feval_time, cutoff_point_time, time_resolution)
@@ -319,7 +318,7 @@ class Visualize:
                             searchspace_stats,
                             strategies_curves,
                             x_axis_range,
-                            plot_settings,
+                            self.experiment["visualization_settings"],
                             random_baseline,
                             baselines_extra=baselines_extra,
                         )
@@ -331,7 +330,7 @@ class Visualize:
                     fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
                     fig.tight_layout()
                     if save_figs:
-                        filename = f"{self.plot_filename_prefix}{title}_{x_type}"
+                        filename = f"{self.plot_filename_prefix}/{title}_{x_type}"
                         filename = filename.replace(" ", "_")
                         fig.savefig(filename, dpi=300)
                         print(f"Figure saved to {filename}")
@@ -349,17 +348,17 @@ class Visualize:
             )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
             if not hasattr(axs, "__len__"):
                 axs = [axs]
-            title = f"""Aggregated Data\nkernels:
-                    {', '.join(self.experiment['kernels'])}\nGPUs: {', '.join(self.experiment['GPUs'])}"""
+            title = f"""Aggregated Data\napplications:
+                    {', '.join(self.experiment['experimental_groups_defaults']['applications_names'])}\nGPUs: {', '.join(self.experiment['experimental_groups_defaults']['gpus'])}"""
             fig.canvas.manager.set_window_title(title)
             if not save_figs:
                 fig.suptitle(title)
 
             # finalize the figure and save or display it
-            self.plot_strategies_aggregated(axs[0], aggregation_data, plot_settings=plot_settings)
+            self.plot_strategies_aggregated(axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"])
             fig.tight_layout()
             if save_figs:
-                filename = f"{self.plot_filename_prefix}aggregated"
+                filename = f"{self.plot_filename_prefix}/aggregated"
                 filename = filename.replace(" ", "_")
                 fig.savefig(filename, dpi=300)
                 print(f"Figure saved to {filename}")
@@ -446,7 +445,7 @@ class Visualize:
 
         # write to file or show
         if save_fig:
-            filename = f"{self.plot_filename_prefix}{title}_baselines"
+            filename = f"{self.plot_filename_prefix}/{title}_baselines"
             filename = filename.replace(" ", "_")
             plt.savefig(filename, dpi=300)
             print(f"Figure saved to {filename}")
@@ -533,7 +532,7 @@ class Visualize:
 
         # write to file or show
         if save_fig:
-            filename = f"{self.plot_filename_prefix}{title}_split_times_{x_type}"
+            filename = f"{self.plot_filename_prefix}/{title}_split_times_{x_type}"
             filename = filename.replace(" ", "_")
             plt.savefig(filename, dpi=300)
             print(f"Figure saved to {filename}")
@@ -641,7 +640,7 @@ class Visualize:
 
         # write to file or show
         if save_fig:
-            filename = f"{self.plot_filename_prefix}{title}_split_times_bar"
+            filename = f"{self.plot_filename_prefix}/{title}_split_times_bar"
             filename = filename.replace(" ", "_")
             plt.savefig(filename, dpi=300)
             print(f"Figure saved to {filename}")

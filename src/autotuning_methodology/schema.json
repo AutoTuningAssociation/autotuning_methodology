@@ -1,88 +1,295 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/schemas/experiments/v0.1.1.schema.json",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "title": "Experiment",
-  "description": "An experiment configuration file",
+  "description": "An experiment setup configuration file",
   "type": "object",
+  "required": [
+    "name",
+    "parent_folder",
+    "experimental_groups_defaults",
+    "search_strategies",
+    "statistics_settings",
+    "visualization_settings"
+  ],
   "properties": {
     "version": {
-      "description": "Version number of the experiment file standard",
+      "description": "Version number of the experiment setup configuration file standard",
       "type": "string"
     },
     "name": {
       "description": "Name of the experiment",
       "type": "string"
     },
-    "folder_id": {
-      "description": "Unique ID of the folder to store the results of this experiment in",
-      "type": "string"
-    },
-    "kernels_path": {
-      "description": "Path to the directory that has the tuning scripts specified in `kernels`, relative to the experiments file.",
-      "type": "string"
-    },
-    "bruteforced_caches_path": {
-      "description": "Path to the directory that has the bruteforced caches, relative to the experiments file.",
-      "type": "string"
-    },
-    "visualization_caches_path": {
-      "description": "Path to the directory to write / look for visualization caches, relative to the experiments file.",
-      "type": "string"
-    },
-    "kernels": {
-      "description": "Kernels to optimize",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "minItems": 1,
-      "uniqueItems": true
-    },
-    "GPUs": {
-      "description": "GPUs to optimize on",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "minItems": 1,
-      "uniqueItems": true
-    },
-    "minimization": {
-      "description": "Direction of optimization (minimize or maximize)",
-      "type": "boolean",
-      "default": true
-    },
-    "resolution": {
-      "description": "The resolution of the time range",
-      "type": "integer",
-      "minimum": 2
-    },
-    "cutoff_percentile": {
-      "description": "Fraction of difference between median and absolute optimum at which to stop the time range",
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 1
-    },
-    "cutoff_percentile_start": {
-      "description": "Fraction of difference between median and absolute optimum at which to start the time range",
-      "type": "number",
-      "minimum": 0,
-      "exclusiveMaximum": 1
-    },
-    "cutoff_type": {
-      "description": "Whether to base the cutoff on function evaluations or time",
+    "parent folder": {
+      "description": "Absolute or relative path of the folder to store all related files for this experiment. This folder needs to already exist.",
       "type": "string",
-      "enum": [
-        "fevals",
-        "time"
-      ]
+      "default": "./"
     },
-    "plot": {
+    "experimental_groups_defaults": {
+      "description": "Default settings for experimental groups",
       "type": "object",
+      "required": [
+        "applications",
+        "gpus"
+      ],
       "properties": {
-        "plot_x_value_types": {
-          "description": "Types of value on the x-axis",
+        "autotuner": {
+          "description": "Autotuner that will be used to tune the experimental group. Has to be specified either in experimental_groups_defaults or in experimental group.",
+          "enum": [
+            "KernelTuner",
+            "KTT"
+          ]
+        },
+        "autotuner_path": {
+          "description": "Path to the library of the autotuner",
+          "type": "string"
+        },
+        "applications": {
+          "description": "List of applications for which measurements were taken and written to full search space files. Can be used in pattern_for_full_search_space_filename.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "input_file"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "input_file": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "gpus": {
+          "description": "List of GPUs where measurements were taken and written to full search space files. Can be used in pattern_for_full_search_space_filename.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pattern_for_full_search_space_filenames": {
+          "description": "Pattern for filenames of full search space files",
+          "type": "object",
+          "required": [
+            "regex",
+            "regex_variables"
+          ],
+          "properties": {
+            "regex": {
+              "type": "string",
+              "pattern": "(.*\\${gpus}.*\\${applications}.*\\.json)|(.*\\${kernel}.*\\${gpu}.*\\.json)",
+              "examples": [
+                "${gpus}_${applications}_output.json",
+                "full-search-space-${applications}-${gpus}.json"
+              ]     
+            },
+            "regex_variables": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["applications", "gpus"]
+            }           
+          } 
+        },
+        "stochastic": {
+          "description": "Whether the repeated runs of the same experimental group (combination of application, GPU and search strategy) exhibit stochastic behaviour, e.g. due to stochastic search strategy",
+          "type": "boolean",
+          "default": true
+        },
+        "repeats": {
+          "description": "How many times to repeat the run for a single experimental group (combination of application, GPU and search strategy)",
+          "type": "integer",
+          "minimum": 1,
+          "default": 100
+        },
+        "samples": {
+          "description": "How many samples of measurements for a single configuration are present in full search space file",
+          "type": "integer",
+          "minimum": 1,
+          "default": 32
+        },
+        "minimum_number_of_valid_search_iterations": {
+          "description": "How many non-error, valid configurations account for a single run of search algorithm",
+          "type": "integer",
+          "minimum": 1,
+          "default": 20
+        },
+        "ignore_cache": {
+          "description": "If true, always re-run the experiments, even though results from previously executed experiments are stored in run folder.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "search_strategies": {
+      "description": "Settings for search strategies",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "search_method",
+          "display_name"
+        ],
+        "properties": {
+          "name": {
+            "description": "Name of the search strategy",
+            "type": "string"
+          },
+          "autotuner": {
+            "description": "Autotuner that will be used for tuning. Has to be specified either in experimental_groups_defaults or in search_strategies.",
+            "enum": [
+              "KernelTuner",
+              "KTT"
+            ]
+          },
+          "autotuner_path": {
+            "description": "Path to the library of the autotuner",
+            "type": "string"
+          },
+          "search_method": {
+            "description": "Name of the search method as recognized by the autotuner",
+            "type": "string"
+          },
+          "search_method_hyperparameters": {
+            "description": "A list of hyperparameters for the search method as recognized by the autotuner",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "display_name": {
+            "description": "Name for the search strategy used in visualizations",
+            "type": "string"
+          },
+          "stochastic": {
+            "description": "Whether the repeated runs of the same experimental group (combination of application, GPU and search strategy) exhibit stochastic behaviour, e.g. due to stochastic search strategy",
+            "type": "boolean",
+            "default": true
+          },
+          "repeats": {
+            "description": "How many times to repeat the run for a single experimental group (combination of application, GPU and search strategy)",
+            "type": "integer",
+            "minimum": 1,
+            "default": 100
+          },
+          "samples": {
+            "description": "How many samples of measurements for a single configuration are present in full search space file",
+            "type": "integer",
+            "minimum": 1,
+            "default": 32
+          },
+          "minimum_number_of_valid_search_iterations": {
+            "description": "How many non-error, valid configurations account for a single run of search strategy",
+            "type": "integer",
+            "minimum": 1,
+            "default": 20
+          },
+          "ignore_cache": {
+            "description": "If true, always re-run the experiments, even though results from previously executed experiments are stored in run folder.",
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    },
+    "statistics_settings": {
+      "description": "Settings for the statistics calculation",
+      "type": "object",
+      "required": [
+        "minimization",
+        "cutoff_percentile",
+        "cutoff_percentile_start",
+        "cutoff_type",
+        "objective_time_keys",
+        "objective_performance_keys"      
+      ],
+      "properties": {
+        "minimization": {
+          "description": "Whether the optimization aims to minimize or maximize",
+          "type": "boolean",
+          "default": true
+        },
+        "cutoff_percentile": {
+          "description": "Fraction of difference between median and absolute optimum at which to stop the time range",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "cutoff_percentile_start": {
+          "description": "Fraction of difference between median and absolute optimum at which to start the time range",
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "cutoff_type": {
+          "description": "Whether to base the cutoff on function evaluations or time",
+          "type": "string",
+          "enum": [
+            "fevals",
+            "time"
+          ]
+        },
+        "objective_time_keys": {
+          "description": "Time key(s) to use as the time objective. In case of multiple keys, the values are summed.",
+          "type": "array",
+          "items": {
+            "enum": [
+              "compilation_time",
+              "runtimes",
+              "framework",
+              "search_algorithm",
+              "validation",
+              "all"
+            ]
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "objective_performance_keys": {
+          "description": "The performance key(s) to use as the performance objective. In case of multiple keys, the values are summed.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        }
+      } 
+    },
+    "visualization_settings": {
+      "description": "Settings for the visualizations",
+      "type": "object",
+      "required": [
+        "resolution",
+        "x_axis_value_types",
+        "y_axis_value_types",
+        "confidence_level"
+      ],
+      "properties": {
+        "resolution": {
+          "description": "The resolution of the time range",
+          "type": "integer",
+          "minimum": 2
+        },
+        "x_axis_value_types": {
+          "description": "Types of value on the x-axis. Multiple values produces multiple (sub) plots.",
           "type": "array",
           "items": {
             "type": "string",
@@ -95,8 +302,8 @@
           "minItems": 1,
           "uniqueItems": true
         },
-        "plot_y_value_types": {
-          "description": "Types of value on the y-axis (absolute values, median-absolute normalized, improvement over baseline)",
+        "y_axis_value_types": {
+          "description": "Types of value on the y-axis. Multiple values produces multiple (sub) plots.",
           "type": "array",
           "items": {
             "type": "string",
@@ -111,43 +318,23 @@
           "uniqueItems": true
         },
         "confidence_level": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "description": "The confidence level used for the confidence / prediction interval, visualized as an error shade",
+          "type": "number", 
+          "default": 0.95,
           "exclusiveMinimum": 0,
           "maximum": 1
         },
         "compare_baselines": {
+          "description": "[preview feature] Compare baselines to each other. Requires editing the baselines list in the `plot_baselines_comparison` function.",
           "type": "boolean",
           "default": false
         },
         "compare_split_times": {
+          "description": "[preview feature] Plot a comparison of split times for strategies and baselines",
           "type": "boolean",
           "default": false
         }
-      },
-      "required": [
-        "plot_x_value_types",
-        "plot_y_value_types",
-        "confidence_level"
-      ]
+      }
     }
-  },
-  "required": [
-    "version",
-    "name",
-    "folder_id",
-    "kernels_path",
-    "bruteforced_caches_path",
-    "visualization_caches_path",
-    "kernels",
-    "GPUs",
-    "minimization",
-    "resolution",
-    "cutoff_percentile",
-    "cutoff_percentile_start",
-    "cutoff_type",
-    "plot"
-  ]
+  }
 }

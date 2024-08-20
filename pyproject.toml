@@ -30,7 +30,7 @@ dependencies = [
     "progressbar2 >= 4.2.0",
     "jsonschema >= 4.17.3",
     "nonconformist >= 2.1.0",
-    "kernel_tuner >= 1.0.1",
+    "kernel_tuner >= 1.0.0",
 ]
 
 [project.optional-dependencies]

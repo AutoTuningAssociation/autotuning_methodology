@@ -14,22 +14,22 @@ from autotuning_methodology.experiments import execute_experiment
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
-def get_aggregation_data_key(gpu_name: str, kernel_name: str):
+def get_aggregation_data_key(gpu_name: str, application_name: str):
     """Utility function to get the key for data in the aggregation data dictionary.
 
     Args:
         gpu_name: the GPU name
-        kernel_name: the kernel name
 
     Returns:
         The key as a string.
     """
-    return f"{gpu_name}+{kernel_name}"
+    return f"{gpu_name}+{application_name}"
 
 
 def get_aggregation_data(
     experiment_folderpath: Path,
     experiment: dict,
+    searchspace_statistics: dict[str, dict[str, SearchspaceStatistics]],
     strategies: dict,
     results_descriptions: dict,
     cutoff_percentile: float,
@@ -61,23 +61,16 @@ def get_aggregation_data(
     time_resolution = int(time_resolution)
 
     aggregation_data: dict[str, tuple[Baseline, list[Curve], SearchspaceStatistics, np.ndarray]] = dict()
-    for gpu_name in experiment["GPUs"]:
-        for kernel_name in experiment["kernels"]:
+    for gpu_name in experiment["experimental_groups_defaults"]["gpus"]:
+        for application_name in experiment["experimental_groups_defaults"]["applications_names"]:
             # get the statistics
-            searchspace_stats = SearchspaceStatistics(
-                kernel_name=kernel_name,
-                device_name=gpu_name,
-                minimization=minimization,
-                objective_time_keys=experiment["objective_time_keys"],
-                objective_performance_keys=experiment["objective_performance_keys"],
-                bruteforced_caches_path=experiment_folderpath / experiment["bruteforced_caches_path"],
-            )
+            searchspace_stats = searchspace_statistics[gpu_name][application_name]
 
             # get the cached strategy results as curves
             strategies_curves: list[Curve] = list()
             baseline_executed_strategy = None
             for strategy in strategies:
-                results_description = results_descriptions[gpu_name][kernel_name][strategy["name"]]
+                results_description = results_descriptions[gpu_name][application_name][strategy["name"]]
                 if results_description is None:
                     raise ValueError(
                         f"""Strategy {strategy['display_name']} not in results_description,
@@ -108,7 +101,7 @@ def get_aggregation_data(
             )
 
             # collect aggregatable data
-            aggregation_data[get_aggregation_data_key(gpu_name, kernel_name)] = tuple(
+            aggregation_data[get_aggregation_data_key(gpu_name, application_name)] = tuple(
                 [random_baseline, strategies_curves, searchspace_stats, time_range, fevals_range]
             )
 
@@ -203,20 +196,21 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None)
         a dictionary of the strategies, with the performance score and error for each strategy.
     """
     # execute the experiment if necessary, else retrieve it
-    experiment, strategies, results_descriptions = execute_experiment(experiment_filepath, profiling=False)
-    experiment_folderpath = Path(experiment_filepath).parent
+    experiment, strategies, searchspace_statistics, results_descriptions = execute_experiment(experiment_filepath, profiling=False)
+    experiment_folderpath = experiment["parent_folder_absolute_path"]
 
     # get the settings
-    minimization: bool = experiment.get("minimization", True)
-    cutoff_percentile: float = experiment["cutoff_percentile"]
-    cutoff_percentile_start: float = experiment.get("cutoff_percentile_start", 0.01)
-    time_resolution: float = experiment.get("resolution", 1e4)
-    confidence_level: float = experiment["plot"].get("confidence_level", 0.95)
+    minimization: bool = experiment["statistics_settings"]["minimization"]
+    cutoff_percentile: float = experiment["statistics_settings"]["cutoff_percentile"]
+    cutoff_percentile_start: float = experiment["statistics_settings"]["cutoff_percentile_start"]
+    time_resolution: float = experiment["visualization_settings"]["resolution"]
+    confidence_level: float = experiment["visualization_settings"]["confidence_level"]
 
     # aggregate the data
     aggregation_data = get_aggregation_data(
         experiment_folderpath,
         experiment,
+        searchspace_statistics,
         strategies,
         results_descriptions,
         cutoff_percentile,
