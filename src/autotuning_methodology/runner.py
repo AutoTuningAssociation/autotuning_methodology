@@ -5,11 +5,11 @@ from __future__ import annotations  # for correct nested type hints e.g. list[st
 import contextlib
 import json
 import os
+import subprocess
 import time as python_time
 import warnings
 from inspect import getfile
 from pathlib import Path
-import subprocess
 
 import numpy as np
 import progressbar
@@ -23,7 +23,7 @@ from autotuning_methodology.validators import (
     is_valid_config_result,
 )
 
-#TODO this does not conform to new intedned dicrectory structure
+# TODO this does not conform to new intended dicrectory structure
 folder = Path(__file__).parent.parent.parent
 
 # Imported runs must be remapped to have the same keys, values and order of parameters as the other runs.
@@ -85,16 +85,17 @@ def load_json(path: Path):
     with path.open() as file_results:
         return json.load(file_results)
 
+
 def convert_KTT_output_to_standard(output_filename: Path) -> dict:
-    with open(output_filename, 'r', encoding="utf-8") as fp:
+    with open(output_filename, "r", encoding="utf-8") as fp:
         ktt_output = json.load(fp)
 
     ktt_result_status_mapping = {
-        "Ok":"correct",
-        "ComputationFailed":"runtime",
-        "ValidationFailed":"correctness",
-        "CompilationFailed":"compile",
-        "DeviceLimitsExceeded":"runtime"
+        "Ok": "correct",
+        "ComputationFailed": "runtime",
+        "ValidationFailed": "correctness",
+        "CompilationFailed": "compile",
+        "DeviceLimitsExceeded": "runtime",
         # timeout is marked as ComputationFailed in KTT
         # constraints is marked as CompilationFailed in KTT
     }
@@ -124,10 +125,10 @@ def convert_KTT_output_to_standard(output_filename: Path) -> dict:
         converted_result["times"] = {}
         # compilation time can be also calculated as sum of "Overhead" in all ComputationResults, it's just easier to do it this way in case of multiple kernel functions within one application
         converted_result["times"]["compilation_time"] = timemapper(
-            ktt_result["TotalOverhead"] -
-            ktt_result["DataMovementOverhead"] -
-            ktt_result["SearcherOverhead"] -
-            ktt_result["ValidationOverhead"]
+            ktt_result["TotalOverhead"]
+            - ktt_result["DataMovementOverhead"]
+            - ktt_result["SearcherOverhead"]
+            - ktt_result["ValidationOverhead"]
         )
         converted_result["times"]["runtimes"] = [timemapper(ktt_result["TotalDuration"])]
         converted_result["times"]["framework"] = timemapper(ktt_result["DataMovementOverhead"])
@@ -140,17 +141,16 @@ def convert_KTT_output_to_standard(output_filename: Path) -> dict:
         else:
             converted_result["correctness"] = 1
         converted_result["measurements"] = []
-        converted_result["measurements"].append({
-            "name": "TotalDuration",
-            "value": timemapper(ktt_result["TotalDuration"]),
-            "unit": "milliseconds"
-            })
+        converted_result["measurements"].append(
+            {"name": "TotalDuration", "value": timemapper(ktt_result["TotalDuration"]), "unit": "milliseconds"}
+        )
         # TODO what do we want here in case of multiple ComputationResults for multiple kernel functions?
         if "ProfilingData" in ktt_result["ComputationResults"][0]:
             for pc in ktt_result["ComputationResults"][0]["ProfilingData"]["Counters"]:
-                converted_result["measurements"].append({"name":pc["Name"], "value":pc["Value"], "unit": ""})
+                converted_result["measurements"].append({"name": pc["Name"], "value": pc["Value"], "unit": ""})
         converted_output["results"].append(converted_result)
     return converted_output
+
 
 def get_kerneltuner_results_and_metadata(
     filename_results: str = f"{folder}../last_run/_tune_configuration-results.json",
@@ -175,7 +175,7 @@ def tune(
     application_name: str,
     device_name: str,
     group: dict,
-    tune_options: dict, #TODO check if still necessary when we have input json file
+    tune_options: dict,  # TODO check if still necessary when we have input json file
     profiling: bool,
     searchspace_stats: SearchspaceStatistics,
 ) -> tuple[list, list, int]:
@@ -254,26 +254,28 @@ def tune(
         # TODO check if changing the directory is necessary, I think it was just looking for cu file, which is not actually necessary in simulated execution
         with temporary_working_directory_change(group["application_folder"]):
             # copy the modified input file (with inserted search method, budget, etc.)
-            subprocess.run(
-                ["cp", str(group["input_file"]), str(group["application_folder"])],
-                check=False
-            )
+            subprocess.run(["cp", str(group["input_file"]), str(group["application_folder"])], check=False)
             try:
                 # execute KttTuningLauncher from autotuner_path directory
                 executable = Path(group["autotuner_path"]).joinpath("KttTuningLauncher")
                 if group.get("set_this_to_pythonpath") is None:
-                    proc_result = subprocess.run([str(executable), group["input_file"].name],
-                        capture_output=True, check=True,
-                        env = os.environ | {'PYTHONPATH':group["autotuner_path"]}
+                    subprocess.run(
+                        [str(executable), group["input_file"].name],
+                        capture_output=True,
+                        check=True,
+                        env=os.environ | {"PYTHONPATH": group["autotuner_path"]},
                     )
                 else:
-                    subprocess.run([str(executable), group["input_file"].name],
-                        capture_output=True, check=True,
-                        env = os.environ | {'PYTHONPATH':group["set_this_to_pythonpath"]}
+                    subprocess.run(
+                        [str(executable), group["input_file"].name],
+                        capture_output=True,
+                        check=True,
+                        env=os.environ | {"PYTHONPATH": group["set_this_to_pythonpath"]},
                     )
 
                 # TODO this is a bug in KTT, sometimes it returns non-zero exit code even though nothing bad happened
-                # catching the expcetion here then covers even the situation when KTT fails, but I write the output just to let the user know what is going on if there is a runtime error
+                # catching the exception here then covers even the situation when KTT fails, but I write the output
+                # just to let the user know what is going on if there is a runtime error
             except subprocess.CalledProcessError as er:
                 print(er.stdout)
                 print(er.stderr)
@@ -293,16 +295,11 @@ def tune(
                 raise ValueError("Less than two configurations were returned")
         return metadata, results, total_time_ms
 
-    def get_KTT_results_and_metadata(
-        output_filename: str
-        #use_param_mapping=True
-    ) -> tuple[dict, list, float] :
-        # TODO not sure what use_param_mapping was for
+    def get_KTT_results_and_metadata(output_filename: str) -> tuple[dict, list, float]:
         """Retrieves results from KTT run.
 
         Args:
             output_filename: file with KTT output
-            use_param_mapping: used in testing?
 
         Returns:
             A tuple, a dictionary with metadata, a list of results and a float with total experiment duration in ms.
@@ -319,10 +316,15 @@ def tune(
             # add to total time
             total_duration = 0
             for m in result["measurements"]:
-                if m["name"] is "TotalDuration":
+                if m["name"] == "TotalDuration":
                     total_duration = m["value"]
                     break
-            total_overhead = result["times"]["compilation_time"] + result["times"]["framework"] + result["times"]["search_algorithm"] + result["times"]["validation"]
+            total_overhead = (
+                result["times"]["compilation_time"]
+                + result["times"]["framework"]
+                + result["times"]["search_algorithm"]
+                + result["times"]["validation"]
+            )
             total_time_ms += total_duration + total_overhead
 
         return metadata, results, round(total_time_ms)
@@ -458,9 +460,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
     objective_performance_results = get_nan_array()
     objective_performance_best_results = get_nan_array()
     objective_performance_stds = get_nan_array()
-    objective_time_results_per_key = np.full(
-        (len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan
-    )
+    objective_time_results_per_key = np.full((len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan)
     objective_performance_results_per_key = np.full(
         (len(objective_time_keys), max_num_evals, len(repeated_results)), np.nan
     )
@@ -495,7 +495,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
                 else:
                     value = evaluation_times[key]
                 if value is not None and not is_invalid_objective_time(value):
-                    #value = value / 1000  # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
+                    # value = value / 1000  # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
                     objective_time_results_per_key[key_index, evaluation_index, repeat_index] = value
                     objective_times_list.append(value)
             # sum the objective times of the keys
