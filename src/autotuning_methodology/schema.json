@@ -76,13 +76,12 @@
           "description": "Pattern for filenames of full search space files",
           "type": "object",
           "required": [
-            "regex",
-            "regex_variables"
+            "regex"
           ],
           "properties": {
             "regex": {
               "type": "string",
-              "pattern": "(.*\\${gpus}.*\\${applications}.*\\.json)|(.*\\${kernel}.*\\${gpu}.*\\.json)",
+              "pattern": ".*.json",
               "examples": [
                 "${gpus}_${applications}_output.json",
                 "full-search-space-${applications}-${gpus}.json"
