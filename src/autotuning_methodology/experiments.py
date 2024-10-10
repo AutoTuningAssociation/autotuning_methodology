@@ -9,7 +9,7 @@ from math import ceil
 from os import getcwd, makedirs
 from pathlib import Path
 
-from jsonschema import validate
+from jsonschema import ValidationError, validate
 
 from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.runner import collect_results, convert_KTT_output_to_standard
@@ -95,8 +95,12 @@ def get_experiment(filename: str) -> dict:
     with open(path, "r", encoding="utf-8") as file, open(schemafile, "r", encoding="utf-8") as schemafile:
         schema = json.load(schemafile)
         experiment: dict = json.load(file)
-        validate(instance=experiment, schema=schema)
-        return experiment
+        try:
+            validate(instance=experiment, schema=schema)
+            return experiment
+        except ValidationError as e:
+            print(e)
+            raise ValidationError("Experiment file does not comply with schema")
 
 
 def get_experimental_groups(experiment: dict) -> list[dict]:
