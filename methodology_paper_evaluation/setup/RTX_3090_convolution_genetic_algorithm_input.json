@@ -143,7 +143,7 @@
                 "FillValue": 1.0
             }
         ],
-        "SimulationInput": "cached_data_used/cachefiles/convolution/RTX_3090.json",
+        "SimulationInput": "cached_data_used/cachefiles/convolution/RTX_3090_T4.json",
         "Device": {
             "Name": "RTX_3090"
         }

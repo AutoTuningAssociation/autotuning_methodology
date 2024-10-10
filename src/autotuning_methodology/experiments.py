@@ -206,7 +206,6 @@ def generate_all_experimental_groups(
                 group["application_input_file"] = make_and_check_path(
                     application["input_file"], application["folder"], None
                 )
-                group["input_file"]: Path
                 group["input_file"] = parent_folder_path.joinpath("setup").joinpath(
                     "_".join([group["full_name"], "input.json"])
                 )

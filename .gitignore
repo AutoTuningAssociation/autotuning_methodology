@@ -11,6 +11,9 @@ cached_data_used/visualizations/*
 cached_data_used/last_run/*
 cached_data_used/import_runs/*
 
+# ignore setup files
+*/setup/*_input.json
+
 # exceptions
 !cached_data_used/cachefiles/ktt_values_to_kerneltuner.py
 

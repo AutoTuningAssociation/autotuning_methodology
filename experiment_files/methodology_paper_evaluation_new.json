@@ -11,7 +11,7 @@
             },
             {
                 "name": "pnpoly",
-                "folder": "./cached_data_used/visualizations/methodology_paper_evaluation/pnpoly",
+                "folder": ".",
                 "input_file": "./cached_data_used/kernels/pnpoly.json"
             }
         ],
@@ -20,7 +20,7 @@
             "RTX_2080_Ti"
         ],
         "pattern_for_full_search_space_filenames": {
-            "regex": "./cached_data_used/cachefiles/${applications}/${gpus}.json"
+            "regex": "./cached_data_used/cachefiles/${applications}/${gpus}_T4.json"
         },
         "stochastic": true,
         "repeats": 100,

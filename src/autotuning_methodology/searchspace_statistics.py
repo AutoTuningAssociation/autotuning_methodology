@@ -5,8 +5,8 @@ from __future__ import annotations  # for correct nested type hints e.g. list[st
 import json
 from math import ceil, floor
 from pathlib import Path
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from autotuning_methodology.validators import is_invalid_objective_performance, is_invalid_objective_time
@@ -262,11 +262,13 @@ class SearchspaceStatistics:
                             values.append(m["value"])
                         else:
                             values.append(np.nan)
-        else :
+        else:
             values = list(
-                v["times"][key]
-                if key in v["times"] and self._is_not_invalid_value(v["times"][key], performance)
-                else np.nan
+                (
+                    v["times"][key]
+                    if key in v["times"] and self._is_not_invalid_value(v["times"][key], performance)
+                    else np.nan
+                )
                 for v in results
             )
             # TODO other that time, performance such as power usage are in results["measurements"]. or not?
@@ -311,9 +313,9 @@ class SearchspaceStatistics:
             self.objective_times = dict()
             for key in self.objective_time_keys:
                 self.objective_times[key] = self._to_valid_array(results, key, performance=False)
-                #self.objective_times[key] = (
+                # self.objective_times[key] = (
                 #    self.objective_times[key] / 1000
-                #)  # TODO Kernel Tuner specific miliseconds to seconds conversion
+                # )  # TODO Kernel Tuner specific miliseconds to seconds conversion
                 # in runner.convert_KTT_output_to_standard all times get converted to ms
                 assert (
                     self.objective_times[key].ndim == 1
@@ -344,10 +346,10 @@ class SearchspaceStatistics:
 
             # get the number of repeats
             # TODO is this necessary? number of repeats is given in experiments setup file
-            #valid_cache_index: int = 0
-            #while "times" not in cache_values[valid_cache_index]:
+            # valid_cache_index: int = 0
+            # while "times" not in cache_values[valid_cache_index]:
             #    valid_cache_index += 1
-            #self.repeats = len(cache_values[valid_cache_index]["times"])
+            # self.repeats = len(cache_values[valid_cache_index]["times"])
 
             # combine the arrays to the shape [len(objective_keys), self.size]
             self.objective_times_array = np.array(list(self.objective_times[key] for key in self.objective_time_keys))
