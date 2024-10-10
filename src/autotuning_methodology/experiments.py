@@ -211,7 +211,7 @@ def generate_all_experimental_groups(
                     "_".join([group["full_name"], "input.json"])
                 )
 
-                if experimental_groups_defaults.get("pattern_for_full_search_space_filename") is None:
+                if experimental_groups_defaults.get("pattern_for_full_search_space_filenames") is None:
                     group["full_search_space_file"] = get_full_search_space_filename_from_input_file(
                         group["application_input_file"]
                     )
@@ -285,11 +285,11 @@ def get_full_search_space_filename_from_pattern(pattern: dict, gpu: str, applica
     Returns:
         A path to full search file generated from the pattern.
     """
-    if pattern["regex_variables"] != ["applications", "gpus"]:
-        raise NotImplementedError(
-            "Other variables than applications and gpus in pattern for full search space filename are not supported yet. Sorry."
-        )
     filename = pattern["regex"].replace("${applications}", application_name).replace("${gpus}", gpu)
+    if "${" in filename:
+        raise NotImplementedError(
+            f"Variables other than applications and gpus are not yet supported for pattern matching. Unresolved: {filename}."
+        )
     full_search_space_filename = make_and_check_path(filename)
     return full_search_space_filename
 

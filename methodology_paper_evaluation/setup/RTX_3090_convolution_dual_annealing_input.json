@@ -1,0 +1,154 @@
+{
+    "General": {
+        "BenchmarkName": "convolution",
+        "OutputFormat": "JSON",
+        "OutputFile": "/Users/fjwillemsen/University/PhD/OneDrive_Netherlands_eScience_Center/Projects/Bayesian Optimization in Kernel Tuner/Code/autotuning_methodology/methodology_paper_evaluation/run/dual_annealing/RTX_3090_convolution_dual_annealing"
+    },
+    "ConfigurationSpace": {
+        "TuningParameters": [
+            {
+                "Name": "filter_width",
+                "Type": "int",
+                "Values": "[15]",
+                "Default": 15
+            },
+            {
+                "Name": "filter_height",
+                "Type": "int",
+                "Values": "[15]",
+                "Default": 15
+            },
+            {
+                "Name": "block_size_x",
+                "Type": "int",
+                "Values": "[1, 2, 4, 8, 16, 32, 48, 64, 96, 112, 128]",
+                "Default": 16
+            },
+            {
+                "Name": "block_size_y",
+                "Type": "int",
+                "Values": "[1, 2, 4, 8, 16, 32]",
+                "Default": 16
+            },
+            {
+                "Name": "tile_size_x",
+                "Type": "int",
+                "Values": "[1, 2, 3, 4, 5, 6, 7, 8]",
+                "Default": 1
+            },
+            {
+                "Name": "tile_size_y",
+                "Type": "int",
+                "Values": "[1, 2, 3, 4, 5, 6, 7, 8]",
+                "Default": 1
+            },
+            {
+                "Name": "use_padding",
+                "Type": "int",
+                "Values": "[0, 1]",
+                "Default": 1
+            },
+            {
+                "Name": "read_only",
+                "Type": "int",
+                "Values": "[0, 1]",
+                "Default": 0
+            }
+        ],
+        "Conditions": [
+            {
+                "Expression": "block_size_x*block_size_y>=64",
+                "Parameters": [
+                    "block_size_x",
+                    "block_size_y"
+                ]
+            },
+            {
+                "Expression": "block_size_x*block_size_y>=1024",
+                "Parameters": [
+                    "block_size_x",
+                    "block_size_y"
+                ]
+            },
+            {
+                "Expression": "tile_size_x*tile_size_y<30",
+                "Parameters": [
+                    "tile_size_x",
+                    "tile_size_y"
+                ]
+            }
+        ]
+    },
+    "KernelSpecification": {
+        "Language": "CUDA",
+        "CompilerOptions": [
+            "-std=c++11"
+        ],
+        "BenchmarkName": "GEMM",
+        "KernelName": "convolution_kernel",
+        "KernelFile": "convolution.cu",
+        "GlobalSizeType": "CUDA",
+        "LocalSize": {
+            "X": "block_size_x",
+            "Y": "block_size_y",
+            "Z": "1"
+        },
+        "GlobalSize": {
+            "X": "(262144 // block_size_x) // tile_size_x",
+            "Y": "(262144 // block_size_y) // tile_size_y",
+            "Z": "1"
+        },
+        "GridDivX": [
+            "block_size_x",
+            "tile_size_x"
+        ],
+        "GridDivY": [
+            "block_size_y",
+            "tile_size_y"
+        ],
+        "ProblemSize": [
+            4096,
+            4096
+        ],
+        "SharedMemory": 0,
+        "Stream": null,
+        "Arguments": [
+            {
+                "Name": "output_image",
+                "Type": "float",
+                "MemoryType": "Vector",
+                "AccessType": "WriteOnly",
+                "FillType": "Constant",
+                "Size": "ProblemSize[0]*ProblemSize[1]",
+                "FillValue": 0.0,
+                "Output": 1
+            },
+            {
+                "Name": "input_image",
+                "Type": "float",
+                "MemoryType": "Vector",
+                "AccessType": "ReadOnly",
+                "FillType": "Random",
+                "Size": "(ProblemSize[0]+max(filter_width)-1) * (ProblemSize[1]+max(filter_height)-1)",
+                "FillValue": 1.0
+            },
+            {
+                "Name": "d_filter",
+                "Type": "float",
+                "MemoryType": "Vector",
+                "AccessType": "ReadOnly",
+                "MemType": "Constant",
+                "FillType": "Random",
+                "Size": "max(filter_height) * max(filter_width)",
+                "FillValue": 1.0
+            }
+        ],
+        "SimulationInput": "cached_data_used/cachefiles/convolution/RTX_3090.json",
+        "Device": {
+            "Name": "RTX_3090"
+        }
+    },
+    "Search": {
+        "Name": "dual_annealing"
+    }
+}

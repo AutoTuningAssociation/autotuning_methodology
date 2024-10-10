@@ -7,12 +7,12 @@
             {
                 "name": "convolution",
                 "folder": ".",
-                "input_file": "./cached_data_used/kernels/convolution.py"
+                "input_file": "./cached_data_used/kernels/convolution.json"
             },
             {
                 "name": "pnpoly",
                 "folder": "./cached_data_used/visualizations/methodology_paper_evaluation/pnpoly",
-                "input_file": "./cached_data_used/kernels/pnpoly.py"
+                "input_file": "./cached_data_used/kernels/pnpoly.json"
             }
         ],
         "gpus": [
