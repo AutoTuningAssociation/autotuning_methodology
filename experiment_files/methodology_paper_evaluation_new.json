@@ -6,13 +6,13 @@
         "applications": [
             {
                 "name": "convolution",
-                "input_file": "../cached_data_used/kernels/convolution",
-                "folder": "../cached_data_used/visualizations/convolution"
+                "folder": ".",
+                "input_file": "./cached_data_used/kernels/convolution.py"
             },
             {
                 "name": "pnpoly",
-                "input_file": "../cached_data_used/kernels/pnpoly",
-                "folder": "../cached_data_used/visualizations/pnpoly"
+                "folder": "./cached_data_used/visualizations/methodology_paper_evaluation/pnpoly",
+                "input_file": "./cached_data_used/kernels/pnpoly.py"
             }
         ],
         "gpus": [
@@ -20,7 +20,7 @@
             "RTX_2080_Ti"
         ],
         "pattern_for_full_search_space_filenames": {
-            "regex": "../cached_data_used/cachefiles/${applications}/${gpus}.json"
+            "regex": "./cached_data_used/cachefiles/${applications}/${gpus}.json"
         },
         "stochastic": true,
         "repeats": 100,
@@ -70,7 +70,7 @@
             "normalized",
             "baseline"
         ],
-        "resolution": 1e3,
+        "resolution": 1000.0,
         "confidence_level": 0.95,
         "compare_baselines": false,
         "compare_split_times": false
