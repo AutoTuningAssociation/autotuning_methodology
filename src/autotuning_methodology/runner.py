@@ -247,7 +247,21 @@ def tune(
         """Interface with Kernel Tuner to tune the kernel and return the results."""
         from kernel_tuner import tune_kernel_T1
 
-        tune_kernel_T1(input_file)
+        samples = group["samples"]
+
+        metadata, results = tune_kernel_T1(
+            input_file, simulation_mode=True, output_T4=True, iterations=samples, strategy_options=group["budget"]
+        )
+        if "max_fevals" in group["budget"]:
+            max_fevals = group["budget"]["max_fevals"]
+            num_results = len(results["results"])
+            if num_results < max_fevals * 0.1:
+                warnings.warn(
+                    f"Much fewer configurations were returned ({num_results}) than the requested {max_fevals}"
+                )
+            if num_results < 2:
+                raise ValueError("Less than two configurations were returned")
+        return metadata, results
 
     def tune_with_BAT():
         """Interface to tune with the BAT benchmarking suite."""
@@ -380,12 +394,14 @@ def collect_results(
     # TODO put the tune options in the .json in strategy_defaults? Make it Kernel Tuner independent
     tune_options = {"verbose": False, "quiet": True, "simulation_mode": True}
 
-    def report_multiple_attempts(rep: int, len_res: int, group_repeats: int):
+    def report_multiple_attempts(rep: int, len_res: int, group_repeats: int, attempt: int):
         """If multiple attempts are necessary, report the reason."""
         if len_res < 1:
             print(f"({rep+1}/{group_repeats}) No results found, trying once more...")
         elif len_res < min_num_evals:
-            print(f"Too few results found ({len_res} of {min_num_evals} required), trying once more...")
+            print(
+                f"Too few results found ({len_res} of {min_num_evals} required, attempt {attempt}), trying once more..."
+            )
         else:
             print(f"({rep+1}/{group_repeats}) Only invalid results found, trying once more...")
 
@@ -412,7 +428,7 @@ def collect_results(
         len_res: int = -1
         while only_invalid or len_res < min_num_evals:
             if attempt > 0:
-                report_multiple_attempts(rep, len_res, group["repeats"])
+                report_multiple_attempts(rep, len_res, group["repeats"], attempt)
             _, results, total_time_ms = tune(
                 input_file,
                 results_description.application_name,
@@ -422,6 +438,8 @@ def collect_results(
                 profiling,
                 searchspace_stats,
             )
+            if attempt >= 10:
+                raise RuntimeError(f"Could not find enough results in {attempt} attempts, quiting...")
             len_res = len(results)
             # check if there are only invalid configs in the first min_num_evals, if so, try again
             temp_res_filtered = list(filter(lambda config: is_valid_config_result(config), results))

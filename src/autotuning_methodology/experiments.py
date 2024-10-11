@@ -366,6 +366,12 @@ def generate_input_file(group: dict):
     with open(group["application_input_file"], "r", encoding="utf-8") as fp:
         input_json = json.load(fp)
         input_json["KernelSpecification"]["SimulationInput"] = str(group["full_search_space_file"])
+
+        # TODO dirty fix below for Kernel Tuner compatibility, instead implement reading T4 as cache in Kernel Tuner
+        input_json["KernelSpecification"]["SimulationInput"] = str(
+            input_json["KernelSpecification"]["SimulationInput"]
+        ).replace("_T4", "")
+
         input_json["General"]["OutputFile"] = str(group["output_file"].parent.joinpath(group["output_file"].stem))
         if input_json["General"]["OutputFormat"] != "JSON":
             raise RuntimeError(

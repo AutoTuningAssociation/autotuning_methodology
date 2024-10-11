@@ -7,18 +7,6 @@
     "ConfigurationSpace": {
         "TuningParameters": [
             {
-                "Name": "filter_width",
-                "Type": "int",
-                "Values": "[15]",
-                "Default": 15
-            },
-            {
-                "Name": "filter_height",
-                "Type": "int",
-                "Values": "[15]",
-                "Default": 15
-            },
-            {
                 "Name": "block_size_x",
                 "Type": "int",
                 "Values": "[1, 2, 4, 8, 16, 32, 48, 64, 96, 112, 128]",
@@ -29,6 +17,24 @@
                 "Type": "int",
                 "Values": "[1, 2, 4, 8, 16, 32]",
                 "Default": 16
+            },
+            {
+                "Name": "filter_height",
+                "Type": "int",
+                "Values": "[15]",
+                "Default": 15
+            },
+            {
+                "Name": "filter_width",
+                "Type": "int",
+                "Values": "[15]",
+                "Default": 15
+            },
+            {
+                "Name": "read_only",
+                "Type": "int",
+                "Values": "[0, 1]",
+                "Default": 0
             },
             {
                 "Name": "tile_size_x",
@@ -47,12 +53,6 @@
                 "Type": "int",
                 "Values": "[0, 1]",
                 "Default": 1
-            },
-            {
-                "Name": "read_only",
-                "Type": "int",
-                "Values": "[0, 1]",
-                "Default": 0
             }
         ],
         "Conditions": [
@@ -143,7 +143,7 @@
                 "FillValue": 1.0
             }
         ],
-        "SimulationInput": "cached_data_used/cachefiles/convolution/RTX_3090_T4.json",
+        "SimulationInput": "cached_data_used/cachefiles/convolution/RTX_3090.json",
         "Device": {
             "Name": "RTX_3090"
         }
