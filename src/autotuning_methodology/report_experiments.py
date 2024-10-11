@@ -196,7 +196,9 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None)
         a dictionary of the strategies, with the performance score and error for each strategy.
     """
     # execute the experiment if necessary, else retrieve it
-    experiment, strategies, searchspace_statistics, results_descriptions = execute_experiment(experiment_filepath, profiling=False)
+    experiment, strategies, searchspace_statistics, results_descriptions = execute_experiment(
+        experiment_filepath, profiling=False
+    )
     experiment_folderpath = experiment["parent_folder_absolute_path"]
 
     # get the settings

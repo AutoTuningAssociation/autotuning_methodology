@@ -150,5 +150,11 @@
     },
     "Search": {
         "Name": "dual_annealing"
-    }
+    },
+    "Budget": [
+        {
+            "Type": "ConfigurationCount",
+            "BudgetValue": 213
+        }
+    ]
 }

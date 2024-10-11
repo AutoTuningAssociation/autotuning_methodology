@@ -438,6 +438,7 @@ def collect_results(
                 profiling,
                 searchspace_stats,
             )
+            results = results["results"]
             if attempt >= 10:
                 raise RuntimeError(f"Could not find enough results in {attempt} attempts, quiting...")
             len_res = len(results)

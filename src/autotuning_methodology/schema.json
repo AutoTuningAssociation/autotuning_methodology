@@ -250,7 +250,7 @@
           "type": "array",
           "items": {
             "enum": [
-              "compilation_time",
+              "compilation",
               "runtimes",
               "framework",
               "search_algorithm",

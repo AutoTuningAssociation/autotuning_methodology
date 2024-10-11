@@ -44,7 +44,7 @@ class SearchspaceStatistics:
     objective_performances_total_sorted_nan: np.ndarray
 
     T4_time_keys_to_kernel_tuner_time_keys_mapping = {
-        "compilation_time": "compile_time",
+        "compilation": "compile_time",
         "runtimes": "benchmark_time",
         "framework": "framework_time",
         "search_algorithm": "strategy_time",
