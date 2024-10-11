@@ -152,8 +152,8 @@ class Visualize:
         # # silently execute the experiment
         # with warnings.catch_warnings():
         #     warnings.simplefilter("ignore")
-        self.experiment, self.all_experimental_groups, self.searchspace_statistics, self.results_descriptions = execute_experiment(
-            experiment_filepath, profiling=False
+        self.experiment, self.all_experimental_groups, self.searchspace_statistics, self.results_descriptions = (
+            execute_experiment(experiment_filepath, profiling=False)
         )
         experiment_folder: Path = self.experiment["parent_folder_absolute_path"]
         assert isinstance(experiment_folder, Path)
@@ -330,10 +330,9 @@ class Visualize:
                     fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
                     fig.tight_layout()
                     if save_figs:
-                        filename = f"{self.plot_filename_prefix}/{title}_{x_type}"
-                        filename = filename.replace(" ", "_")
-                        fig.savefig(filename, dpi=300)
-                        print(f"Figure saved to {filename}")
+                        filename_path = Path(self.plot_filename_prefix) / f"{title}_{x_type}".replace(" ", "_")
+                        fig.savefig(filename_path, dpi=300)
+                        print(f"Figure saved to {filename_path}")
                     else:
                         plt.show()
 
@@ -355,13 +354,14 @@ class Visualize:
                 fig.suptitle(title)
 
             # finalize the figure and save or display it
-            self.plot_strategies_aggregated(axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"])
+            self.plot_strategies_aggregated(
+                axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
+            )
             fig.tight_layout()
             if save_figs:
-                filename = f"{self.plot_filename_prefix}/aggregated"
-                filename = filename.replace(" ", "_")
-                fig.savefig(filename, dpi=300)
-                print(f"Figure saved to {filename}")
+                filename_path = Path(self.plot_filename_prefix) / "aggregated"
+                fig.savefig(filename_path, dpi=300)
+                print(f"Figure saved to {filename_path}")
             else:
                 plt.show()
 
@@ -445,10 +445,9 @@ class Visualize:
 
         # write to file or show
         if save_fig:
-            filename = f"{self.plot_filename_prefix}/{title}_baselines"
-            filename = filename.replace(" ", "_")
-            plt.savefig(filename, dpi=300)
-            print(f"Figure saved to {filename}")
+            filename_path = Path(self.plot_filename_prefix) / f"{title}_baselines".replace(" ", "_")
+            plt.savefig(filename_path, dpi=300)
+            print(f"Figure saved to {filename_path}")
         else:
             plt.show()
 
@@ -532,10 +531,9 @@ class Visualize:
 
         # write to file or show
         if save_fig:
-            filename = f"{self.plot_filename_prefix}/{title}_split_times_{x_type}"
-            filename = filename.replace(" ", "_")
-            plt.savefig(filename, dpi=300)
-            print(f"Figure saved to {filename}")
+            filename_path = Path(self.plot_filename_prefix) / "{title}_split_times_{x_type}".replace(" ", "_")
+            plt.savefig(filename_path, dpi=300)
+            print(f"Figure saved to {filename_path}")
         else:
             plt.show()
 
@@ -640,10 +638,9 @@ class Visualize:
 
         # write to file or show
         if save_fig:
-            filename = f"{self.plot_filename_prefix}/{title}_split_times_bar"
-            filename = filename.replace(" ", "_")
-            plt.savefig(filename, dpi=300)
-            print(f"Figure saved to {filename}")
+            filename_path = Path(self.plot_filename_prefix) / f"{title}_split_times_bar".replace(" ", "_")
+            plt.savefig(filename_path, dpi=300)
+            print(f"Figure saved to {filename_path}")
         else:
             plt.show()
 
