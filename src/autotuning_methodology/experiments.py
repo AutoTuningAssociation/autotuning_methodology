@@ -187,7 +187,7 @@ def generate_all_experimental_groups(
     for gpu in experimental_groups_defaults["gpus"]:
         for application in experimental_groups_defaults["applications"]:
             for strategy in search_strategies:
-                group = strategy
+                group = strategy.copy()
 
                 for default in experimental_groups_defaults:
                     if default not in group and default not in [
@@ -459,7 +459,10 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
         print(f" | - | - | with settings of experimental group '{group['display_name']}'")
 
         # create SearchspaceStatistics for full search space file associated with this group, if it does not exist
-        if searchspace_statistics.get(group["gpu"]).get(group["application_name"]) is None:
+        if any(
+            searchspace_statistics.get(group["gpu"], {}).get(group["application_name"], {}) == null_val
+            for null_val in [None, {}]
+        ):
             full_search_space_file_path = None
             if group.get("converted_full_search_space_file") is None:
                 full_search_space_file_path = group["full_search_space_file"]
