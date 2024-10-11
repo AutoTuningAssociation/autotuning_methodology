@@ -249,9 +249,11 @@ def tune(
 
         samples = group["samples"]
 
-        metadata, results = tune_kernel_T1(
-            input_file, simulation_mode=True, output_T4=True, iterations=samples, strategy_options=group["budget"]
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            metadata, results = tune_kernel_T1(
+                input_file, simulation_mode=True, output_T4=True, iterations=samples, strategy_options=group["budget"]
+            )
         if "max_fevals" in group["budget"]:
             max_fevals = group["budget"]["max_fevals"]
             num_results = len(results["results"])
