@@ -6,13 +6,13 @@
         "applications": [
             {
                 "name": "convolution",
-                "folder": ".",
-                "input_file": "./cached_data_used/kernels/convolution.json"
+                "folder": "./cached_data_used/kernels",
+                "input_file": "convolution.json"
             },
             {
                 "name": "pnpoly",
-                "folder": ".",
-                "input_file": "./cached_data_used/kernels/pnpoly.json"
+                "folder": "./cached_data_used/kernels",
+                "input_file": "pnpoly.json"
             }
         ],
         "gpus": [

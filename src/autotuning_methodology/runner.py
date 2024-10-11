@@ -199,8 +199,11 @@ def tune(
         A tuple of the metadata, the results, and the total runtime in miliseconds.
     """
 
-    def tune_with_kerneltuner():
+    def tune_with_kerneltuner_old():
         """Interface with kernel tuner to tune the kernel and return the results."""
+        kernel = input_file
+        strategy = group
+
         # get the path to the directory the kernel is in; can't use importlib.resources.files because its not a package
         kernel_directory = Path(getfile(kernel)).parent
         assert kernel_directory.is_dir()
@@ -239,6 +242,12 @@ def tune(
             if len(results) < 2:
                 raise ValueError("Less than two configurations were returned")
         return metadata, results
+
+    def tune_with_kerneltuner():
+        """Interface with Kernel Tuner to tune the kernel and return the results."""
+        from kernel_tuner import tune_kernel_T1
+
+        tune_kernel_T1(input_file)
 
     def tune_with_BAT():
         """Interface to tune with the BAT benchmarking suite."""

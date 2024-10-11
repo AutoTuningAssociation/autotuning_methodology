@@ -209,6 +209,7 @@ def generate_all_experimental_groups(
                 group["input_file"] = parent_folder_path.joinpath("setup").joinpath(
                     "_".join([group["full_name"], "input.json"])
                 )
+                group["parent_folder_path"] = parent_folder_path
 
                 if experimental_groups_defaults.get("pattern_for_full_search_space_filenames") is None:
                     group["full_search_space_file"] = get_full_search_space_filename_from_input_file(
@@ -229,8 +230,7 @@ def generate_all_experimental_groups(
                         group["full_search_space_file"], parent_folder_path.joinpath("setup")
                     )
 
-                group["output_file"]: Path
-                group["output_file"] = (
+                group["output_file"]: Path = (
                     parent_folder_path.joinpath("run")
                     .joinpath(group["name"])
                     .joinpath(group["full_name"] + ".json")
@@ -376,6 +376,11 @@ def generate_input_file(group: dict):
             input_json["KernelSpecification"]["Device"]["Name"] = group["gpu"]
         else:
             input_json["KernelSpecification"]["Device"]["Name"] = group["gpu"]
+        input_json["KernelSpecification"]["KernelFile"] = str(
+            Path(
+                Path(group["application_input_file"]).parent / Path(input_json["KernelSpecification"]["KernelFile"])
+            ).resolve()
+        )
 
         input_json["Search"] = {}
         input_json["Search"]["Name"] = group["search_method"]

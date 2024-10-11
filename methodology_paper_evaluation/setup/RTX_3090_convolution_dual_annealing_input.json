@@ -86,7 +86,7 @@
         ],
         "BenchmarkName": "GEMM",
         "KernelName": "convolution_kernel",
-        "KernelFile": "convolution.cu",
+        "KernelFile": "/Users/fjwillemsen/University/PhD/OneDrive_Netherlands_eScience_Center/Projects/Bayesian Optimization in Kernel Tuner/Code/autotuning_methodology/cached_data_used/kernels/convolution.cu",
         "GlobalSizeType": "CUDA",
         "LocalSize": {
             "X": "block_size_x",
