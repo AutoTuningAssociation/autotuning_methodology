@@ -89,10 +89,10 @@ def get_experiment(filename: str) -> dict:
     assert path.exists(), f"Path to experiment file does not exist, attempted path: {path}, CWD: {getcwd()}"
 
     # get the path to the schema
-    schemafile = get_experiment_schema_filepath()
+    schemafile_path = get_experiment_schema_filepath()
 
     # open the experiment file and validate using the schema file
-    with open(path, "r", encoding="utf-8") as file, open(schemafile, "r", encoding="utf-8") as schemafile:
+    with path.open("r", encoding="utf-8") as file, schemafile_path.open("r", encoding="utf-8") as schemafile:
         schema = json.load(schemafile)
         experiment: dict = json.load(file)
         try:
@@ -402,6 +402,43 @@ def generate_input_file(group: dict):
         json.dump(input_json, fp, indent=4)
 
 
+def generate_experiment_file(
+    name: str,
+    parent_folder: Path,
+    applications: list[dict],
+    gpus: list[str],
+    search_strategies: list[dict],
+    override: dict = None,
+    overwrite_existing_file=False,
+):
+    """Creates an experiment file based on the given inputs and opinionated defaults."""
+    experiment_file_path = Path(f"./{name}.json")
+    if experiment_file_path.exists() and overwrite_existing_file is False:
+        raise FileExistsError(f"Experiments file '{experiment_file_path}' already exists")
+    defaults_path = Path(__file__).parent / "experiment_defaults.json"
+    with defaults_path.open() as fp:
+        experiment: dict = json.load(fp)
+
+    # write the arguments to the experiment file
+    experiment["name"] = name
+    experiment["parent_folder"] = str(parent_folder.resolve())
+    experiment["experimental_groups_defaults"]["applications"] = applications
+    experiment["experimental_groups_defaults"]["gpus"] = gpus
+    experiment["search_strategies"] = search_strategies
+    if override is not None:
+        experiment.update(override)
+
+    # validate and write to experiments file
+    schemafile_path = get_experiment_schema_filepath()
+    with schemafile_path.open("r", encoding="utf-8") as schemafile:
+        validate(experiment, schemafile)
+    with experiment_file_path.open("w", encoding="utf-8") as fp:
+        json.dump(experiment, fp)
+
+    # return the location of the experiments file
+    return experiment_file_path.resolve()
+
+
 def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, dict, dict]:
     """Executes the experiment by retrieving it from the cache or running it.
 
@@ -428,7 +465,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
         # get the path to the schema
         schemafile = get_experiment_schema_filepath()
         # open the experiment file and validate using the schema file
-        with open(schemafile, "r", encoding="utf-8") as schemafile:
+        with schemafile.open("r", encoding="utf-8") as schemafile:
             schema = json.load(schemafile)
             objective_time_keys = schema["properties"]["statistics_settings"]["properties"]["objective_time_keys"][
                 "items"

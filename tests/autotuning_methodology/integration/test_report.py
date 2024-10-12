@@ -10,7 +10,7 @@ from test_run_experiment import (
     normal_cachefiles_path,
 )
 
-from autotuning_methodology.experiments import get_experiment, get_strategies
+from autotuning_methodology.experiments import get_experiment, get_experimental_groups
 from autotuning_methodology.report_experiments import get_strategy_scores
 
 # setup file paths
@@ -44,7 +44,7 @@ def test_visualize_experiment():
     # get the experiment details
     experiment_filepath = str(experiment_filepath_test)
     experiment = get_experiment(experiment_filepath)
-    strategies = get_strategies(experiment)
+    strategies = get_experimental_groups(experiment)  # TODO fix this test that used to use get_strategies
 
     # get the scores
     strategies_scores = get_strategy_scores(experiment_filepath)
