@@ -6,18 +6,21 @@
         "applications": [
             {
                 "name": "convolution",
-                "folder": "./cached_data_used/kernels",
+                "folder": "../autotuning_methodology/cached_data_used/kernels",
                 "input_file": "convolution.json"
             },
             {
                 "name": "pnpoly",
-                "folder": "./cached_data_used/kernels",
+                "folder": "../autotuning_methodology/cached_data_used/kernels",
                 "input_file": "pnpoly.json"
             }
         ],
-        "gpus": [],
+        "gpus": [
+            "RTX_3090",
+            "RTX_2080_Ti"
+        ],
         "pattern_for_full_search_space_filenames": {
-            "regex": "./cached_data_used/cachefiles/${applications}/${gpus}_T4.json"
+            "regex": "../autotuning_methodology/cached_data_used/cachefiles/${applications}/${gpus}_T4.json"
         },
         "stochastic": true,
         "repeats": 100,

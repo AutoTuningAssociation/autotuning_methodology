@@ -405,33 +405,38 @@ def generate_input_file(group: dict):
 def generate_experiment_file(
     name: str,
     parent_folder: Path,
-    applications: list[dict],
-    gpus: list[str],
     search_strategies: list[dict],
+    applications: list[dict] = None,
+    gpus: list[str] = None,
     override: dict = None,
     overwrite_existing_file=False,
 ):
     """Creates an experiment file based on the given inputs and opinionated defaults."""
-    experiment_file_path = Path(f"./{name}.json")
+    assert isinstance(name, str) and len(name) > 0, f"Name for experiment file must be valid, is '{name}'"
+    experiment_file_path = Path(f"./{name.replace(' ', '_')}.json")
     if experiment_file_path.exists() and overwrite_existing_file is False:
         raise FileExistsError(f"Experiments file '{experiment_file_path}' already exists")
-    defaults_path = Path(__file__).parent / "experiment_defaults.json"
+    defaults_path = Path(__file__).parent / "experiments_defaults.json"
     with defaults_path.open() as fp:
         experiment: dict = json.load(fp)
 
     # write the arguments to the experiment file
     experiment["name"] = name
     experiment["parent_folder"] = str(parent_folder.resolve())
-    experiment["experimental_groups_defaults"]["applications"] = applications
-    experiment["experimental_groups_defaults"]["gpus"] = gpus
     experiment["search_strategies"] = search_strategies
+    if applications is not None:
+        experiment["experimental_groups_defaults"]["applications"] = applications
+    if gpus is not None:
+        experiment["experimental_groups_defaults"]["gpus"] = gpus
     if override is not None:
-        experiment.update(override)
+        for key, value in override.items():
+            experiment[key].update(value)
 
     # validate and write to experiments file
     schemafile_path = get_experiment_schema_filepath()
     with schemafile_path.open("r", encoding="utf-8") as schemafile:
-        validate(experiment, schemafile)
+        schema = json.load(schemafile)
+        validate(experiment, schema)
     with experiment_file_path.open("w", encoding="utf-8") as fp:
         json.dump(experiment, fp)
 
