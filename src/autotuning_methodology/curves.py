@@ -231,7 +231,10 @@ class Curve(CurveBasis):
         """
         # inputs
         self.name = results_description.group_name
-        self.display_name = results_description.group_display_name
+        try:
+            self.display_name = results_description.group_display_name
+        except AttributeError:
+            self.display_name = results_description.group_name.replace("_", " ").capitalize()
         self.device_name = results_description.device_name
         self.application_name = results_description.application_name
         self.stochastic = results_description.stochastic
