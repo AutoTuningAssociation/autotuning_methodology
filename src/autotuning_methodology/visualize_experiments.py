@@ -937,8 +937,8 @@ class Visualize:
             print(f" | performance of {displayname}: {performance_score} (±{performance_score_std})")
 
         # set the axis
-        cutoff_percentile: float = self.experiment.get("cutoff_percentile", 1)
-        cutoff_percentile_start: float = self.experiment.get("cutoff_percentile_start", 0.01)
+        cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1)
+        cutoff_percentile_start: float = self.experiment["statistics_settings"].get("cutoff_percentile_start", 0.01)
         ax.set_xlabel(
             f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)",  # noqa: E501
             fontsize="large",
