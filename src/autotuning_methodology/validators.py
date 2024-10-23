@@ -8,6 +8,7 @@ from jsonschema import validate
 
 error_types_strings = ["", "InvalidConfig", "CompilationFailedConfig", "RuntimeFailedConfig"]
 kernel_tuner_error_value = 1e20
+schemas_path = files("autotuning_methodology").joinpath("schemas")
 
 
 def get_experiment_schema_filepath():
@@ -16,18 +17,40 @@ def get_experiment_schema_filepath():
     Returns:
         the filepath to the schema in Traversable format.
     """
-    schemafile = files("autotuning_methodology").joinpath("schema.json")
-    assert schemafile.is_file(), f"Path to schema.json does not exist, attempted path: {schemafile}"
+    schemafile = schemas_path.joinpath("experiments.json")
+    assert schemafile.is_file(), f"Path to experiments.json does not exist, attempted path: {schemafile}"
     return schemafile
 
 
-def validate_experimentsfile(instance: dict, encoding="utf-8") -> dict:
-    """Validates the passed instance against the T4 schema. Returns schema or throws ValidationError."""
-    schemafile_path = get_experiment_schema_filepath()
+def get_T4_schema_filepath():
+    """Obtains and checks the filepath to the JSON schema.
+
+    Returns:
+        the filepath to the schema in Traversable format.
+    """
+    schemafile = schemas_path.joinpath("T4.json")
+    assert schemafile.is_file(), f"Path to T4.json does not exist, attempted path: {schemafile}"
+    return schemafile
+
+
+def validate_with_schema_path(instance: dict, schemafile_path, encoding: str) -> dict:
+    """Validates the passed instance against the passed schema path. Returns schema or throws ValidationError."""
     with schemafile_path.open("r", encoding=encoding) as fp:
         schema = load(fp)
         validate(instance=instance, schema=schema)
         return schema
+
+
+def validate_experimentsfile(instance: dict, encoding="utf-8") -> dict:
+    """Validates the passed instance against the experiments file schema. Returns schema or throws ValidationError."""
+    schemafile_path = get_experiment_schema_filepath()
+    return validate_with_schema_path(instance, schemafile_path, encoding)
+
+
+def validate_T4(instance: dict, encoding="utf-8") -> dict:
+    """Validates the passed instance against the T4 schema. Returns schema or throws ValidationError."""
+    schemafile_path = get_T4_schema_filepath()
+    return validate_with_schema_path(instance, schemafile_path, encoding)
 
 
 def is_invalid_objective_performance(objective_performance: float) -> bool:
