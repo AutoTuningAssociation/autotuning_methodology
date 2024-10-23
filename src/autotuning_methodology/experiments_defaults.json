@@ -23,7 +23,7 @@
             "regex": "../autotuning_methodology/cached_data_used/cachefiles/${applications}/${gpus}_T4.json"
         },
         "stochastic": true,
-        "repeats": 100,
+        "repeats": 10,
         "samples": 32,
         "minimum_number_of_valid_search_iterations": 20,
         "ignore_cache": false
