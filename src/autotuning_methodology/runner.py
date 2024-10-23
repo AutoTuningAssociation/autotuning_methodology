@@ -305,7 +305,6 @@ def tune(
             except subprocess.CalledProcessError as er:
                 print(er.stdout)
                 print(er.stderr)
-                pass
             # remove the modified input file, output file was written in experiment_parent_folder/run/group_name/
             subprocess.run(["rm", group["input_file"].name], check=False)
         if profiling:
@@ -376,9 +375,10 @@ def tune(
     for result in results["results"]:
         for k, v in result["times"].items():
             result["times"][k] = convert_from_time_unit(v, timeunit)
-        for i, m in enumerate(result["measurements"]):
-            if "unit" in m and not isinstance(m["value"], str):
-                result["measurements"][i]["value"] = convert_from_time_unit(m["value"], m["unit"])
+        # performance should not be auto-converted
+        # for i, m in enumerate(result["measurements"]):
+        #     if "unit" in m and not isinstance(m["value"], str):
+        #         result["measurements"][i]["value"] = convert_from_time_unit(m["value"], m["unit"])
 
     # be careful not to rely on total_time_ms when profiling, because it will include profiling time
     validate_T4(results)

@@ -69,8 +69,9 @@ def to_valid_array(results: list[dict], key: str, performance: bool, from_time_u
                 if key == m["name"]:
                     val = m["value"]
                     if is_not_invalid_value(val, performance):
-                        if len(m["unit"]) > 0:
-                            val = convert_from_time_unit(val, m["unit"])
+                        # performance should not be auto-converted
+                        # if len(m["unit"]) > 0:
+                        #     val = convert_from_time_unit(val, m["unit"])
                         values.append(val)
                     else:
                         values.append(np.nan)

@@ -700,7 +700,7 @@ class Visualize:
         if baseline_curve is not None:
             if y_type == "baseline":
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
-            elif y_type == "normalized" or y_type == "baseline":
+            elif y_type == "normalized" or y_type == "baseline" or y_type == "absolute":
                 baseline = baseline_curve.get_curve(x_axis_range, x_type)
                 if y_type == "normalized":
                     baseline = normalize(baseline)
