@@ -29,9 +29,11 @@ def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
 
 
 def convert_from_time_unit(value, from_unit: str):
-    """Convert the value from the specified time unit to seconds."""
+    """Convert the value or list of values from the specified time unit to seconds."""
     if from_unit is None or from_unit.lower() == "seconds":
         return value
+    if isinstance(value, list):
+        return [convert_from_time_unit(v, from_unit) for v in value]
     elif from_unit.lower() == "miliseconds":
         return value / 1000
     elif from_unit.lower() == "microseconds":
@@ -264,7 +266,9 @@ class SearchspaceStatistics:
         invalid_check_function = is_invalid_objective_performance if performance else is_invalid_objective_time
         return not invalid_check_function(value)
 
-    def _to_valid_array(self, results: list[dict], key: str, performance: bool, from_time_unit: str = None) -> np.ndarray:
+    def _to_valid_array(
+        self, results: list[dict], key: str, performance: bool, from_time_unit: str = None
+    ) -> np.ndarray:
         """Convert results performance or time values to a numpy array, sum if the input is a list of arrays."""
         # make a list of all valid values
         if performance:
