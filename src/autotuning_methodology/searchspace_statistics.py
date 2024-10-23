@@ -44,6 +44,56 @@ def convert_from_time_unit(value, from_unit: str):
         raise ValueError(f"Conversion unit {from_unit} is not supported")
 
 
+def is_not_invalid_value(value, performance: bool) -> bool:
+    """Checks if a performance or time value is an array or is not invalid."""
+    if isinstance(value, str):
+        return False
+    if isinstance(value, (list, tuple, np.ndarray)):
+        return True
+    invalid_check_function = is_invalid_objective_performance if performance else is_invalid_objective_time
+    return not invalid_check_function(value)
+
+
+def to_valid_array(results: list[dict], key: str, performance: bool, from_time_unit: str = None) -> np.ndarray:
+    """Convert results performance or time values to a numpy array, sum if the input is a list of arrays."""
+    # make a list of all valid values
+    if performance:
+        values = list()
+        for r in results:
+            for m in r["measurements"]:
+                if key == m["name"]:
+                    val = m["value"]
+                    if is_not_invalid_value(val, performance):
+                        if len(m["unit"]) > 0:
+                            val = convert_from_time_unit(val, m["unit"])
+                        values.append(val)
+                    else:
+                        values.append(np.nan)
+    else:
+        values = list(
+            (
+                convert_from_time_unit(v["times"][key], from_time_unit)
+                if key in v["times"] and is_not_invalid_value(v["times"][key], performance)
+                else np.nan
+            )
+            for v in results
+        )
+        # TODO other that time, performance such as power usage are in results["measurements"]. or not?
+    # check if there are values that are arrays
+    for value_index, value in enumerate(values):
+        if isinstance(value, (list, tuple, np.ndarray)):
+            # if the value is an array, sum the valid values
+            array = value
+            list_to_sum = list(v for v in array if is_not_invalid_value(v, performance))
+            values[value_index] = (
+                sum(list_to_sum)
+                if len(list_to_sum) > 0 and is_not_invalid_value(sum(list_to_sum), performance)
+                else np.nan
+            )
+    assert all(isinstance(v, (int, float)) for v in values)
+    return np.array(values)
+
+
 class SearchspaceStatistics:
     """Object for obtaining information from a full search space file."""
 
@@ -257,56 +307,6 @@ class SearchspaceStatistics:
             )
         return filepath
 
-    def _is_not_invalid_value(self, value, performance: bool) -> bool:
-        """Checks if a performance or time value is an array or is not invalid."""
-        if isinstance(value, str):
-            return False
-        if isinstance(value, (list, tuple, np.ndarray)):
-            return True
-        invalid_check_function = is_invalid_objective_performance if performance else is_invalid_objective_time
-        return not invalid_check_function(value)
-
-    def _to_valid_array(
-        self, results: list[dict], key: str, performance: bool, from_time_unit: str = None
-    ) -> np.ndarray:
-        """Convert results performance or time values to a numpy array, sum if the input is a list of arrays."""
-        # make a list of all valid values
-        if performance:
-            values = list()
-            for r in results:
-                for m in r["measurements"]:
-                    if key == m["name"]:
-                        val = m["value"]
-                        if self._is_not_invalid_value(val, performance):
-                            if len(m["unit"]) > 0:
-                                val = convert_from_time_unit(val, m["unit"])
-                            values.append(val)
-                        else:
-                            values.append(np.nan)
-        else:
-            values = list(
-                (
-                    convert_from_time_unit(v["times"][key], from_time_unit)
-                    if key in v["times"] and self._is_not_invalid_value(v["times"][key], performance)
-                    else np.nan
-                )
-                for v in results
-            )
-            # TODO other that time, performance such as power usage are in results["measurements"]. or not?
-        # check if there are values that are arrays
-        for value_index, value in enumerate(values):
-            if isinstance(value, (list, tuple, np.ndarray)):
-                # if the value is an array, sum the valid values
-                array = value
-                list_to_sum = list(v for v in array if self._is_not_invalid_value(v, performance))
-                values[value_index] = (
-                    sum(list_to_sum)
-                    if len(list_to_sum) > 0 and self._is_not_invalid_value(sum(list_to_sum), performance)
-                    else np.nan
-                )
-        assert all(isinstance(v, (int, float)) for v in values)
-        return np.array(values)
-
     def _load(self) -> bool:
         """Load the contents of the full search space file."""
         # if not, use a script to create a file with values from KTT output and formatting of KernelTuner
@@ -338,9 +338,7 @@ class SearchspaceStatistics:
             self.size = len(data["results"])
             self.objective_times = dict()
             for key in self.objective_time_keys:
-                self.objective_times[key] = self._to_valid_array(
-                    results, key, performance=False, from_time_unit=timeunit
-                )
+                self.objective_times[key] = to_valid_array(results, key, performance=False, from_time_unit=timeunit)
                 # in runner.convert_KTT_output_to_standard all times get converted to ms
                 assert (
                     self.objective_times[key].ndim == 1
@@ -356,7 +354,7 @@ class SearchspaceStatistics:
             # get the performance values per configuration
             self.objective_performances = dict()
             for key in self.objective_performance_keys:
-                self.objective_performances[key] = self._to_valid_array(results, key, performance=True)
+                self.objective_performances[key] = to_valid_array(results, key, performance=True)
                 assert (
                     self.objective_performances[key].ndim == 1
                 ), f"Should have one dimension, has {self.objective_performances[key].ndim}"
