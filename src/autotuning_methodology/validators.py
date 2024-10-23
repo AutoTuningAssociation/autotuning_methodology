@@ -1,9 +1,33 @@
 """Module containing various checks for validity."""
 
+from importlib.resources import files
+from json import load
+
 import numpy as np
+from jsonschema import validate
 
 error_types_strings = ["", "InvalidConfig", "CompilationFailedConfig", "RuntimeFailedConfig"]
 kernel_tuner_error_value = 1e20
+
+
+def get_experiment_schema_filepath():
+    """Obtains and checks the filepath to the JSON schema.
+
+    Returns:
+        the filepath to the schema in Traversable format.
+    """
+    schemafile = files("autotuning_methodology").joinpath("schema.json")
+    assert schemafile.is_file(), f"Path to schema.json does not exist, attempted path: {schemafile}"
+    return schemafile
+
+
+def validate_experimentsfile(instance: dict, encoding="utf-8") -> dict:
+    """Validates the passed instance against the T4 schema. Returns schema or throws ValidationError."""
+    schemafile_path = get_experiment_schema_filepath()
+    with schemafile_path.open("r", encoding=encoding) as fp:
+        schema = load(fp)
+        validate(instance=instance, schema=schema)
+        return schema
 
 
 def is_invalid_objective_performance(objective_performance: float) -> bool:

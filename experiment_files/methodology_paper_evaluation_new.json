@@ -40,12 +40,6 @@
             "search_method": "dual_annealing",
             "display_name": "Dual Annealing",
             "autotuner": "KernelTuner"
-        },
-        {
-            "name": "greedy_ils",
-            "search_method": "greedy_ils",
-            "display_name": "Greedy ILS",
-            "autotuner": "KernelTuner"
         }
     ],
     "statistics_settings": {

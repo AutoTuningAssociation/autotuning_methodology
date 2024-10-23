@@ -2,19 +2,15 @@
 import json
 from pathlib import Path
 
-from jsonschema import validate
-
-from autotuning_methodology.experiments import get_experiment_schema_filepath
+from autotuning_methodology.validators import validate_experimentsfile
 
 # set input and output files
 folderpath = Path(__file__).parent
 old_file_path = folderpath / Path("methodology_paper_evaluation.json")
 new_file_path = folderpath / Path("methodology_paper_evaluation_new.json")
-schema_path = Path(get_experiment_schema_filepath())
 encoding = "utf-8"
 assert old_file_path.exists(), f"Old file does not exist at {old_file_path}"
 assert not new_file_path.exists(), f"New file does already exists at {new_file_path}"
-assert schema_path.exists(), f"Schema file does not exist at {schema_path}"
 
 # read input file to dictionary
 with old_file_path.open("r", encoding=encoding) as fp:
@@ -75,9 +71,7 @@ new_experiment = {
 }
 
 # validate using schema
-with schema_path.open("r", encoding=encoding) as fp:
-    schema = json.load(fp)
-    validate(new_experiment, schema)
+validate_experimentsfile(new_experiment, encoding=encoding)
 
 # write converted dictionary to file
 with new_file_path.open("w", encoding=encoding) as fp:

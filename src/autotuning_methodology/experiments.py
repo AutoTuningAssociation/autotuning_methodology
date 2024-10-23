@@ -4,16 +4,16 @@ from __future__ import annotations  # for correct nested type hints e.g. list[st
 
 import json
 from argparse import ArgumentParser
-from importlib.resources import files
 from math import ceil
 from os import getcwd, makedirs
 from pathlib import Path
 
-from jsonschema import ValidationError, validate
+from jsonschema import ValidationError
 
 from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.runner import collect_results, convert_KTT_output_to_standard
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
+from autotuning_methodology.validators import validate_experimentsfile
 
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
@@ -39,17 +39,6 @@ def get_args_from_cli(args=None) -> str:
     if filepath is None or filepath == "":
         raise ValueError("Invalid '--experiment' option. Run 'visualize_experiments.py -h' to read more.")
     return filepath
-
-
-def get_experiment_schema_filepath():
-    """Obtains and checks the filepath to the JSON schema.
-
-    Returns:
-        the filepath to the schema in Traversable format.
-    """
-    schemafile = files("autotuning_methodology").joinpath("schema.json")
-    assert schemafile.is_file(), f"Path to schema.json does not exist, attempted path: {schemafile}"
-    return schemafile
 
 
 def make_and_check_path(filename: str, parent=None, extension=None) -> Path:
@@ -88,15 +77,11 @@ def get_experiment(filename: str) -> dict:
     #     path = Path(filename)
     assert path.exists(), f"Path to experiment file does not exist, attempted path: {path}, CWD: {getcwd()}"
 
-    # get the path to the schema
-    schemafile_path = get_experiment_schema_filepath()
-
     # open the experiment file and validate using the schema file
-    with path.open("r", encoding="utf-8") as file, schemafile_path.open("r", encoding="utf-8") as schemafile:
-        schema = json.load(schemafile)
+    with path.open("r", encoding="utf-8") as file:
         experiment: dict = json.load(file)
         try:
-            validate(instance=experiment, schema=schema)
+            validate_experimentsfile(experiment)
             return experiment
         except ValidationError as e:
             print(e)
@@ -377,6 +362,8 @@ def generate_input_file(group: dict):
             raise RuntimeError(
                 f"Only JSON output format is supported. Please set General.OutputFormat to JSON in {group['application_input_file']}."
             )
+        if "TimeUnit" not in input_json["General"]:
+            input_json["General"]["TimeUnit"] = "Milliseconds"
         if input_json["KernelSpecification"].get("Device") is None:
             input_json["KernelSpecification"]["Device"] = {}
             input_json["KernelSpecification"]["Device"]["Name"] = group["gpu"]
@@ -433,10 +420,7 @@ def generate_experiment_file(
             experiment[key].update(value)
 
     # validate and write to experiments file
-    schemafile_path = get_experiment_schema_filepath()
-    with schemafile_path.open("r", encoding="utf-8") as schemafile:
-        schema = json.load(schemafile)
-        validate(experiment, schema)
+    validate_experimentsfile(experiment)
     with experiment_file_path.open("w", encoding="utf-8") as fp:
         json.dump(experiment, fp)
 
@@ -467,14 +451,11 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
     objective_time_keys: list[str] = experiment["statistics_settings"]["objective_time_keys"]
     if "all" in objective_time_keys:
         objective_time_keys = []
-        # get the path to the schema
-        schemafile = get_experiment_schema_filepath()
         # open the experiment file and validate using the schema file
-        with schemafile.open("r", encoding="utf-8") as schemafile:
-            schema = json.load(schemafile)
-            objective_time_keys = schema["properties"]["statistics_settings"]["properties"]["objective_time_keys"][
-                "items"
-            ]["enum"]
+        schema = validate_experimentsfile(experiment)
+        objective_time_keys = schema["properties"]["statistics_settings"]["properties"]["objective_time_keys"]["items"][
+            "enum"
+        ]
         objective_time_keys.remove("all")
         experiment["statistics_settings"]["objective_time_keys"] = objective_time_keys
 

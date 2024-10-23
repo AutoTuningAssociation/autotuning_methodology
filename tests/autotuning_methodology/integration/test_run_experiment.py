@@ -1,21 +1,15 @@
 """Integration test for running and fetching an experiment from cache."""
 
-import json
 from importlib.resources import files
 from pathlib import Path
 from shutil import copyfile
 
 import numpy as np
 import pytest
-from jsonschema import validate
 
 from autotuning_methodology.curves import StochasticOptimizationAlgorithm
-from autotuning_methodology.experiments import (
-    ResultsDescription,
-    execute_experiment,
-    get_args_from_cli,
-    get_experiment_schema_filepath,
-)
+from autotuning_methodology.experiments import ResultsDescription, execute_experiment, get_args_from_cli
+from autotuning_methodology.validators import validate_experimentsfile
 
 # get the path to the package
 package_path = Path(files("autotuning_methodology")).parent.parent
@@ -203,10 +197,7 @@ def validate_experiment_results(
     assert isinstance(results_descriptions, dict)
 
     # validate the contents
-    schemafilepath = get_experiment_schema_filepath()
-    with open(schemafilepath, "r", encoding="utf-8") as schemafile:
-        schema = json.load(schemafile)
-        validate(instance=experiment, schema=schema)
+    validate_experimentsfile(experiment)
     kernel_name = experiment["kernels"][0]
     gpu_name = experiment["GPUs"][0]
     assert len(strategies) == 1
