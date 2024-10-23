@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from autotuning_methodology.validators import is_invalid_objective_performance, is_invalid_objective_time
+from autotuning_methodology.validators import is_invalid_objective_performance, is_invalid_objective_time, validate_T4
 
 
 def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
@@ -26,6 +26,20 @@ def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
     summed_array = np.nansum(array, **kwargs)  # sum as usual
     summed_array[where_all_nan] = np.nan  # overwrite the sums where necessary
     return summed_array
+
+
+def convert_from_time_unit(value, from_unit: str):
+    """Convert the value from the specified time unit to seconds."""
+    if from_unit is None or from_unit.lower() == "seconds":
+        return value
+    elif from_unit.lower() == "miliseconds":
+        return value / 1000
+    elif from_unit.lower() == "microseconds":
+        return value / 1000000
+    elif from_unit.lower() == "nanoseconds":
+        return value / 1000000000
+    else:
+        raise ValueError(f"Conversion unit {from_unit} is not supported")
 
 
 class SearchspaceStatistics:
@@ -250,7 +264,7 @@ class SearchspaceStatistics:
         invalid_check_function = is_invalid_objective_performance if performance else is_invalid_objective_time
         return not invalid_check_function(value)
 
-    def _to_valid_array(self, results: list[dict], key: str, performance: bool) -> np.ndarray:
+    def _to_valid_array(self, results: list[dict], key: str, performance: bool, from_time_unit: str = None) -> np.ndarray:
         """Convert results performance or time values to a numpy array, sum if the input is a list of arrays."""
         # make a list of all valid values
         if performance:
@@ -258,14 +272,17 @@ class SearchspaceStatistics:
             for r in results:
                 for m in r["measurements"]:
                     if key == m["name"]:
-                        if self._is_not_invalid_value(m["value"], performance):
-                            values.append(m["value"])
+                        val = m["value"]
+                        if self._is_not_invalid_value(val, performance):
+                            if len(m["unit"]) > 0:
+                                val = convert_from_time_unit(val, m["unit"])
+                            values.append(val)
                         else:
                             values.append(np.nan)
         else:
             values = list(
                 (
-                    v["times"][key]
+                    convert_from_time_unit(v["times"][key], from_time_unit)
                     if key in v["times"] and self._is_not_invalid_value(v["times"][key], performance)
                     else np.nan
                 )
@@ -288,15 +305,15 @@ class SearchspaceStatistics:
 
     def _load(self) -> bool:
         """Load the contents of the full search space file."""
-        # TODO check if the file is in KernelTuner format
         # if not, use a script to create a file with values from KTT output and formatting of KernelTuner
         filepath = self.get_valid_filepath()
         with open(filepath, "r", encoding="utf-8") as fh:
             print(f"Loading full search space file {filepath} and initializing the statistics...")
+
             # get the cache from the .json file
             orig_contents = fh.read()
             try:
-                data = json.loads(orig_contents)
+                data: dict = json.loads(orig_contents)
             except json.decoder.JSONDecodeError:
                 contents = orig_contents[:-1] + "}\n}"
                 try:
@@ -305,6 +322,11 @@ class SearchspaceStatistics:
                     contents = orig_contents[:-2] + "}\n}"
                     data = json.loads(contents)
 
+            # validate it is in T4 format
+            validate_T4(data)
+
+            metadata: dict = data.get("metadata", {})
+            timeunit = metadata.get("timeunit", "seconds")
             results: dict = data["results"]
             self.results = results
 
@@ -312,10 +334,9 @@ class SearchspaceStatistics:
             self.size = len(data["results"])
             self.objective_times = dict()
             for key in self.objective_time_keys:
-                self.objective_times[key] = self._to_valid_array(results, key, performance=False)
-                # self.objective_times[key] = (
-                #    self.objective_times[key] / 1000
-                # )  # TODO Kernel Tuner specific miliseconds to seconds conversion
+                self.objective_times[key] = self._to_valid_array(
+                    results, key, performance=False, from_time_unit=timeunit
+                )
                 # in runner.convert_KTT_output_to_standard all times get converted to ms
                 assert (
                     self.objective_times[key].ndim == 1
