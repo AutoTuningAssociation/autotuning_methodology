@@ -16,11 +16,12 @@ import progressbar
 import yappi
 
 from autotuning_methodology.caching import ResultsDescription
-from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
+from autotuning_methodology.searchspace_statistics import SearchspaceStatistics, convert_from_time_unit
 from autotuning_methodology.validators import (
     is_invalid_objective_performance,
     is_invalid_objective_time,
     is_valid_config_result,
+    validate_T4,
 )
 
 # TODO this does not conform to new intended dicrectory structure
@@ -369,7 +370,18 @@ def tune(
         total_time_ms = round((total_end_time - total_start_time) * 1000)
     else:
         raise ValueError(f"Invalid autotuning framework '{group['autotuner']}'")
+
+    # convert time units
+    timeunit: str = results.get("metadata", {}).get("timeunit", "seconds")
+    for result in results["results"]:
+        for k, v in result["times"].items():
+            result["times"][k] = convert_from_time_unit(v, timeunit)
+        for i, m in enumerate(result["measurements"]):
+            if "unit" in m and not isinstance(m["value"], str):
+                result["measurements"][i]["value"] = convert_from_time_unit(m["value"], m["unit"])
+
     # be careful not to rely on total_time_ms when profiling, because it will include profiling time
+    validate_T4(results)
     return metadata, results, total_time_ms
 
 

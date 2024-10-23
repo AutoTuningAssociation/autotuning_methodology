@@ -30,15 +30,20 @@ def nansumwrapper(array: np.ndarray, **kwargs) -> np.ndarray:
 
 def convert_from_time_unit(value, from_unit: str):
     """Convert the value or list of values from the specified time unit to seconds."""
-    if from_unit is None or from_unit.lower() == "seconds":
-        return value
-    if isinstance(value, list):
+    if from_unit is None:
+        return None
+    elif isinstance(value, list):
         return [convert_from_time_unit(v, from_unit) for v in value]
-    elif from_unit.lower() == "miliseconds":
+    elif not isinstance(value, (int, float, complex)):
+        return value
+    unit = from_unit.lower()
+    if unit == "seconds" or unit == "s":
+        return value
+    elif unit == "miliseconds" or unit == "ms":
         return value / 1000
-    elif from_unit.lower() == "microseconds":
+    elif unit == "microseconds":
         return value / 1000000
-    elif from_unit.lower() == "nanoseconds":
+    elif unit == "nanoseconds" or unit == "ns":
         return value / 1000000000
     else:
         raise ValueError(f"Conversion unit {from_unit} is not supported")
