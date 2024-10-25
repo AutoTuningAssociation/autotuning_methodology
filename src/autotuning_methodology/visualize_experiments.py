@@ -181,8 +181,7 @@ class Visualize:
         objective_time_keys: list[str] = self.experiment["statistics_settings"]["objective_time_keys"]
 
         # plot settings
-        plot_x_value_types: list[str] = self.experiment["visualization_settings"]["x_axis_value_types"]
-        plot_y_value_types: list[str] = self.experiment["visualization_settings"]["y_axis_value_types"]
+        plots: list[dict] = self.experiment["visualization_settings"]["plots"]
         compare_baselines: bool = self.experiment["visualization_settings"]["compare_baselines"]
         compare_split_times: bool = self.experiment["visualization_settings"]["compare_split_times"]
         confidence_level: float = self.experiment["visualization_settings"]["confidence_level"]
@@ -209,6 +208,8 @@ class Visualize:
             time_resolution,
             use_strategy_as_baseline,
         )
+
+        # plot per searchspace
         for gpu_name in self.experiment["experimental_groups_defaults"]["gpus"]:
             for application_name in self.experiment["experimental_groups_defaults"]["applications_names"]:
                 print(f" | visualizing optimization of {application_name} for {gpu_name}")
@@ -282,88 +283,104 @@ class Visualize:
                     #     )
                     # )
 
-                # visualize the results
-                for x_type in plot_x_value_types:
-                    if x_type == "aggregated":
+                for plot in plots:
+                    # get settings
+                    scope: str = plot["scope"]
+                    if scope != "searchspace":
                         continue
-                    elif x_type == "fevals":
-                        x_axis_range = fevals_range
-                    elif x_type == "time":
-                        x_axis_range = time_range
-                    else:
-                        raise ValueError(f"Invalid {x_type=}")
+                    style: str = plot["style"]
+                    plot_x_value_types: list[str] = plot["x_axis_value_types"]
+                    plot_y_value_types: list[str] = plot["y_axis_value_types"]
 
-                    # create the figure and plots
-                    fig, axs = plt.subplots(
-                        nrows=len(plot_y_value_types),
-                        ncols=1,
-                        figsize=(8, 3.4 * len(plot_y_value_types)),
-                        sharex=True,
-                        dpi=300,
-                    )
-                    if not hasattr(
-                        axs, "__len__"
-                    ):  # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
-                        axs = [axs]
-                    fig.canvas.manager.set_window_title(title)
-                    if not save_figs:
-                        fig.suptitle(title)
+                    # visualize the results
+                    for x_type in plot_x_value_types:
+                        if x_type == "fevals":
+                            x_axis_range = fevals_range
+                        elif x_type == "time":
+                            x_axis_range = time_range
+                        else:
+                            raise ValueError(f"X-axis type '{x_type}' not supported for scope '{plot}'")
 
-                    # plot the subplots of individual searchspaces
-                    for index, y_type in enumerate(plot_y_value_types):
-                        self.plot_strategies(
-                            x_type,
-                            y_type,
-                            axs[index],
-                            searchspace_stats,
-                            strategies_curves,
-                            x_axis_range,
-                            self.experiment["visualization_settings"],
-                            random_baseline,
-                            baselines_extra=baselines_extra,
+                        # create the figure and plots
+                        fig, axs = plt.subplots(
+                            nrows=len(plot_y_value_types),
+                            ncols=1,
+                            figsize=(8, 3.4 * len(plot_y_value_types)),
+                            sharex=True,
+                            dpi=300,
                         )
-                        if index == 0:
-                            loc = "lower right" if y_type == "normalized" else "best"
-                            axs[index].legend(loc=loc)
+                        if not hasattr(
+                            axs, "__len__"
+                        ):  # if there is just one subplot, wrap it in a list so it can be passed to the plot functions
+                            axs = [axs]
+                        fig.canvas.manager.set_window_title(title)
+                        if not save_figs:
+                            fig.suptitle(title)
 
-                    # finalize the figure and save or display it
-                    fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
-                    fig.tight_layout()
-                    if save_figs:
-                        filename_path = Path(self.plot_filename_prefix) / f"{title}_{x_type}".replace(" ", "_")
-                        fig.savefig(filename_path, dpi=300)
-                        print(f"Figure saved to {filename_path}")
-                    else:
-                        plt.show()
+                        # plot the subplots of individual searchspaces
+                        for index, y_type in enumerate(plot_y_value_types):
+                            self.plot_strategies(
+                                style,
+                                x_type,
+                                y_type,
+                                axs[index],
+                                searchspace_stats,
+                                strategies_curves,
+                                x_axis_range,
+                                self.experiment["visualization_settings"],
+                                random_baseline,
+                                baselines_extra=baselines_extra,
+                            )
+                            if index == 0:
+                                loc = "lower right" if y_type == "normalized" else "best"
+                                axs[index].legend(loc=loc)
+
+                        # finalize the figure and save or display it
+                        fig.supxlabel(self.get_x_axis_label(x_type, objective_time_keys))
+                        fig.tight_layout()
+                        if save_figs:
+                            filename_path = Path(self.plot_filename_prefix) / f"{title}_{x_type}".replace(" ", "_")
+                            fig.savefig(filename_path, dpi=300)
+                            print(f"Figure saved to {filename_path}")
+                        else:
+                            plt.show()
+
+        # plot per searchstrategy
+        # TODO
 
         # plot the aggregated searchspaces
-        if (
-            "aggregated" in plot_x_value_types
-            and continue_after_comparison
-            or not (compare_baselines or compare_split_times)
-        ):
-            fig, axs = plt.subplots(
-                ncols=1, figsize=(9, 6), dpi=300
-            )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-            if not hasattr(axs, "__len__"):
-                axs = [axs]
-            title = f"""Aggregated Data\napplications:
-                    {', '.join(self.experiment['experimental_groups_defaults']['applications_names'])}\nGPUs: {', '.join(self.experiment['experimental_groups_defaults']['gpus'])}"""
-            fig.canvas.manager.set_window_title(title)
-            if not save_figs:
-                fig.suptitle(title)
+        for plot in plots:
+            # get settings
+            scope: str = plot["scope"]
+            style: str = plot["style"]
+            if scope != "aggregate":
+                continue
+            if style != "line":
+                raise ValueError(f"Aggregated only supports 'line' as a style, not {style}")
+            # plot the aggregation
+            if continue_after_comparison or not (compare_baselines or compare_split_times):
+                fig, axs = plt.subplots(
+                    ncols=1, figsize=(9, 6), dpi=300
+                )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+                if not hasattr(axs, "__len__"):
+                    axs = [axs]
+                title = f"""Aggregated Data\napplications:
+                        {', '.join(self.experiment['experimental_groups_defaults']['applications_names'])}\nGPUs: {', '.join(self.experiment['experimental_groups_defaults']['gpus'])}"""
+                fig.canvas.manager.set_window_title(title)
+                if not save_figs:
+                    fig.suptitle(title)
 
-            # finalize the figure and save or display it
-            self.plot_strategies_aggregated(
-                axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
-            )
-            fig.tight_layout()
-            if save_figs:
-                filename_path = Path(self.plot_filename_prefix) / "aggregated"
-                fig.savefig(filename_path, dpi=300)
-                print(f"Figure saved to {filename_path}")
-            else:
-                plt.show()
+                # finalize the figure and save or display it
+                self.plot_strategies_aggregated(
+                    axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
+                )
+                fig.tight_layout()
+                if save_figs:
+                    filename_path = Path(self.plot_filename_prefix) / "aggregated"
+                    fig.savefig(filename_path, dpi=300)
+                    print(f"Figure saved to {filename_path}")
+                else:
+                    plt.show()
 
     def plot_baselines_comparison(
         self,
@@ -646,6 +663,7 @@ class Visualize:
 
     def plot_strategies(
         self,
+        style: str,
         x_type: str,
         y_type: str,
         ax: plt.Axes,
@@ -661,6 +679,7 @@ class Visualize:
         """Plots all optimization strategies for individual search spaces.
 
         Args:
+            style: the style of plot, either 'line' or 'scatter'.
             x_type: the type of ``x_axis_range``.
             y_type: the type of plot on the y-axis.
             ax: the axis to plot on.
@@ -690,7 +709,7 @@ class Visualize:
             return tuple(normalize(curve) for curve in curves)
 
         # plot the absolute optimum
-        absolute_optimum_y_value = absolute_optimum if y_type == "absolute" or y_type == "scatter" else 1
+        absolute_optimum_y_value = absolute_optimum if y_type == "absolute" or style == "scatter" else 1
         absolute_optimum_label = (
             "Absolute optimum ({})".format(round(absolute_optimum, 3)) if y_type == "absolute" else "Absolute optimum"
         )
@@ -736,7 +755,7 @@ class Visualize:
                 continue
 
             # get the plot data
-            if y_type == "scatter":
+            if style == "scatter":
                 x_axis, y_axis = strategy_curve.get_scatter_data(x_type)
                 ax.scatter(x_axis, y_axis, label=label, color=color)
                 continue

@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://example.com/schemas/experiments/v0.1.1.schema.json",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "title": "Experiment",
     "description": "An experiment setup configuration file",
     "type": "object",
@@ -285,45 +285,80 @@
             "description": "Settings for the visualizations",
             "type": "object",
             "required": [
+                "plots",
                 "resolution",
-                "x_axis_value_types",
-                "y_axis_value_types",
                 "confidence_level"
             ],
             "properties": {
+                "plots": {
+                    "description": "Specification of the plots to produce.",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "scope",
+                            "style"
+                        ],
+                        "properties": {
+                            "scope": {
+                                "description": "The scope of the plot: whether it's a plot per searchspace, per search strategy, or the aggregate.",
+                                "type": "string",
+                                "enum": [
+                                    "searchspace",
+                                    "search_strategy",
+                                    "aggregate"
+                                ]
+                            },
+                            "style": {
+                                "description": "The type of plot.",
+                                "type": "string",
+                                "enum": [
+                                    "line",
+                                    "scatter",
+                                    "heatmap"
+                                ]
+                            },
+                            "x_axis_value_types": {
+                                "description": "Types of value on the x-axis. Multiple values may produce multiple (sub) plots.",
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "fevals",
+                                        "time",
+                                        "applications",
+                                        "gpus",
+                                        "searchspaces"
+                                    ]
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                            },
+                            "y_axis_value_types": {
+                                "description": "Types of value on the y-axis. Multiple values may produce multiple (sub) plots.",
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "absolute",
+                                        "normalized",
+                                        "baseline",
+                                        "applications",
+                                        "gpus",
+                                        "searchspaces"
+                                    ]
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                            }
+                        }
+                    }
+                },
                 "resolution": {
                     "description": "The resolution of the time range",
                     "type": "integer",
+                    "default": 1000,
                     "minimum": 2
-                },
-                "x_axis_value_types": {
-                    "description": "Types of value on the x-axis. Multiple values produces multiple (sub) plots.",
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "fevals",
-                            "time",
-                            "aggregated"
-                        ]
-                    },
-                    "minItems": 1,
-                    "uniqueItems": true
-                },
-                "y_axis_value_types": {
-                    "description": "Types of value on the y-axis. Multiple values produces multiple (sub) plots.",
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "absolute",
-                            "scatter",
-                            "normalized",
-                            "baseline"
-                        ]
-                    },
-                    "minItems": 1,
-                    "uniqueItems": true
                 },
                 "confidence_level": {
                     "description": "The confidence level used for the confidence / prediction interval, visualized as an error shade",

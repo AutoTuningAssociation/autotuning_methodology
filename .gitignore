@@ -11,6 +11,7 @@ cached_data_used/visualizations/*
 cached_data_used/last_run/*
 cached_data_used/import_runs/*
 methodology_paper_evaluation/run/*
+hyperparametertuning/*
 
 # ignore setup files
 */setup/*_input.json
