@@ -49,11 +49,11 @@ def make_and_check_path(filename: str, parent=None, extension=None) -> Path:
         return filename_path
     # try and add extension
     if extension is None:
-        raise FileNotFoundError(f"{filename_path} does not exist.")
+        raise FileNotFoundError(f"{filename_path.resolve()} does not exist.")
     filename_path = Path(str(filename_path) + extension)
     if filename_path.exists():
         return filename_path
-    raise FileNotFoundError(f"{filename_path} does not exist.")
+    raise FileNotFoundError(f"{filename_path.resolve()} does not exist.")
 
 
 def get_experiment(filename: str) -> dict:

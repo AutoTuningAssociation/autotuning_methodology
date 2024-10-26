@@ -114,7 +114,7 @@ class Visualize:
             "objective_baseline_max": "Improvement over random sampling",
             "aggregate_objective": "Aggregate best-found objective value relative to baseline",
             "aggregate_objective_max": "Aggregate improvement over random sampling",
-            "time": "Best-found kernel time in miliseconds",
+            "time": "Best-found kernel time in milliseconds",
             "GFLOP/s": "GFLOP/s",
         }
     )

@@ -197,7 +197,7 @@ def tune(
         ValueError: if tuning fails multiple times in a row.
 
     Returns:
-        A tuple of the metadata, the results, and the total runtime in miliseconds.
+        A tuple of the metadata, the results, and the total runtime in milliseconds.
     """
 
     def tune_with_kerneltuner_old():
@@ -537,7 +537,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
                 else:
                     value = evaluation_times[key]
                 if value is not None and not is_invalid_objective_time(value):
-                    # value = value / 1000  # TODO this miliseconds to seconds conversion is specific to Kernel Tuner
+                    # value = value / 1000  # TODO this milliseconds to seconds conversion is specific to Kernel Tuner
                     objective_time_results_per_key[key_index, evaluation_index, repeat_index] = value
                     objective_times_list.append(value)
             # sum the objective times of the keys

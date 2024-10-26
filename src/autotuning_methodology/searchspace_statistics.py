@@ -39,7 +39,7 @@ def convert_from_time_unit(value, from_unit: str):
     unit = from_unit.lower()
     if unit == "seconds" or unit == "s":
         return value
-    elif unit == "miliseconds" or unit == "ms":
+    elif unit == "milliseconds" or unit == "ms":
         return value / 1000
     elif unit == "microseconds":
         return value / 1000000
@@ -219,7 +219,7 @@ class SearchspaceStatistics:
         n_bins = 200
         axs[0].hist(performances, bins=n_bins)
         axs[0].set_ylabel("Number of configurations in bin")
-        axs[0].set_xlabel("Performance in miliseconds")
+        axs[0].set_xlabel("Performance in milliseconds")
         axs[0].axvline(x=[mean], label="Mean", c="red")
         axs[0].axvline(x=[median], label="Median", c="orange")
         axs[0].axvline(x=[cutoff_performance], label="Cutoff point", c="green")
