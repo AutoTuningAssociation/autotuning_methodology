@@ -6,8 +6,8 @@ from autotuning_methodology.validators import validate_experimentsfile
 
 # set input and output files
 folderpath = Path(__file__).parent
-old_file_path = folderpath / Path("../tests/autotuning_methodology/integration/mockfiles/test.json")
-new_file_path = folderpath / Path("../tests/autotuning_methodology/integration/mockfiles/test_new.json")
+old_file_path = folderpath / Path("../tests/autotuning_methodology/integration/mockfiles/test_import_runs.json")
+new_file_path = folderpath / Path("../tests/autotuning_methodology/integration/mockfiles/test_import_runs_new.json")
 encoding = "utf-8"
 assert old_file_path.exists(), f"Old file does not exist at {old_file_path}"
 assert not new_file_path.exists(), f"New file does already exists at {new_file_path}"
@@ -47,10 +47,11 @@ new_experiment = {
             "name": strategy["name"],
             "search_method": strategy["strategy"],
             "display_name": strategy["display_name"],
-            "autotuner": "KernelTuner",  # Assuming autotuner is KernelTuner for all strategies
+            "autotuner": (
+                "KernelTuner" if strategy["name"] != "ktt_profile_searcher" else "KTT"
+            ),  # Assuming autotuner is KernelTuner for all strategies
         }
         for strategy in old_experiment["strategies"]
-        if strategy["name"] != "ktt_profile_searcher"
     ],
     "statistics_settings": {
         "minimization": old_experiment["minimization"],
