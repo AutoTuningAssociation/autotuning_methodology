@@ -1,7 +1,7 @@
 """Script to overwrite Kernel Tuner brute forced cache files with the objective values of a KTT brute force search.
 
 Notes: this requires a fully bruteforced KTT and fully bruteforced KernelTuner (KT) cachefile on the same search space.
-Objective value is assumed to be time by default. Time is assumed to be in microseconds for KTT and miliseconds for KT. 
+Objective value is assumed to be time by default. Time is assumed to be in microseconds for KTT and milliseconds for KT. 
 """
 
 import json
