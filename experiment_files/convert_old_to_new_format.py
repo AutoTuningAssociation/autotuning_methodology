@@ -6,8 +6,8 @@ from autotuning_methodology.validators import validate_experimentsfile
 
 # set input and output files
 folderpath = Path(__file__).parent
-old_file_path = folderpath / Path("methodology_paper_evaluation.json")
-new_file_path = folderpath / Path("methodology_paper_evaluation_new.json")
+old_file_path = folderpath / Path("../tests/autotuning_methodology/integration/mockfiles/test.json")
+new_file_path = folderpath / Path("../tests/autotuning_methodology/integration/mockfiles/test_new.json")
 encoding = "utf-8"
 assert old_file_path.exists(), f"Old file does not exist at {old_file_path}"
 assert not new_file_path.exists(), f"New file does already exists at {new_file_path}"
@@ -18,7 +18,7 @@ with old_file_path.open("r", encoding=encoding) as fp:
 
 # convert the dictionary to the new format
 new_experiment = {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "name": old_experiment["name"],
     "parent_folder": f"./{old_experiment['folder_id']}",
     "experimental_groups_defaults": {
@@ -61,8 +61,15 @@ new_experiment = {
         "objective_performance_keys": old_experiment["objective_performance_keys"],
     },
     "visualization_settings": {
-        "x_axis_value_types": old_experiment["plot"]["plot_x_value_types"],
-        "y_axis_value_types": old_experiment["plot"]["plot_y_value_types"],
+        "plots": [
+            {
+                "scope": "aggregate" if "aggregated" in plottype else "searchspace",
+                "style": "scatter" if "scatter" in plottype else "line",
+                "x_axis_value_types": [plottype if plottype != "aggregated" else "time"],
+                "y_axis_value_types": old_experiment["plot"]["plot_y_value_types"],
+            }
+            for plottype in old_experiment["plot"]["plot_x_value_types"]
+        ],
         "resolution": old_experiment["resolution"],
         "confidence_level": old_experiment["plot"]["confidence_level"],
         "compare_baselines": old_experiment["plot"]["compare_baselines"],
