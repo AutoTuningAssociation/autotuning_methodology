@@ -548,7 +548,7 @@ class Visualize:
 
         # write to file or show
         if save_fig:
-            filename_path = Path(self.plot_filename_prefix) / "{title}_split_times_{x_type}".replace(" ", "_")
+            filename_path = Path(self.plot_filename_prefix) / f"{title}_split_times_{x_type}".replace(" ", "_")
             plt.savefig(filename_path, dpi=300)
             print(f"Figure saved to {filename_path}")
         else:

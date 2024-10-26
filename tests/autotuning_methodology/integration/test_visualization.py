@@ -17,7 +17,7 @@ from autotuning_methodology.visualize_experiments import Visualize
 
 # setup file paths
 experiment_title = f"{kernel_id}_on_mock_GPU"
-plot_path = Path("generated_plots/test_run_experiment")
+plot_path = cached_visualization_path
 plot_path_fevals = plot_path / f"{experiment_title}_fevals.png"
 plot_path_time = plot_path / f"{experiment_title}_time.png"
 plot_path_aggregated = plot_path / "aggregated.png"
@@ -25,7 +25,7 @@ plot_path_split_times_fevals = plot_path / f"{experiment_title}_split_times_feva
 plot_path_split_times_time = plot_path / f"{experiment_title}_split_times_time.png"
 plot_path_split_times_bar = plot_path / f"{experiment_title}_split_times_bar.png"
 plot_path_baselines_comparison = plot_path / f"{experiment_title}_baselines.png"
-plot_filepaths = [
+plot_filepaths: list[Path] = [
     plot_path_fevals,
     plot_path_time,
     plot_path_aggregated,
@@ -78,4 +78,6 @@ def test_visualize_experiment():
         compare_extra_baselines=True,
     )
     for plot_filepath in plot_filepaths:
-        assert plot_filepath.exists(), f"{plot_filepath} does not exist"
+        assert (
+            plot_filepath.exists()
+        ), f"{plot_filepath} does not exist, files in folder: {[f.name for f in plot_filepath.parent.iterdir() if f.is_file()]}"

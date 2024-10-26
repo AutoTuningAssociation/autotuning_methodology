@@ -13,17 +13,22 @@ from autotuning_methodology.validators import validate_experimentsfile
 
 # get the path to the package
 package_path = Path(files("autotuning_methodology")).parent.parent
-# package_path = ""
 
 # setup file paths
+strategy = "random_sample_10_iter"
 mockfiles_path_root = package_path / Path("tests/autotuning_methodology/integration/mockfiles/")
 mockfiles_path_source = mockfiles_path_root / "mock_gpu.json"
 mockfiles_path = mockfiles_path_root
 experiment_filepath_test = mockfiles_path / "test.json"
 assert experiment_filepath_test.exists()
 kernel_id = "mocktest_kernel_convolution"
-cached_visualization_path = package_path / Path(f"cached_data_used/visualizations/test_run_experiment/{kernel_id}")
-cached_visualization_file = cached_visualization_path / "mock_GPU_random_sample_10_iter.npz"
+experiment_path = package_path / Path("test_run_experiment")
+experiment_path_run = experiment_path / "run"
+experiment_path_setup = experiment_path / "setup"
+
+cached_visualization_path = experiment_path_run / "generated_graphs"
+plot_path = cached_visualization_path / strategy
+cached_visualization_file = experiment_path_run / strategy / "mock_GPU_mocktest_kernel_convolution.npz"
 cached_visualization_imported_path = package_path / Path(
     f"cached_data_used/visualizations/test_output_file_writer/{kernel_id}"
 )
