@@ -39,7 +39,7 @@ import_runs_filepaths: list[Path] = list()
 
 def _remove_dir(path: Path):
     """Utility function for removing a directory and the contained files."""
-    assert path.exists()
+    assert path.exists(), f"Path to directory does not exist: {path.resolve()}"
     for sub in path.iterdir():
         sub.unlink()
     path.rmdir()
@@ -116,7 +116,7 @@ def test_bad_experiment():
 def test_run_experiment_bad_kernel_path():
     """Run an experiment with a bad kernel path."""
     experiment_filepath = str(mockfiles_path / "test_bad_kernel_path.json")
-    with pytest.raises(FileNotFoundError, match="No such path"):
+    with pytest.raises(FileNotFoundError, match="does not exist"):
         execute_experiment(experiment_filepath, profiling=False)
 
 
@@ -127,8 +127,10 @@ def test_run_experiment():
     if cached_visualization_file.exists():
         cached_visualization_file.unlink()
     assert not cached_visualization_file.exists()
-    (experiment, strategies, results_descriptions) = execute_experiment(str(experiment_filepath_test), profiling=False)
-    validate_experiment_results(experiment, strategies, results_descriptions)
+    (experiment, all_experimental_groups, searchspace_statistics, results_descriptions) = execute_experiment(
+        str(experiment_filepath_test), profiling=False
+    )
+    validate_experiment_results(experiment, all_experimental_groups, searchspace_statistics, results_descriptions)
 
 
 @pytest.mark.usefixtures("test_run_experiment")
@@ -138,26 +140,30 @@ def test_cached_experiment():
     assert normal_cachefile_destination.exists()
     assert cached_visualization_path.exists()
     assert cached_visualization_file.exists()
-    (experiment, strategies, results_descriptions) = execute_experiment(str(experiment_filepath_test), profiling=False)
-    validate_experiment_results(experiment, strategies, results_descriptions)
+    (experiment, all_experimental_groups, searchspace_statistics, results_descriptions) = execute_experiment(
+        str(experiment_filepath_test), profiling=False
+    )
+    validate_experiment_results(experiment, all_experimental_groups, searchspace_statistics, results_descriptions)
 
 
 def test_import_run_experiment():
     """Import runs from an experiment."""
     assert import_runs_path.exists()
-    (experiment, strategies, results_descriptions) = execute_experiment(
+    (experiment, all_experimental_groups, searchspace_statistics, results_descriptions) = execute_experiment(
         str(experiment_import_filepath_test), profiling=False
     )
     assert cached_visualization_imported_path.exists()
     assert cached_visualization_imported_file.exists()
-    validate_experiment_results(experiment, strategies, results_descriptions)
+    validate_experiment_results(experiment, all_experimental_groups, searchspace_statistics, results_descriptions)
 
 
 @pytest.mark.usefixtures("test_run_experiment")
 def test_curve_instance():
     """Test a Curve instance."""
     # setup the test
-    (experiment, strategies, results_descriptions) = execute_experiment(str(experiment_filepath_test), profiling=False)
+    (experiment, _, strategies, results_descriptions) = execute_experiment(
+        str(experiment_filepath_test), profiling=False
+    )
     kernel_name = experiment["kernels"][0]
     gpu_name = experiment["GPUs"][0]
     strategy_name = strategies[0]["name"]
@@ -188,18 +194,31 @@ def test_curve_instance():
 
 def validate_experiment_results(
     experiment,
-    strategies,
+    all_experimental_groups,
+    searchspace_statistics,
     results_descriptions,
 ):
     """Validate the types and contents returned from an experiment."""
-    assert isinstance(experiment, dict)
-    assert isinstance(strategies, list)
-    assert isinstance(results_descriptions, dict)
+    assert isinstance(experiment, dict), f"should be dict, is {type(experiment)} ({experiment})"
+    assert isinstance(
+        searchspace_statistics, dict
+    ), f"should be dict, is {type(searchspace_statistics)} ({searchspace_statistics})"
+    assert isinstance(
+        all_experimental_groups, list
+    ), f"should be list, is {type(all_experimental_groups)} ({all_experimental_groups})"
+    assert isinstance(
+        results_descriptions, dict
+    ), f"should be dict, is {type(results_descriptions)} ({results_descriptions})"
 
     # validate the contents
     validate_experimentsfile(experiment)
-    kernel_name = experiment["kernels"][0]
-    gpu_name = experiment["GPUs"][0]
-    assert len(strategies) == 1
-    strategy_name = strategies[0]["name"]
+    experimental_groups: dict = experiment["experimental_groups_defaults"]
+    assert isinstance(experimental_groups, dict)
+    kernel_name = experimental_groups["applications"][0]["name"]
+    assert kernel_name == "mocktest_kernel_convolution"
+    gpu_name = experimental_groups["gpus"][0]
+    assert gpu_name == "mock_GPU"
+    assert len(all_experimental_groups) == 1
+    strategy_name = all_experimental_groups[0]["name"]
+    assert strategy_name == "random_sample_10_iter"
     assert isinstance(results_descriptions[gpu_name][kernel_name][strategy_name], ResultsDescription)

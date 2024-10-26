@@ -428,7 +428,7 @@ def generate_experiment_file(
     return experiment_file_path.resolve()
 
 
-def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, dict, dict]:
+def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, list, dict, dict]:
     """Executes the experiment by retrieving it from the cache or running it.
 
     Args:
@@ -439,7 +439,7 @@ def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, di
         FileNotFoundError: if the path to the kernel specified in the experiments file is not found.
 
     Returns:
-        A tuple of the experiment dictionary, the experimental groups executed, and the resulting list of ``ResultsDescription``.
+        A tuple of the experiment dictionary, the experimental groups executed, the dictionary of ``Searchspace statistics`` and the resulting list of ``ResultsDescription``.
     """
     experiment = get_experiment(filepath)
     experiment_folderpath = Path(experiment["parent_folder"])
