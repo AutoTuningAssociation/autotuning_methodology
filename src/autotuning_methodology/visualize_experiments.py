@@ -350,16 +350,85 @@ class Visualize:
             # get settings
             scope: str = plot["scope"]
             style: str = plot["style"]
-            plot_x_value_types: list[str] = plot["x_axis_value_types"]
-            plot_y_value_types: list[str] = plot["y_axis_value_types"]
             if scope != "search_strategy":
                 continue
             if style != "heatmap":
                 raise NotImplementedError(f"Scope {scope} currently only supports 'heatmap' as a style, not {style}")
-            # TODO
-            # for each strategy:
-            # get the performance per x_type,y_type
-            # plot it into a heatmap
+            plot_x_value_types: list[str] = plot["x_axis_value_types"]
+            plot_y_value_types: list[str] = plot["y_axis_value_types"]
+
+            # get the performance per selected type in an array
+            # data_per_strategy: list[tuple] = list()
+            for x_type in plot_x_value_types:
+                for y_type in plot_y_value_types:
+                    # get the data from the collected aggregated data
+                    for gpu_name in self.experiment["experimental_groups_defaults"]["gpus"]:
+                        for application_name in self.experiment["experimental_groups_defaults"]["applications_names"]:
+                            # unpack the aggregation data
+                            random_baseline, strategies_curves, searchspace_stats, time_range, fevals_range = (
+                                aggregation_data[
+                                    get_aggregation_data_key(gpu_name=gpu_name, application_name=application_name)
+                                ]
+                            )
+                            for strategy in strategies_curves:
+                                if x_type == "time":
+                                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
+                                    # TODO
+                                if x_type == "applications" or y_type == "applications":
+                                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
+                                    # TODO
+                                if x_type == "gpus" or y_type == "gpus":
+                                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
+                                    # TODO
+                                if x_type == "searchspaces" or y_type == "searchspaces":
+                                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
+                                    # TODO
+                                # data_per_strategy.append(strategy_name, array, x_labels, y_labels)
+
+            # dummy data
+            strategy = "test"
+            marks = np.array(
+                [
+                    [50, 74, 40, 59, 90, 98],
+                    [72, 85, 64, 33, 47, 87],
+                    [52, 97, 44, 73, 17, 56],
+                    [69, 45, 89, 79, 70, 48],
+                    [87, 65, 56, 86, 72, 68],
+                    [90, 29, 78, 66, 50, 32],
+                ]
+            )
+
+            names = ["Sumit", "Ashu", "Sonu", "Kajal", "Kavita", "Naman"]
+            subjects = ["Maths", "Hindi", "English", "Social Studies", "Science", "Computer Science"]
+
+            # set up the
+            fig, axs = plt.subplots(
+                ncols=1, figsize=(9, 6), dpi=300
+            )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+            if not hasattr(axs, "__len__"):
+                axs = [axs]
+            title = f"Performance of {strategy} over {'+'.join(plot_x_value_types)},{'+'.join(plot_y_value_types)}"
+            fig.canvas.manager.set_window_title(title)
+            if not save_figs:
+                fig.suptitle(title)
+
+            # plot the heatmap
+            axs[0].set_xticks(ticks=np.arange(len(names)), labels=names, rotation=90)
+            axs[0].set_yticks(ticks=np.arange(len(subjects)), labels=subjects)
+            hm = axs[0].imshow(marks, cmap="Blues", interpolation="nearest")
+            fig.colorbar(hm)
+
+            # finalize the figure and save or display it
+            fig.tight_layout()
+            if save_figs:
+                filename_path = (
+                    Path(self.plot_filename_prefix)
+                    / f"{strategy}_heatmap_{'_'.join(plot_x_value_types)}_{'_'.join(plot_y_value_types)}"
+                )
+                fig.savefig(filename_path, dpi=300)
+                print(f"Figure saved to {filename_path}")
+            else:
+                plt.show()
 
         # plot the aggregated searchspaces
         for plot in plots:
