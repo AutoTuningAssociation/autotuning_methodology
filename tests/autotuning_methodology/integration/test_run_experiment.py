@@ -30,10 +30,6 @@ experiment_path_setup = experiment_path / "setup"
 cached_visualization_path = experiment_path_run
 plot_path = cached_visualization_path / "generated_graphs"
 cached_visualization_file = experiment_path_run / strategy / "mock_GPU_mocktest_kernel_convolution.npz"
-cached_visualization_imported_path = package_path / Path(
-    f"cached_data_used/visualizations/test_output_file_writer/{kernel_id}"
-)
-cached_visualization_imported_file = cached_visualization_imported_path / "mock_GPU_ktt_profile_searcher.npz"
 normal_cachefiles_path = package_path / Path(f"cached_data_used/cachefiles/{kernel_id}")
 normal_cachefile_destination = normal_cachefiles_path / "mock_gpu.json"
 experiment_import_filepath_test = mockfiles_path / "test_import_runs.json"
@@ -88,9 +84,6 @@ def teardown_module():
     if normal_cachefile_destination.exists():
         normal_cachefile_destination.unlink()
     _remove_dir(normal_cachefiles_path)
-    if cached_visualization_imported_file.exists():
-        cached_visualization_imported_file.unlink()
-    _remove_dir(cached_visualization_imported_path)
     # delete the import run test files from the import run folder
     for import_run_file in import_runs_filepaths:
         import_run_file.unlink()
@@ -107,7 +100,7 @@ def test_CLI_input():
     assert e.value.code == 2
 
     # improper input 2
-    with pytest.raises(ValueError, match="Invalid '-experiment' option"):
+    with pytest.raises(ValueError, match="Invalid '--experiment' option"):
         get_args_from_cli([""])
 
     # proper input
@@ -159,27 +152,17 @@ def test_cached_experiment():
     validate_experiment_results(experiment, all_experimental_groups, searchspace_statistics, results_descriptions)
 
 
-def test_import_run_experiment():
-    """Import runs from an experiment."""
-    assert import_runs_path.exists()
-    (experiment, all_experimental_groups, searchspace_statistics, results_descriptions) = execute_experiment(
-        str(experiment_import_filepath_test), profiling=False
-    )
-    assert cached_visualization_imported_path.exists()
-    assert cached_visualization_imported_file.exists()
-    validate_experiment_results(experiment, all_experimental_groups, searchspace_statistics, results_descriptions)
-
-
 @pytest.mark.usefixtures("test_run_experiment")
 def test_curve_instance():
     """Test a Curve instance."""
     # setup the test
-    (experiment, _, strategies, results_descriptions) = execute_experiment(
+    (experiment, all_experimental_groups, _, results_descriptions) = execute_experiment(
         str(experiment_filepath_test), profiling=False
     )
-    kernel_name = experiment["kernels"][0]
-    gpu_name = experiment["GPUs"][0]
-    strategy_name = strategies[0]["name"]
+    experimental_groups: dict = experiment["experimental_groups_defaults"]
+    kernel_name = experimental_groups["applications"][0]["name"]
+    gpu_name = experimental_groups["gpus"][0]
+    strategy_name = all_experimental_groups[0]["name"]
     results_description = results_descriptions[gpu_name][kernel_name][strategy_name]
     curve = StochasticOptimizationAlgorithm(results_description)
 

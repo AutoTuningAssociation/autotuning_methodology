@@ -6,15 +6,15 @@
         "applications": [
             {
                 "name": "mocktest_kernel_convolution",
-                "input_file": "../mockfiles/mocktest_kernel_convolution",
-                "folder": "../../../../cached_data_used/visualizations/mocktest_kernel_convolution"
+                "input_file": "mocktest_kernel_convolution.json",
+                "folder": "./tests/autotuning_methodology/integration/mockfiles"
             }
         ],
         "gpus": [
             "mock_GPU"
         ],
         "pattern_for_full_search_space_filenames": {
-            "regex": "../../../../cached_data_used/cachefiles/${applications}/${gpus}.json"
+            "regex": "./tests/autotuning_methodology/integration/mockfiles/mock_gpu_T4.json"
         },
         "stochastic": true,
         "repeats": 2,

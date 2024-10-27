@@ -6,15 +6,15 @@
         "applications": [
             {
                 "name": "convolution",
-                "input_file": "cached_data_used/kernels/convolution",
-                "folder": "../../../../cached_data_used/visualizations/convolution"
+                "input_file": "mocktest_kernel_convolution.json",
+                "folder": "./tests/autotuning_methodology/integration/mockfiles"
             }
         ],
         "gpus": [
             "RTX_2080_Ti"
         ],
         "pattern_for_full_search_space_filenames": {
-            "regex": "../../../../cached_data_used/cachefiles/${applications}/${gpus}.json"
+            "regex": "./tests/autotuning_methodology/integration/mockfiles/mock_gpu_T4.json"
         },
         "stochastic": true,
         "repeats": 100,
