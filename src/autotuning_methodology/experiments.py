@@ -11,7 +11,7 @@ from pathlib import Path
 from jsonschema import ValidationError
 
 from autotuning_methodology.caching import ResultsDescription
-from autotuning_methodology.runner import collect_results, convert_KTT_output_to_standard
+from autotuning_methodology.runner import collect_results
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 from autotuning_methodology.validators import validate_experimentsfile
 
@@ -208,11 +208,8 @@ def generate_all_experimental_groups(
                     )
 
                 if group["autotuner"] == "KTT":
-                    # convert full search space file from KTT output format to standard format
-                    # note that full search space file in KTT output format still gets injected to input json, that is because KTT needs to have that file in its own format
-                    # the converted file is loaded with this package when calculating search space statistics
-                    group["converted_full_search_space_file"] = convert_KTT_to_standard_full_search_space_file(
-                        group["full_search_space_file"], parent_folder_path.joinpath("setup")
+                    raise NotImplementedError(
+                        "KTT is working on supporting the shared interface. The old conversions have been deprecated. An older build can be used to use these functions."
                     )
 
                 group["output_file"]: Path = (
@@ -276,25 +273,6 @@ def get_full_search_space_filename_from_pattern(pattern: dict, gpu: str, applica
         )
     full_search_space_filename = make_and_check_path(filename)
     return full_search_space_filename
-
-
-def convert_KTT_to_standard_full_search_space_file(full_search_space_file: Path, setup_folder: Path) -> Path:
-    """Converts KTT-formatted full search space file to the standard format recognized by this package.
-
-    Args:
-        full_search_space_file: the path to KTT-formatted full search space file
-        setup_folder: path to setup directory for this experiment
-
-    Returns:
-        A path to newly created full search space file in standard format, in the setup directory of the experiment
-    """
-    converted_output = convert_KTT_output_to_standard(full_search_space_file.with_suffix(".json"))
-    converted_filename = setup_folder.joinpath(full_search_space_file.stem + "_converted.json")
-
-    with open(converted_filename, "w", encoding="utf-8") as converted_file:
-        json.dump(converted_output, converted_file, indent=4)
-
-    return converted_filename
 
 
 def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: SearchspaceStatistics) -> dict:

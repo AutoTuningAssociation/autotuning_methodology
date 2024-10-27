@@ -5,7 +5,6 @@ from __future__ import annotations  # for correct nested type hints e.g. list[st
 import contextlib
 import json
 import os
-import subprocess
 import time as python_time
 import warnings
 from inspect import getfile
@@ -85,72 +84,6 @@ def load_json(path: Path):
     assert path.exists(), f"File {str(path)} does not exist relative to {os.getcwd()}"
     with path.open() as file_results:
         return json.load(file_results)
-
-
-def convert_KTT_output_to_standard(output_filename: Path) -> dict:
-    with open(output_filename, "r", encoding="utf-8") as fp:
-        ktt_output = json.load(fp)
-
-    ktt_result_status_mapping = {
-        "Ok": "correct",
-        "ComputationFailed": "runtime",
-        "ValidationFailed": "correctness",
-        "CompilationFailed": "compile",
-        "DeviceLimitsExceeded": "runtime",
-        # timeout is marked as ComputationFailed in KTT
-        # constraints is marked as CompilationFailed in KTT
-    }
-    # map all timeunits to milliseconds
-    ktt_timeunit_mapping = {
-        "seconds": lambda x: x * 1000,
-        "milliseconds": lambda x: x,
-        "microseconds": lambda x: x / 1000,
-        "nanoseconds": lambda x: x / 1000000,
-    }
-
-    converted_output = {}
-
-    converted_output["schema_version"] = "1.0.0"
-    converted_output["results"] = []
-    timemapper = ktt_timeunit_mapping[str(ktt_output["Metadata"]["TimeUnit"]).lower()]
-
-    for ktt_result in ktt_output["Results"]:
-        converted_result = {}
-        converted_result["timestamp"] = ktt_output["Metadata"]["Timestamp"]
-        # note that KTT outputs each run separately, it does not merge the output for the same configuration
-        converted_result["configuration"] = {}
-        for tp in ktt_result["Configuration"]:
-            converted_result["configuration"][tp["Name"]] = tp["Value"]
-        # TODO PowerUsage also possible
-        converted_result["objectives"] = ["TotalDuration"]
-        converted_result["times"] = {}
-        # compilation time can be also calculated as sum of "Overhead" in all ComputationResults, it's just easier to do it this way in case of multiple kernel functions within one application
-        converted_result["times"]["compilation_time"] = timemapper(
-            ktt_result["TotalOverhead"]
-            - ktt_result["DataMovementOverhead"]
-            - ktt_result["SearcherOverhead"]
-            - ktt_result["ValidationOverhead"]
-        )
-        converted_result["times"]["runtimes"] = [timemapper(ktt_result["TotalDuration"])]
-        converted_result["times"]["framework"] = timemapper(ktt_result["DataMovementOverhead"])
-        converted_result["times"]["search_algorithm"] = timemapper(ktt_result["SearcherOverhead"])
-        converted_result["times"]["validation"] = timemapper(ktt_result["ValidationOverhead"])
-        # timeout, compile, runtime, correctness, constraints, correct
-        converted_result["invalidity"] = ktt_result_status_mapping[ktt_result["Status"]]
-        if ktt_result["Status"] == "ValidationFailed":
-            converted_result["correctness"] = 0
-        else:
-            converted_result["correctness"] = 1
-        converted_result["measurements"] = []
-        converted_result["measurements"].append(
-            {"name": "TotalDuration", "value": timemapper(ktt_result["TotalDuration"]), "unit": "milliseconds"}
-        )
-        # TODO what do we want here in case of multiple ComputationResults for multiple kernel functions?
-        if "ProfilingData" in ktt_result["ComputationResults"][0]:
-            for pc in ktt_result["ComputationResults"][0]["ProfilingData"]["Counters"]:
-                converted_result["measurements"].append({"name": pc["Name"], "value": pc["Value"], "unit": ""})
-        converted_output["results"].append(converted_result)
-    return converted_output
 
 
 def get_kerneltuner_results_and_metadata(
@@ -272,87 +205,9 @@ def tune(
 
     def tune_with_KTT():
         """Interface with KTT to tune the kernel and return the results."""
-        if profiling:
-            yappi.set_clock_type("cpu")
-            yappi.start()
-        # run KttTuningLauncher with input file
-        # change the directory to application folder
-        # TODO check if changing the directory is necessary, I think it was just looking for cu file, which is not actually necessary in simulated execution
-        with temporary_working_directory_change(group["application_folder"]):
-            # copy the modified input file (with inserted search method, budget, etc.)
-            subprocess.run(["cp", str(group["input_file"]), str(group["application_folder"])], check=False)
-            try:
-                # execute KttTuningLauncher from autotuner_path directory
-                executable = Path(group["autotuner_path"]).joinpath("KttTuningLauncher")
-                if group.get("set_this_to_pythonpath") is None:
-                    subprocess.run(
-                        [str(executable), group["input_file"].name],
-                        capture_output=True,
-                        check=True,
-                        env=os.environ | {"PYTHONPATH": group["autotuner_path"]},
-                    )
-                else:
-                    subprocess.run(
-                        [str(executable), group["input_file"].name],
-                        capture_output=True,
-                        check=True,
-                        env=os.environ | {"PYTHONPATH": group["set_this_to_pythonpath"]},
-                    )
-
-                # TODO this is a bug in KTT, sometimes it returns non-zero exit code even though nothing bad happened
-                # catching the exception here then covers even the situation when KTT fails, but I write the output
-                # just to let the user know what is going on if there is a runtime error
-            except subprocess.CalledProcessError as er:
-                print(er.stdout)
-                print(er.stderr)
-            # remove the modified input file, output file was written in experiment_parent_folder/run/group_name/
-            subprocess.run(["rm", group["input_file"].name], check=False)
-        if profiling:
-            yappi.stop()
-        metadata, results, total_time_ms = get_KTT_results_and_metadata(group["output_file"])
-        if "max_fevals" in group["budget"]:
-            max_fevals = group["budget"]["max_fevals"]
-            if len(results) < max_fevals * 0.1:
-                warnings.warn(
-                    f"Much fewer configurations were returned ({len(results)}) than the requested {max_fevals}"
-                )
-            if len(results) < 2:
-                raise ValueError("Less than two configurations were returned")
-        return metadata, results, total_time_ms
-
-    def get_KTT_results_and_metadata(output_filename: str) -> tuple[dict, list, float]:
-        """Retrieves results from KTT run.
-
-        Args:
-            output_filename: file with KTT output
-
-        Returns:
-            A tuple, a dictionary with metadata, a list of results and a float with total experiment duration in ms.
-        """
-        # convert the KTT-formatted file to dictionary corresponding to standard json format
-        run_output = convert_KTT_output_to_standard(output_filename)
-
-        metadata: dict = {}
-        results: list[dict] = run_output["results"]
-
-        total_time_ms = 0
-        for result in results:
-
-            # add to total time
-            total_duration = 0
-            for m in result["measurements"]:
-                if m["name"] == "TotalDuration":
-                    total_duration = m["value"]
-                    break
-            total_overhead = (
-                result["times"]["compilation_time"]
-                + result["times"]["framework"]
-                + result["times"]["search_algorithm"]
-                + result["times"]["validation"]
-            )
-            total_time_ms += total_duration + total_overhead
-
-        return metadata, results, round(total_time_ms)
+        raise NotImplementedError(
+            "KTT is working on supporting the shared interface. The old conversions have been deprecated. An older build can be used to use these functions."
+        )
 
     if group["autotuner"] == "KTT":
         metadata, results, total_time_ms = tune_with_KTT()

@@ -345,7 +345,6 @@ class SearchspaceStatistics:
             self.objective_times = dict()
             for key in self.objective_time_keys:
                 self.objective_times[key] = to_valid_array(results, key, performance=False, from_time_unit=timeunit)
-                # in runner.convert_KTT_output_to_standard all times get converted to ms
                 assert (
                     self.objective_times[key].ndim == 1
                 ), f"Should have one dimension, has {self.objective_times[key].ndim}"
