@@ -299,7 +299,7 @@ class Visualize:
                         elif x_type == "time":
                             x_axis_range = time_range
                         else:
-                            raise ValueError(f"X-axis type '{x_type}' not supported for scope '{plot}'")
+                            raise NotImplementedError(f"X-axis type '{x_type}' not supported for scope '{plot}'")
 
                         # create the figure and plots
                         fig, axs = plt.subplots(
@@ -346,7 +346,20 @@ class Visualize:
                             plt.show()
 
         # plot per searchstrategy
-        # TODO
+        for plot in plots:
+            # get settings
+            scope: str = plot["scope"]
+            style: str = plot["style"]
+            plot_x_value_types: list[str] = plot["x_axis_value_types"]
+            plot_y_value_types: list[str] = plot["y_axis_value_types"]
+            if scope != "search_strategy":
+                continue
+            if style != "heatmap":
+                raise NotImplementedError(f"Scope {scope} currently only supports 'heatmap' as a style, not {style}")
+            # TODO
+            # for each strategy:
+            # get the performance per x_type,y_type
+            # plot it into a heatmap
 
         # plot the aggregated searchspaces
         for plot in plots:
@@ -356,7 +369,7 @@ class Visualize:
             if scope != "aggregate":
                 continue
             if style != "line":
-                raise ValueError(f"Aggregated only supports 'line' as a style, not {style}")
+                raise NotImplementedError(f"{scope} currently only supports 'line' as a style, not {style}")
             # plot the aggregation
             if continue_after_comparison or not (compare_baselines or compare_split_times):
                 fig, axs = plt.subplots(

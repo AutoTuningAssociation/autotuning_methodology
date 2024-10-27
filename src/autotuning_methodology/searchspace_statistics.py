@@ -39,7 +39,7 @@ def convert_from_time_unit(value, from_unit: str):
     unit = from_unit.lower()
     if unit == "seconds" or unit == "s":
         return value
-    elif unit == "milliseconds" or unit == "ms":
+    elif unit == "milliseconds" or unit == "miliseconds" or unit == "ms":
         return value / 1000
     elif unit == "microseconds":
         return value / 1000000
