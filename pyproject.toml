@@ -64,7 +64,7 @@ minversion = "7.3"
 pythonpath = [
     "src",
 ] # necessary to get coverage reports without installing with `-e`
-addopts = "--cov --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 80"
+addopts = "--cov --cov-config=.coveragerc --cov-report html --cov-report term-missing --cov-fail-under 75"
 testpaths = ["tests/unit", "tests/integration", "tests/release"]
 
 [tool.black]

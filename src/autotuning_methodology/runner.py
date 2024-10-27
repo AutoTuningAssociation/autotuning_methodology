@@ -7,7 +7,6 @@ import json
 import os
 import time as python_time
 import warnings
-from inspect import getfile
 from pathlib import Path
 
 import numpy as np
@@ -132,50 +131,6 @@ def tune(
     Returns:
         A tuple of the metadata, the results, and the total runtime in milliseconds.
     """
-
-    def tune_with_kerneltuner_old():
-        """Interface with kernel tuner to tune the kernel and return the results."""
-        kernel = input_file
-        strategy = group
-
-        # get the path to the directory the kernel is in; can't use importlib.resources.files because its not a package
-        kernel_directory = Path(getfile(kernel)).parent
-        assert kernel_directory.is_dir()
-
-        # change CWD to the directory of the kernel
-        with temporary_working_directory_change(kernel_directory):
-            if profiling:
-                yappi.set_clock_type("cpu")
-                yappi.start()
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                res, env = kernel.tune(
-                    device_name=device_name,
-                    strategy=strategy["strategy"],
-                    strategy_options=strategy["options"],
-                    **tune_options,
-                )
-            if profiling:
-                yappi.stop()
-            metadata, results = get_kerneltuner_results_and_metadata(
-                filename_results=kernel.file_path_results, filename_metadata=kernel.file_path_metadata
-            )
-            # check that the number of iterations is correct
-            if "iterations" in strategy:
-                for result in results:
-                    if "runtime" in result:
-                        num_iters = len(results[0]["runtimes"])
-                        assert (
-                            strategy["iterations"] == num_iters
-                        ), f"Specified {strategy['iterations']=} not equal to actual number of iterations ({num_iters})"
-                        break
-        if "max_fevals" in strategy["options"]:
-            max_fevals = strategy["options"]["max_fevals"]
-            if len(results) < max_fevals * 0.1:
-                warnings.warn(f"Much fewer configurations were returned ({len(res)}) than the requested {max_fevals}")
-            if len(results) < 2:
-                raise ValueError("Less than two configurations were returned")
-        return metadata, results
 
     def tune_with_kerneltuner():
         """Interface with Kernel Tuner to tune the kernel and return the results."""
