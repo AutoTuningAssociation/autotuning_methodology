@@ -5,19 +5,19 @@ from pathlib import Path
 from test_run_experiment import (
     _remove_dir,
     cached_visualization_file,
-    cached_visualization_path,
     experiment_filepath_test,
+    experiment_path,
     kernel_id,
     mockfiles_path_source,
     normal_cachefile_destination,
     normal_cachefiles_path,
+    plot_path,
 )
 
 from autotuning_methodology.visualize_experiments import Visualize
 
 # setup file paths
 experiment_title = f"{kernel_id}_on_mock_GPU"
-plot_path = cached_visualization_path
 plot_path_fevals = plot_path / f"{experiment_title}_fevals.png"
 plot_path_time = plot_path / f"{experiment_title}_time.png"
 plot_path_aggregated = plot_path / "aggregated.png"
@@ -43,10 +43,6 @@ def setup_module():
     assert normal_cachefiles_path.exists()
     normal_cachefile_destination.write_text(mockfiles_path_source.read_text())
     assert normal_cachefile_destination.exists()
-    # cached_visualization_path.mkdir(parents=True, exist_ok=True)
-    # assert cached_visualization_path.exists()
-    # plot_path.mkdir(parents=True, exist_ok=True)
-    # assert plot_path.exists()
 
 
 def teardown_module():
@@ -54,13 +50,11 @@ def teardown_module():
     if normal_cachefile_destination.exists():
         normal_cachefile_destination.unlink()
     _remove_dir(normal_cachefiles_path)
-    if cached_visualization_file.exists():
-        cached_visualization_file.unlink()
-    _remove_dir(cached_visualization_path)
     if plot_path.exists():
         for plot_filepath in plot_filepaths:
             plot_filepath.unlink(missing_ok=True)
         plot_path.rmdir()
+    _remove_dir(experiment_path)
 
 
 def test_visualize_experiment():

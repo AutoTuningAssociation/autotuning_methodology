@@ -3,6 +3,7 @@
 from importlib.resources import files
 from pathlib import Path
 from shutil import copyfile
+from warnings import warn
 
 import numpy as np
 import pytest
@@ -26,8 +27,8 @@ experiment_path = package_path / Path("test_run_experiment")
 experiment_path_run = experiment_path / "run"
 experiment_path_setup = experiment_path / "setup"
 
-cached_visualization_path = experiment_path_run / "generated_graphs"
-plot_path = cached_visualization_path / strategy
+cached_visualization_path = experiment_path_run
+plot_path = cached_visualization_path / "generated_graphs"
 cached_visualization_file = experiment_path_run / strategy / "mock_GPU_mocktest_kernel_convolution.npz"
 cached_visualization_imported_path = package_path / Path(
     f"cached_data_used/visualizations/test_output_file_writer/{kernel_id}"
@@ -42,12 +43,24 @@ import_runs_path = package_path / Path("cached_data_used/import_runs")
 import_runs_filepaths: list[Path] = list()
 
 
-def _remove_dir(path: Path):
+def _remove_dir(path: Path, ignore_permission_error=False):
     """Utility function for removing a directory and the contained files."""
     assert path.exists(), f"Path to directory does not exist: {path.resolve()}"
+    permission_errors = []
     for sub in path.iterdir():
-        sub.unlink()
-    path.rmdir()
+        try:
+            if sub.is_dir():
+                _remove_dir(sub)
+            else:
+                sub.unlink()
+        except PermissionError as e:
+            if ignore_permission_error:
+                warn(e)
+                permission_errors.append(e)
+            else:
+                raise e
+    if not (ignore_permission_error and len(permission_errors) > 0):
+        path.rmdir()
 
 
 def setup_module():
@@ -57,9 +70,6 @@ def setup_module():
     assert normal_cachefiles_path.exists()
     normal_cachefile_destination.write_text(mockfiles_path_source.read_text())
     assert normal_cachefile_destination.exists()
-    # cached_visualization_path.mkdir(parents=True, exist_ok=True)
-    # assert cached_visualization_path.exists()
-    # copy the import run test files to the import run folder
     assert import_runs_source_path.exists()
     import_runs_path.mkdir(parents=True, exist_ok=True)
     assert import_runs_path.exists()
@@ -78,15 +88,13 @@ def teardown_module():
     if normal_cachefile_destination.exists():
         normal_cachefile_destination.unlink()
     _remove_dir(normal_cachefiles_path)
-    if cached_visualization_file.exists():
-        cached_visualization_file.unlink()
-    _remove_dir(cached_visualization_path)
     if cached_visualization_imported_file.exists():
         cached_visualization_imported_file.unlink()
     _remove_dir(cached_visualization_imported_path)
     # delete the import run test files from the import run folder
     for import_run_file in import_runs_filepaths:
         import_run_file.unlink()
+    _remove_dir(experiment_path)
 
 
 def test_CLI_input():
