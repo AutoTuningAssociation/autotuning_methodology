@@ -357,112 +357,157 @@ class Visualize:
             plot_x_value_types: list[str] = plot["x_axis_value_types"]
             plot_y_value_types: list[str] = plot["y_axis_value_types"]
 
-            # get the performance per selected type in an array
-            # data_per_strategy: list[tuple] = list()
-            for x_type in plot_x_value_types:
-                for y_type in plot_y_value_types:
-                    # get the data from the collected aggregated data
-                    for gpu_name in self.experiment["experimental_groups_defaults"]["gpus"]:
-                        for application_name in self.experiment["experimental_groups_defaults"]["applications_names"]:
-                            # unpack the aggregation data
-                            random_baseline, strategies_curves, searchspace_stats, time_range, fevals_range = (
-                                aggregation_data[
-                                    get_aggregation_data_key(gpu_name=gpu_name, application_name=application_name)
-                                ]
+            # collect and plot the data for each search strategy
+            data_collected: dict[str, list[tuple]] = defaultdict(list)
+            for strategy in self.strategies:
+                strategy_name = strategy["name"]
+                strategy_displayname = strategy["display_name"]
+                assert (
+                    sum([1 for s in self.strategies if s["name"] == strategy_name]) == 1
+                ), f"Strategy name '{strategy_name}' is not unqiue"
+
+                # get the data from the collected aggregated data
+                for gpu_name in self.experiment["experimental_groups_defaults"]["gpus"]:
+                    for application_name in self.experiment["experimental_groups_defaults"]["applications_names"]:
+                        # unpack the aggregation data
+                        random_baseline, strategies_curves, searchspace_stats, time_range, fevals_range = (
+                            aggregation_data[
+                                get_aggregation_data_key(gpu_name=gpu_name, application_name=application_name)
+                            ]
+                        )
+
+                        # get the data
+                        dist = searchspace_stats.objective_performances_total_sorted
+                        for _, strategy_curve in enumerate(strategies_curves):
+                            if strategy_name != strategy_curve.name:
+                                continue
+                            # get the real and fictional performance curves
+                            (
+                                _,
+                                x_axis_range_real,
+                                curve_real,
+                                _,
+                                _,
+                                x_axis_range_fictional,
+                                curve_fictional,
+                                _,
+                                _,
+                            ) = strategy_curve.get_curve_over_time(
+                                time_range, dist=dist, confidence_level=confidence_level
                             )
-                            for strategy in strategies_curves:
-                                if x_type == "time":
-                                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
-                                    # TODO
-                                if x_type == "applications" or y_type == "applications":
-                                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
-                                    # TODO
-                                if x_type == "gpus" or y_type == "gpus":
-                                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
-                                    # TODO
-                                if x_type == "searchspaces" or y_type == "searchspaces":
-                                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
-                                    # TODO
-                                # data_per_strategy.append(strategy_name, array, x_labels, y_labels)
+                            # combine the real and fictional parts to get the full curve
+                            combine = x_axis_range_fictional.ndim > 0
+                            x_axis_range = (
+                                np.concatenate([x_axis_range_real, x_axis_range_fictional])
+                                if combine
+                                else x_axis_range_real
+                            )
+                            assert np.array_equal(
+                                time_range, x_axis_range, equal_nan=True
+                            ), "time_range != x_axis_range"
+                            curve = np.concatenate([curve_real, curve_fictional]) if combine else curve_real
+                            # get the standardised curves and write them to the collector
+                            curve = random_baseline.get_standardised_curves(time_range, [curve], x_type="time")[0]
+                            score = np.mean(np.array(curve), axis=0)
 
-            # dummy data
-            strategy = "test"
-            marks = np.array(
-                [
-                    [50, 74, 40, 59, 90, 98],
-                    [72, 85, 64, 33, 47, 87],
-                    [52, 97, 44, 73, 17, 56],
-                    [69, 45, 89, 79, 70, 48],
-                    [87, 65, 56, 86, 72, 68],
-                    [90, 29, 78, 66, 50, 32],
-                ]
-            )
+                            # set the data
+                            data_collected[strategy_name].append(
+                                tuple([gpu_name, application_name, time_range, curve, score])
+                            )
 
-            names = ["Sumit", "Ashu", "Sonu", "Kajal", "Kavita", "Naman"]
-            subjects = ["Maths", "Hindi", "English", "Social Studies", "Science", "Computer Science"]
+                # get the performance per selected type in an array
+                strategy_data = data_collected[strategy_name]
+                assert len(plot_x_value_types) == 1
+                assert len(plot_y_value_types) == 1
+                x_type = plot_x_value_types[0]
+                y_type = plot_y_value_types[0]
+                plot_data = np.array([t[4] for t in strategy_data])
+                label_data = {
+                    "gpus": list(dict.fromkeys([t[0] for t in strategy_data])),
+                    "applications": list(dict.fromkeys([t[1] for t in strategy_data])),
+                    "searchspaces": list(dict.fromkeys([f"{t[0]}|{t[1]}" for t in strategy_data])),
+                    "time": [],
+                }
+                x_labels = label_data[x_type]
+                y_labels = label_data[y_type]
+                if x_type == "time" or y_type == "time":
+                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
+                    # TODO override plot_data and x_labels, requires some form of binning time
+                elif x_type == "searchspaces" or y_type == "searchspaces":
+                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
+                else:
+                    plot_data = plot_data.reshape(len(x_labels), len(y_labels))
 
-            # set up the
-            fig, axs = plt.subplots(
-                ncols=1, figsize=(9, 6), dpi=300
-            )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-            if not hasattr(axs, "__len__"):
-                axs = [axs]
-            title = f"Performance of {strategy} over {'+'.join(plot_x_value_types)},{'+'.join(plot_y_value_types)}"
-            fig.canvas.manager.set_window_title(title)
-            if not save_figs:
-                fig.suptitle(title)
-
-            # plot the heatmap
-            axs[0].set_xticks(ticks=np.arange(len(names)), labels=names, rotation=90)
-            axs[0].set_yticks(ticks=np.arange(len(subjects)), labels=subjects)
-            hm = axs[0].imshow(marks, cmap="Blues", interpolation="nearest")
-            fig.colorbar(hm)
-
-            # finalize the figure and save or display it
-            fig.tight_layout()
-            if save_figs:
-                filename_path = (
-                    Path(self.plot_filename_prefix)
-                    / f"{strategy}_heatmap_{'_'.join(plot_x_value_types)}_{'_'.join(plot_y_value_types)}"
-                )
-                fig.savefig(filename_path, dpi=300)
-                print(f"Figure saved to {filename_path}")
-            else:
-                plt.show()
-
-        # plot the aggregated searchspaces
-        for plot in plots:
-            # get settings
-            scope: str = plot["scope"]
-            style: str = plot["style"]
-            if scope != "aggregate":
-                continue
-            if style != "line":
-                raise NotImplementedError(f"{scope} currently only supports 'line' as a style, not {style}")
-            # plot the aggregation
-            if continue_after_comparison or not (compare_baselines or compare_split_times):
+                # set up the plot
                 fig, axs = plt.subplots(
-                    ncols=1, figsize=(9, 6), dpi=300
+                    ncols=1, figsize=(8, 8), dpi=300
                 )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
                 if not hasattr(axs, "__len__"):
                     axs = [axs]
-                title = f"""Aggregated Data\napplications:
-                        {', '.join(self.experiment['experimental_groups_defaults']['applications_names'])}\nGPUs: {', '.join(self.experiment['experimental_groups_defaults']['gpus'])}"""
+                title = f"Performance of {strategy_displayname} over {'+'.join(plot_x_value_types)},{'+'.join(plot_y_value_types)}"
                 fig.canvas.manager.set_window_title(title)
                 if not save_figs:
                     fig.suptitle(title)
 
+                # plot the heatmap
+                vmin = -0.5
+                vmax = 1.0
+                outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
+                assert (
+                    len(outside_range[0]) == 0 and len(outside_range[1]) == 0
+                ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
+                axs[0].set_xlabel("GPUs" if x_type == "gpus" else x_type.capitalize())
+                axs[0].set_ylabel("GPUs" if y_type == "gpus" else y_type.capitalize())
+                axs[0].set_xticks(ticks=np.arange(len(x_labels)), labels=x_labels, rotation=45)
+                axs[0].set_yticks(ticks=np.arange(len(y_labels)), labels=y_labels)
+                hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap="RdYlGn", interpolation="nearest")
+                fig.colorbar(hm)
+
                 # finalize the figure and save or display it
-                self.plot_strategies_aggregated(
-                    axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
-                )
                 fig.tight_layout()
                 if save_figs:
-                    filename_path = Path(self.plot_filename_prefix) / "aggregated"
+                    filename_path = (
+                        Path(self.plot_filename_prefix)
+                        / f"{strategy_name}_heatmap_{'_'.join(plot_x_value_types)}_{'_'.join(plot_y_value_types)}"
+                    )
                     fig.savefig(filename_path, dpi=300)
                     print(f"Figure saved to {filename_path}")
                 else:
                     plt.show()
+
+            # plot the aggregated searchspaces
+            for plot in plots:
+                # get settings
+                scope: str = plot["scope"]
+                style: str = plot["style"]
+                if scope != "aggregate":
+                    continue
+                if style != "line":
+                    raise NotImplementedError(f"{scope} currently only supports 'line' as a style, not {style}")
+                # plot the aggregation
+                if continue_after_comparison or not (compare_baselines or compare_split_times):
+                    fig, axs = plt.subplots(
+                        ncols=1, figsize=(9, 6), dpi=300
+                    )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+                    if not hasattr(axs, "__len__"):
+                        axs = [axs]
+                    title = f"""Aggregated Data\napplications:
+                            {', '.join(self.experiment['experimental_groups_defaults']['applications_names'])}\nGPUs: {', '.join(self.experiment['experimental_groups_defaults']['gpus'])}"""
+                    fig.canvas.manager.set_window_title(title)
+                    if not save_figs:
+                        fig.suptitle(title)
+
+                    # finalize the figure and save or display it
+                    self.plot_strategies_aggregated(
+                        axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
+                    )
+                    fig.tight_layout()
+                    if save_figs:
+                        filename_path = Path(self.plot_filename_prefix) / "aggregated"
+                        fig.savefig(filename_path, dpi=300)
+                        print(f"Figure saved to {filename_path}")
+                    else:
+                        plt.show()
 
     def plot_baselines_comparison(
         self,
