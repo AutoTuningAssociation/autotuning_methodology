@@ -318,6 +318,21 @@
                                     "heatmap"
                                 ]
                             },
+                            "vmin": {
+                                "description": "The minimum value on the color scale.",
+                                "type": "integer",
+                                "default": -0.5
+                            },
+                            "vmax": {
+                                "description": "The maximum value on the color scale.",
+                                "type": "integer",
+                                "default": 1.0
+                            },
+                            "bins": {
+                                "description": "The number of bins to use when plotting over a heatmap over a non-discrete range (e.g. time)",
+                                "type": "integer",
+                                "default": 10
+                            },
                             "x_axis_value_types": {
                                 "description": "Types of value on the x-axis. Multiple values may produce multiple (sub) plots.",
                                 "type": "array",

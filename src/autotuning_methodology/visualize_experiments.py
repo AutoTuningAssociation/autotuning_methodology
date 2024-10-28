@@ -360,6 +360,8 @@ class Visualize:
             assert len(plot_y_value_types) == 1
             x_type = plot_x_value_types[0]
             y_type = plot_y_value_types[0]
+            vmin = plot.get("vmin", -0.5)
+            vmax = plot.get("vmax", 1.0)
             bins = plot.get("bins", 10)
 
             # collect and plot the data for each search strategy
@@ -461,8 +463,6 @@ class Visualize:
                     fig.suptitle(title)
 
                 # plot the heatmap
-                vmin = -0.5
-                vmax = 1.0
                 outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
                 assert (
                     len(outside_range[0]) == 0 and len(outside_range[1]) == 0
