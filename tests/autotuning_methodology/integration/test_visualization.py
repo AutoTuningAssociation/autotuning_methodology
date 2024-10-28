@@ -20,6 +20,7 @@ from autotuning_methodology.visualize_experiments import Visualize
 experiment_title = f"{kernel_id}_on_mock_GPU"
 plot_path_fevals = plot_path / f"{experiment_title}_fevals.png"
 plot_path_time = plot_path / f"{experiment_title}_time.png"
+plot_path_heatmap = plot_path / "random_sample_10_iter_heatmap_applications_gpus.png"
 plot_path_aggregated = plot_path / "aggregated.png"
 plot_path_split_times_fevals = plot_path / f"{experiment_title}_split_times_fevals.png"
 plot_path_split_times_time = plot_path / f"{experiment_title}_split_times_time.png"
@@ -28,6 +29,7 @@ plot_path_baselines_comparison = plot_path / f"{experiment_title}_baselines.png"
 plot_filepaths: list[Path] = [
     plot_path_fevals,
     plot_path_time,
+    plot_path_heatmap,
     plot_path_aggregated,
     plot_path_split_times_fevals,
     plot_path_split_times_time,

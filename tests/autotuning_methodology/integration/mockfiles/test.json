@@ -67,6 +67,16 @@
                 ]
             },
             {
+                "scope": "search_strategy",
+                "style": "heatmap",
+                "x_axis_value_types": [
+                    "applications"
+                ],
+                "y_axis_value_types": [
+                    "gpus"
+                ]
+            },
+            {
                 "scope": "aggregate",
                 "style": "line",
                 "x_axis_value_types": [
