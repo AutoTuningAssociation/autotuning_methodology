@@ -356,6 +356,11 @@ class Visualize:
                 raise NotImplementedError(f"Scope {scope} currently only supports 'heatmap' as a style, not {style}")
             plot_x_value_types: list[str] = plot["x_axis_value_types"]
             plot_y_value_types: list[str] = plot["y_axis_value_types"]
+            assert len(plot_x_value_types) == 1
+            assert len(plot_y_value_types) == 1
+            x_type = plot_x_value_types[0]
+            y_type = plot_y_value_types[0]
+            bins = plot.get("bins", 10)
 
             # collect and plot the data for each search strategy
             data_collected: dict[str, list[tuple]] = defaultdict(list)
@@ -409,6 +414,7 @@ class Visualize:
                             # get the standardised curves and write them to the collector
                             curve = random_baseline.get_standardised_curves(time_range, [curve], x_type="time")[0]
                             score = np.mean(np.array(curve), axis=0)
+                            # TODO do binned curve
 
                             # set the data
                             data_collected[strategy_name].append(
@@ -417,26 +423,31 @@ class Visualize:
 
                 # get the performance per selected type in an array
                 strategy_data = data_collected[strategy_name]
-                assert len(plot_x_value_types) == 1
-                assert len(plot_y_value_types) == 1
-                x_type = plot_x_value_types[0]
-                y_type = plot_y_value_types[0]
                 plot_data = np.array([t[4] for t in strategy_data])
+                cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1)
+                cutoff_percentile_start: float = self.experiment["statistics_settings"].get(
+                    "cutoff_percentile_start", 0.01
+                )
                 label_data = {
-                    "gpus": list(dict.fromkeys([t[0] for t in strategy_data])),
-                    "applications": list(dict.fromkeys([t[1] for t in strategy_data])),
-                    "searchspaces": list(dict.fromkeys([f"{t[0]}|{t[1]}" for t in strategy_data])),
-                    "time": [],
+                    "gpus": (list(dict.fromkeys([t[0] for t in strategy_data])), "GPUs"),
+                    "applications": (list(dict.fromkeys([t[1] for t in strategy_data])), "Applications"),
+                    "searchspaces": (list(dict.fromkeys([f"{t[0]}|{t[1]}" for t in strategy_data])), "Searchspaces"),
+                    "time": (
+                        [np.linspace(0.0, 1.0, bins)],
+                        f"Fraction of time between {cutoff_percentile_start*100}% and {cutoff_percentile*100}%",
+                    ),
                 }
                 x_labels = label_data[x_type]
                 y_labels = label_data[y_type]
-                if x_type == "time" or y_type == "time":
+                if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
                     raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
-                    # TODO override plot_data and x_labels, requires some form of binning time
-                elif x_type == "searchspaces" or y_type == "searchspaces":
-                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
-                else:
+                    # TODO override plot_data
+                elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
                     plot_data = plot_data.reshape(len(x_labels), len(y_labels))
+                else:
+                    raise NotImplementedError(
+                        f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
+                    )
 
                 # set up the plot
                 fig, axs = plt.subplots(
@@ -456,8 +467,8 @@ class Visualize:
                 assert (
                     len(outside_range[0]) == 0 and len(outside_range[1]) == 0
                 ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
-                axs[0].set_xlabel("GPUs" if x_type == "gpus" else x_type.capitalize())
-                axs[0].set_ylabel("GPUs" if y_type == "gpus" else y_type.capitalize())
+                axs[0].set_xlabel(label_data[x_type])
+                axs[0].set_ylabel(label_data[y_type])
                 axs[0].set_xticks(ticks=np.arange(len(x_labels)), labels=x_labels, rotation=45)
                 axs[0].set_yticks(ticks=np.arange(len(y_labels)), labels=y_labels)
                 hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap="RdYlGn", interpolation="nearest")
