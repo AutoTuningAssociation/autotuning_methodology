@@ -101,25 +101,13 @@
     "visualization_settings": {
         "plots": [
             {
-                "scope": "searchspace",
-                "style": "line",
+                "scope": "search_strategy",
+                "style": "heatmap",
                 "x_axis_value_types": [
-                    "fevals"
+                    "applications"
                 ],
                 "y_axis_value_types": [
-                    "normalized",
-                    "baseline"
-                ]
-            },
-            {
-                "scope": "searchspace",
-                "style": "line",
-                "x_axis_value_types": [
-                    "time"
-                ],
-                "y_axis_value_types": [
-                    "normalized",
-                    "baseline"
+                    "gpus"
                 ]
             },
             {
@@ -130,16 +118,6 @@
                 ],
                 "y_axis_value_types": [
                     "searchspaces"
-                ]
-            },
-            {
-                "scope": "search_strategy",
-                "style": "heatmap",
-                "x_axis_value_types": [
-                    "applications"
-                ],
-                "y_axis_value_types": [
-                    "gpus"
                 ]
             },
             {
