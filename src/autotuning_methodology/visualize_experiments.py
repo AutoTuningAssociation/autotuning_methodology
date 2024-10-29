@@ -428,7 +428,7 @@ class Visualize:
 
                 # get the performance per selected type in an array
                 strategy_data = data_collected[strategy_name]
-                plot_data = np.array([t[2] for t in strategy_data])
+                plot_data = np.stack(np.array([t[2] for t in strategy_data]))
                 cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1)
                 cutoff_percentile_start: float = self.experiment["statistics_settings"].get(
                     "cutoff_percentile_start", 0.01
@@ -445,7 +445,7 @@ class Visualize:
                 x_labels = label_data[x_type][0]
                 y_labels = label_data[y_type][0]
                 if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
-                    plot_data = np.array([t[3] for t in strategy_data])
+                    plot_data = np.stack(np.array([t[3] for t in strategy_data]))
                     if x_type == "searchspaces":
                         plot_data = plot_data.transpose()
                     # raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
@@ -479,6 +479,10 @@ class Visualize:
                 hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap="RdYlGn", interpolation="nearest")
                 cbar = fig.colorbar(hm)
                 cbar.set_label("Performance relative to baseline (0.0) and optimum (1.0)")
+
+                # adjust from squares to rectangles if necessary
+                if plot_data.shape[0] != plot_data.shape[1]:
+                    axs[0].set_aspect(plot_data.shape[1] / plot_data.shape[0])
 
                 # keep only non-overlapping xticks
                 if len(x_labels) > 15:
