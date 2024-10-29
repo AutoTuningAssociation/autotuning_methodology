@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 from test_run_experiment import (
     _remove_dir,
     cached_visualization_file,
@@ -61,6 +62,7 @@ def teardown_module():
     _remove_dir(experiment_path)
 
 
+@pytest.mark.dependency()
 def test_visualize_experiment():
     """Visualize a dummy experiment."""
     assert normal_cachefile_destination.exists()
@@ -75,6 +77,12 @@ def test_visualize_experiment():
         continue_after_comparison=True,
         compare_extra_baselines=True,
     )
+
+
+@pytest.mark.dependency(depends=["test_visualize_experiment"])
+@pytest.mark.parametrize("plot_filepath", plot_filepaths)
+def test_visualized_plot(plot_filepath: Path):
+    """Test whether valid plots have been produced."""
     for plot_filepath in plot_filepaths:
         assert (
             plot_filepath.exists()
