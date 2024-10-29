@@ -447,15 +447,15 @@ class Visualize:
                         f"Fraction of time between {cutoff_percentile_start*100}% and {cutoff_percentile*100}%",
                     ),
                 }
-                x_labels = label_data[x_type][0]
-                y_labels = label_data[y_type][0]
+                x_ticks = label_data[x_type][0]
+                y_ticks = label_data[y_type][0]
                 if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
                     plot_data = np.stack(np.array([t[3] for t in strategy_data]))
                     if x_type == "searchspaces":
                         plot_data = plot_data.transpose()
                     # raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
                 elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
-                    plot_data = plot_data.reshape(len(x_labels), len(y_labels))
+                    plot_data = plot_data.reshape(len(x_ticks), len(y_ticks))
                     if x_type == "gpus" and y_type == "applications":
                         plot_data = plot_data.transpose()
                 else:
@@ -483,8 +483,8 @@ class Visualize:
                 # plot the heatmap
                 axs[0].set_xlabel(label_data[x_type][1])
                 axs[0].set_ylabel(label_data[y_type][1])
-                axs[0].set_xticks(ticks=np.arange(len(x_labels)), labels=x_labels, rotation=45)
-                axs[0].set_yticks(ticks=np.arange(len(y_labels)), labels=y_labels)
+                axs[0].set_xticks(ticks=np.arange(len(x_ticks)), labels=x_ticks, rotation=45)
+                axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
                 hm = axs[0].imshow(
                     plot_data, vmin=vmin, vmax=vmax, cmap="RdYlGn", interpolation="nearest", aspect="auto"
                 )
@@ -493,19 +493,20 @@ class Visualize:
                 cbar = fig.colorbar(hm)
                 cbar.set_label("Performance relative to baseline (0.0) and optimum (1.0)")
 
-                # keep only non-overlapping xticks
-                if len(x_labels) > 15:
-                    [
-                        l.set_visible(False)
-                        for (i, l) in enumerate(axs[0].xaxis.get_ticklabels())
-                        if i % round(len(x_labels) / 15) != 0
-                    ]
-                if len(y_labels) > 15:
-                    [
-                        l.set_visible(False)
-                        for (i, l) in enumerate(axs[0].yaxis.get_ticklabels())
-                        if i % round(len(y_labels) / 15) != 0
-                    ]
+                # keep only non-overlapping ticks
+                max_ticks = 15
+                if len(x_ticks) > max_ticks:
+                    indices = np.linspace(0, len(x_ticks) - 1, max_ticks).round()
+                    hide_tick = np.isin(np.arange(len(x_ticks)), indices, invert=True, assume_unique=True)
+                    for i, t in enumerate(axs[0].xaxis.get_ticklabels()):
+                        if hide_tick[i]:
+                            t.set_visible(False)
+                if len(y_ticks) > max_ticks:
+                    indices = np.linspace(0, len(y_ticks) - 1, max_ticks).round()
+                    hide_tick = np.isin(np.arange(len(y_ticks)), indices, invert=True, assume_unique=True)
+                    for i, t in enumerate(axs[0].yaxis.get_ticklabels()):
+                        if hide_tick[i]:
+                            t.set_visible(False)
 
                 # finalize the figure and save or display it
                 fig.tight_layout()
