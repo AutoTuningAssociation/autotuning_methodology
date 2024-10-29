@@ -422,8 +422,10 @@ class Visualize:
                             score_binned = [np.mean(c, axis=0) for c in curve_binned]
 
                             # set the data
+                            gpu_display_name = str(gpu_name).replace("_", " ")
+                            application_display_name = str(application_name).replace("_", " ").capitalize()
                             data_collected[strategy_name].append(
-                                tuple([gpu_name, application_name, score, score_binned])
+                                tuple([gpu_display_name, application_display_name, score, score_binned])
                             )
 
                 # get the performance per selected type in an array
@@ -436,7 +438,10 @@ class Visualize:
                 label_data = {
                     "gpus": (list(dict.fromkeys([t[0] for t in strategy_data])), "GPUs"),
                     "applications": (list(dict.fromkeys([t[1] for t in strategy_data])), "Applications"),
-                    "searchspaces": (list(dict.fromkeys([f"{t[0]}|{t[1]}" for t in strategy_data])), "Searchspaces"),
+                    "searchspaces": (
+                        list(dict.fromkeys([f"{t[1]} on\n{t[0]}" for t in strategy_data])),
+                        "Searchspaces",
+                    ),
                     "time": (
                         np.round(np.linspace(0.0, 1.0, bins), 2),
                         f"Fraction of time between {cutoff_percentile_start*100}% and {cutoff_percentile*100}%",
@@ -451,6 +456,8 @@ class Visualize:
                     # raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
                 elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
                     plot_data = plot_data.reshape(len(x_labels), len(y_labels))
+                    if x_type == "gpus" and y_type == "applications":
+                        plot_data = plot_data.transpose()
                 else:
                     raise NotImplementedError(
                         f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
@@ -464,7 +471,7 @@ class Visualize:
 
                 # set up the plot
                 fig, axs = plt.subplots(
-                    ncols=1, figsize=(9, 7), dpi=300
+                    ncols=1, figsize=(9, 6), dpi=300
                 )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
                 if not hasattr(axs, "__len__"):
                     axs = [axs]
@@ -570,7 +577,7 @@ class Visualize:
             save_fig: whether to save the resulting figure to file. Defaults to False.
         """
         dist = searchspace_stats.objective_performances_total_sorted
-        plt.figure(figsize=(8, 5), dpi=300)
+        plt.figure(figsize=(9, 7), dpi=300)
 
         # list the baselines to test
         baselines: list[Baseline] = list()
