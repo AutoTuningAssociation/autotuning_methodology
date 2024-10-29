@@ -456,9 +456,15 @@ class Visualize:
                         f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
                     )
 
+                # validate the data
+                outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
+                assert (
+                    len(outside_range[0]) == 0 and len(outside_range[1]) == 0
+                ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
+
                 # set up the plot
                 fig, axs = plt.subplots(
-                    ncols=1, figsize=(8, 8), dpi=300
+                    ncols=1, figsize=(9, 7), dpi=300
                 )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
                 if not hasattr(axs, "__len__"):
                     axs = [axs]
@@ -468,21 +474,17 @@ class Visualize:
                     fig.suptitle(title)
 
                 # plot the heatmap
-                outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
-                assert (
-                    len(outside_range[0]) == 0 and len(outside_range[1]) == 0
-                ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
                 axs[0].set_xlabel(label_data[x_type][1])
                 axs[0].set_ylabel(label_data[y_type][1])
                 axs[0].set_xticks(ticks=np.arange(len(x_labels)), labels=x_labels, rotation=45)
                 axs[0].set_yticks(ticks=np.arange(len(y_labels)), labels=y_labels)
-                hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap="RdYlGn", interpolation="nearest")
+                hm = axs[0].imshow(
+                    plot_data, vmin=vmin, vmax=vmax, cmap="RdYlGn", interpolation="nearest", aspect="auto"
+                )
+
+                # plot the colorbar
                 cbar = fig.colorbar(hm)
                 cbar.set_label("Performance relative to baseline (0.0) and optimum (1.0)")
-
-                # adjust from squares to rectangles if necessary
-                if plot_data.shape[0] != plot_data.shape[1]:
-                    axs[0].set_aspect(plot_data.shape[1] / plot_data.shape[0])
 
                 # keep only non-overlapping xticks
                 if len(x_labels) > 15:
