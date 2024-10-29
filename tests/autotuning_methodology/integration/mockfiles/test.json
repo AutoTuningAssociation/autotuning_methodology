@@ -74,7 +74,21 @@
                 ],
                 "y_axis_value_types": [
                     "gpus"
-                ]
+                ],
+                "vmin": -0.75,
+                "vmax": 1.2
+            },
+            {
+                "scope": "search_strategy",
+                "style": "heatmap",
+                "x_axis_value_types": [
+                    "time"
+                ],
+                "y_axis_value_types": [
+                    "searchspaces"
+                ],
+                "vmin": -0.75,
+                "bins": 10
             },
             {
                 "scope": "aggregate",
