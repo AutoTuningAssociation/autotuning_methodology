@@ -119,7 +119,7 @@
                 "y_axis_value_types": [
                     "searchspaces"
                 ],
-                "bins": 10
+                "bins": 100
             },
             {
                 "scope": "aggregate",

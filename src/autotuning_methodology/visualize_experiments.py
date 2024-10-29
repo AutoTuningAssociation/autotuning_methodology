@@ -414,18 +414,21 @@ class Visualize:
                             ), "time_range != x_axis_range"
                             curve = np.concatenate([curve_real, curve_fictional]) if combine else curve_real
                             # get the standardised curves and write them to the collector
-                            curve = random_baseline.get_standardised_curves(time_range, [curve], x_type="time")[0]
-                            score = np.mean(np.array(curve), axis=0)
-                            # TODO do binned curve
+                            curve: np.ndarray = random_baseline.get_standardised_curves(
+                                time_range, [curve], x_type="time"
+                            )[0]
+                            score = np.mean(curve, axis=0)
+                            curve_binned = np.array_split(curve, bins)
+                            score_binned = [np.mean(c, axis=0) for c in curve_binned]
 
                             # set the data
                             data_collected[strategy_name].append(
-                                tuple([gpu_name, application_name, time_range, curve, score])
+                                tuple([gpu_name, application_name, score, score_binned])
                             )
 
                 # get the performance per selected type in an array
                 strategy_data = data_collected[strategy_name]
-                plot_data = np.array([t[4] for t in strategy_data])
+                plot_data = np.array([t[2] for t in strategy_data])
                 cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1)
                 cutoff_percentile_start: float = self.experiment["statistics_settings"].get(
                     "cutoff_percentile_start", 0.01
@@ -435,15 +438,17 @@ class Visualize:
                     "applications": (list(dict.fromkeys([t[1] for t in strategy_data])), "Applications"),
                     "searchspaces": (list(dict.fromkeys([f"{t[0]}|{t[1]}" for t in strategy_data])), "Searchspaces"),
                     "time": (
-                        [np.linspace(0.0, 1.0, bins)],
+                        np.round(np.linspace(0.0, 1.0, bins), 2),
                         f"Fraction of time between {cutoff_percentile_start*100}% and {cutoff_percentile*100}%",
                     ),
                 }
-                x_labels = label_data[x_type]
-                y_labels = label_data[y_type]
+                x_labels = label_data[x_type][0]
+                y_labels = label_data[y_type][0]
                 if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
-                    raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
-                    # TODO override plot_data
+                    plot_data = np.array([t[3] for t in strategy_data])
+                    if x_type == "searchspaces":
+                        plot_data = plot_data.transpose()
+                    # raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
                 elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
                     plot_data = plot_data.reshape(len(x_labels), len(y_labels))
                 else:
@@ -467,12 +472,27 @@ class Visualize:
                 assert (
                     len(outside_range[0]) == 0 and len(outside_range[1]) == 0
                 ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
-                axs[0].set_xlabel(label_data[x_type])
-                axs[0].set_ylabel(label_data[y_type])
+                axs[0].set_xlabel(label_data[x_type][1])
+                axs[0].set_ylabel(label_data[y_type][1])
                 axs[0].set_xticks(ticks=np.arange(len(x_labels)), labels=x_labels, rotation=45)
                 axs[0].set_yticks(ticks=np.arange(len(y_labels)), labels=y_labels)
                 hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap="RdYlGn", interpolation="nearest")
-                fig.colorbar(hm)
+                cbar = fig.colorbar(hm)
+                cbar.set_label("Performance relative to baseline (0.0) and optimum (1.0)")
+
+                # keep only non-overlapping xticks
+                if len(x_labels) > 15:
+                    [
+                        l.set_visible(False)
+                        for (i, l) in enumerate(axs[0].xaxis.get_ticklabels())
+                        if i % round(len(x_labels) / 15) != 0
+                    ]
+                if len(y_labels) > 15:
+                    [
+                        l.set_visible(False)
+                        for (i, l) in enumerate(axs[0].yaxis.get_ticklabels())
+                        if i % round(len(y_labels) / 15) != 0
+                    ]
 
                 # finalize the figure and save or display it
                 fig.tight_layout()
@@ -486,39 +506,39 @@ class Visualize:
                 else:
                     plt.show()
 
-            # plot the aggregated searchspaces
-            for plot in plots:
-                # get settings
-                scope: str = plot["scope"]
-                style: str = plot["style"]
-                if scope != "aggregate":
-                    continue
-                if style != "line":
-                    raise NotImplementedError(f"{scope} currently only supports 'line' as a style, not {style}")
-                # plot the aggregation
-                if continue_after_comparison or not (compare_baselines or compare_split_times):
-                    fig, axs = plt.subplots(
-                        ncols=1, figsize=(9, 6), dpi=300
-                    )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
-                    if not hasattr(axs, "__len__"):
-                        axs = [axs]
-                    title = f"""Aggregated Data\napplications:
-                            {', '.join(self.experiment['experimental_groups_defaults']['applications_names'])}\nGPUs: {', '.join(self.experiment['experimental_groups_defaults']['gpus'])}"""
-                    fig.canvas.manager.set_window_title(title)
-                    if not save_figs:
-                        fig.suptitle(title)
+        # plot the aggregated searchspaces
+        for plot in plots:
+            # get settings
+            scope: str = plot["scope"]
+            style: str = plot["style"]
+            if scope != "aggregate":
+                continue
+            if style != "line":
+                raise NotImplementedError(f"{scope} currently only supports 'line' as a style, not {style}")
+            # plot the aggregation
+            if continue_after_comparison or not (compare_baselines or compare_split_times):
+                fig, axs = plt.subplots(
+                    ncols=1, figsize=(9, 6), dpi=300
+                )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+                if not hasattr(axs, "__len__"):
+                    axs = [axs]
+                title = f"""Aggregated Data\napplications:
+                        {', '.join(self.experiment['experimental_groups_defaults']['applications_names'])}\nGPUs: {', '.join(self.experiment['experimental_groups_defaults']['gpus'])}"""
+                fig.canvas.manager.set_window_title(title)
+                if not save_figs:
+                    fig.suptitle(title)
 
-                    # finalize the figure and save or display it
-                    self.plot_strategies_aggregated(
-                        axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
-                    )
-                    fig.tight_layout()
-                    if save_figs:
-                        filename_path = Path(self.plot_filename_prefix) / "aggregated"
-                        fig.savefig(filename_path, dpi=300)
-                        print(f"Figure saved to {filename_path}")
-                    else:
-                        plt.show()
+                # finalize the figure and save or display it
+                self.plot_strategies_aggregated(
+                    axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
+                )
+                fig.tight_layout()
+                if save_figs:
+                    filename_path = Path(self.plot_filename_prefix) / "aggregated"
+                    fig.savefig(filename_path, dpi=300)
+                    print(f"Figure saved to {filename_path}")
+                else:
+                    plt.show()
 
     def plot_baselines_comparison(
         self,

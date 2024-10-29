@@ -320,12 +320,12 @@
                             },
                             "vmin": {
                                 "description": "The minimum value on the color scale.",
-                                "type": "integer",
+                                "type": "number",
                                 "default": -0.5
                             },
                             "vmax": {
                                 "description": "The maximum value on the color scale.",
-                                "type": "integer",
+                                "type": "number",
                                 "default": 1.0
                             },
                             "bins": {
