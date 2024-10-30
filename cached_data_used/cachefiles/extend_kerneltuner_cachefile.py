@@ -8,7 +8,7 @@ from pathlib import Path
 
 # set the files to use
 basepath = Path(__file__).parent
-target_infile = basepath / "convolution_milo" / "MI50.json"
+target_infile = basepath / "convolution_milo" / "MI50_original.json"
 target_outfile = basepath / "convolution_milo" / "MI50_extended.json"
 extra_sourcefile = basepath / "convolution_milo" / "MI250X.json"
 
@@ -40,6 +40,10 @@ extra_configurations = list(product(*[p[1] for p in parameters_to_add.values()])
 for config_string, base_config in target["cache"].items():
     # lookup the base config in the other cachefile using the defaults
     source_base_config: dict = extra_source[f"{config_string},{default_config_string}"]
+
+    # delete the old config from the new data
+    del new_target["cache"][config_string]
+
     # for each existing config, add as many new configurations as needed by inferring from source
     for extra_config in extra_configurations:
         extra_config_string = ",".join([str(p) for p in extra_config])
@@ -100,8 +104,10 @@ for config_string, base_config in target["cache"].items():
         # add the new config to the new target data
         new_target["cache"][new_config_string] = new_target_config
 
-    # delete the old config from the new data
-    del new_target["cache"][config_string]
+# check that the extension is succesful
+assert len(new_target["cache"]) == len(
+    extra_source
+), f"Lengths don't match; target: {len(new_target['cache'])}, source: {len(extra_source)}"
 
 # write to the target file
 with target_outfile.open("w+") as fp:
