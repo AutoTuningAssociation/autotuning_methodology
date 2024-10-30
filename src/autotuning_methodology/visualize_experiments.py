@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.cm import get_cmap
-from matplotlib.colors import rgb2hex
+from matplotlib.colors import LinearSegmentedColormap, rgb2hex
 
 from autotuning_methodology.baseline import (
     Baseline,
@@ -360,9 +360,17 @@ class Visualize:
             assert len(plot_y_value_types) == 1
             x_type = plot_x_value_types[0]
             y_type = plot_y_value_types[0]
-            vmin = plot.get("vmin", -0.5)
-            vmax = plot.get("vmax", 1.0)
             bins = plot.get("bins", 10)
+            vmin = plot.get("vmin", -5.0)
+            vmax = plot.get("vmax", 1.0)
+            if vmin != -5.0:
+                warnings.warn(
+                    f"Careful: VMin has been changed from -5.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin."
+                )
+            if vmax != 1.0:
+                warnings.warn(
+                    f"Careful: VMax has been changed from 1.0 to {vmax}. This breaks visual comparison compatiblity with plots that do not have the same VMax."
+                )
 
             # collect and plot the data for each search strategy
             data_collected: dict[str, list[tuple]] = defaultdict(list)
@@ -480,14 +488,28 @@ class Visualize:
                 if not save_figs:
                     fig.suptitle(title)
 
+                # set the colormap
+                def norm_color_val(v):
+                    """Normalize a color value to fit in the 0-1 range."""
+                    return (v - vmin) / (vmax - vmin)
+
+                cmap = LinearSegmentedColormap.from_list(
+                    "my_colormap",
+                    [
+                        (norm_color_val(-5.0), "black"),
+                        (norm_color_val(-3.0), "red"),
+                        (norm_color_val(-1.0), "orange"),
+                        (norm_color_val(0.0), "yellow"),
+                        (norm_color_val(1.0), "green"),
+                    ],
+                )
+
                 # plot the heatmap
                 axs[0].set_xlabel(label_data[x_type][1])
                 axs[0].set_ylabel(label_data[y_type][1])
                 axs[0].set_xticks(ticks=np.arange(len(x_ticks)), labels=x_ticks, rotation=45)
                 axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
-                hm = axs[0].imshow(
-                    plot_data, vmin=vmin, vmax=vmax, cmap="RdYlGn", interpolation="nearest", aspect="auto"
-                )
+                hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto")
 
                 # plot the colorbar
                 cbar = fig.colorbar(hm)
