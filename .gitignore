@@ -18,8 +18,7 @@ test_run_experiment/*
 */setup/*_input.json
 
 # exceptions
-!cached_data_used/cachefiles/kerneltuner_to_T4.py
-!cached_data_used/cachefiles/ktt_values_to_kerneltuner.py
+!cached_data_used/cachefiles/*.py
 
 # ignore specific experiment files
 experiment_files/milo.json
