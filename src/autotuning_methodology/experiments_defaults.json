@@ -25,7 +25,7 @@
         "stochastic": true,
         "repeats": 25,
         "samples": 32,
-        "minimum_number_of_valid_search_iterations": 20,
+        "minimum_number_of_valid_search_iterations": 10,
         "ignore_cache": false
     },
     "search_strategies": [

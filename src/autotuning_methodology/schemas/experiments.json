@@ -120,7 +120,7 @@
                     "description": "How many non-error, valid configurations account for a single run of search algorithm",
                     "type": "integer",
                     "minimum": 1,
-                    "default": 20
+                    "default": 10
                 },
                 "ignore_cache": {
                     "description": "If true, always re-run the experiments, even though results from previously executed experiments are stored in run folder.",
