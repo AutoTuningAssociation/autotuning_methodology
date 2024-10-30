@@ -458,14 +458,13 @@ class Visualize:
                 x_ticks = label_data[x_type][0]
                 y_ticks = label_data[y_type][0]
                 if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
-                    plot_data = np.stack(np.array([t[3] for t in strategy_data]))
+                    plot_data: np.ndarray = np.stack(np.array([t[3] for t in strategy_data]))
                     if x_type == "searchspaces":
                         plot_data = plot_data.transpose()
-                    # raise NotImplementedError(f"Heatmap has not yet been implemented for {x_type}")
                 elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
-                    plot_data = plot_data.reshape(len(x_ticks), len(y_ticks))
-                    if x_type == "gpus" and y_type == "applications":
-                        plot_data = plot_data.transpose()
+                    plot_data = np.reshape(plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0])))
+                    if x_type == "gpus":
+                        plot_data = np.transpose(plot_data)
                 else:
                     raise NotImplementedError(
                         f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
