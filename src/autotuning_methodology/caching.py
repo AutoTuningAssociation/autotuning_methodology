@@ -187,3 +187,11 @@ class ResultsDescription:
     def has_results(self) -> bool:
         """Checks whether there are results or the file exists."""
         return self.__stored or self.__check_for_file()
+
+    def delete(self) -> bool:
+        """Deletes the file if it exists, returns true if succesfully deleted."""
+        fp = self.__get_cache_full_filepath()
+        if fp.exists() and fp.is_file():
+            fp.unlink()
+            return True
+        return False

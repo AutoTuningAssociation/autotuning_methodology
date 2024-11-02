@@ -406,7 +406,7 @@ def generate_experiment_file(
     return experiment_file_path.resolve()
 
 
-def execute_experiment(filepath: str, profiling: bool = False) -> tuple[dict, list, dict, dict]:
+def execute_experiment(filepath: str, profiling: bool = False):
     """Executes the experiment by retrieving it from the cache or running it.
 
     Args:

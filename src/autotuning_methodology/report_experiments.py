@@ -199,9 +199,9 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None)
     experiment, strategies, searchspace_statistics, results_descriptions = execute_experiment(
         experiment_filepath, profiling=False
     )
-    experiment_folderpath = experiment["parent_folder_absolute_path"]
 
     # get the settings
+    experiment_folderpath = experiment["parent_folder_absolute_path"]
     minimization: bool = experiment["statistics_settings"]["minimization"]
     cutoff_percentile: float = experiment["statistics_settings"]["cutoff_percentile"]
     cutoff_percentile_start: float = experiment["statistics_settings"]["cutoff_percentile_start"]
@@ -209,27 +209,45 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None)
     confidence_level: float = experiment["visualization_settings"]["confidence_level"]
 
     # aggregate the data
-    aggregation_data = get_aggregation_data(
-        experiment_folderpath,
-        experiment,
-        searchspace_statistics,
-        strategies,
-        results_descriptions,
-        cutoff_percentile,
-        cutoff_percentile_start,
-        confidence_level,
-        minimization,
-        time_resolution,
-        use_strategy_as_baseline,
-    )
+    def get_agg_data():
+        return get_aggregation_data(
+            experiment_folderpath,
+            experiment,
+            searchspace_statistics,
+            strategies,
+            results_descriptions,
+            cutoff_percentile,
+            cutoff_percentile_start,
+            confidence_level,
+            minimization,
+            time_resolution,
+            use_strategy_as_baseline,
+        )
 
-    # get the aggregated performance per strategy
-    (
-        strategies_performance,
-        strategies_lower_err,
-        strategies_upper_err,
-        strategies_real_stopping_point_fraction,
-    ) = get_strategies_aggregated_performance(list(aggregation_data.values()), confidence_level)
+    try:
+        # get the aggregated performance per strategy
+        aggregation_data = get_agg_data()
+        strategies_performance, _, _, _ = get_strategies_aggregated_performance(
+            list(aggregation_data.values()), confidence_level
+        )
+    except AssertionError as e:
+        if "Not enough overlap in time range and time values" in str(e.args[0]):
+            # delete the broken cachefile
+            _, strategy_name, application_name, device_name = e.args
+            assert results_descriptions[device_name][application_name][
+                strategy_name
+            ].delete(), "Failed to delete cachefile"
+
+            # re-execute the experiment and recollect the data to see if the issue is resolved
+            experiment, strategies, searchspace_statistics, results_descriptions = execute_experiment(
+                experiment_filepath, profiling=False
+            )
+            aggregation_data = get_agg_data()
+            strategies_performance, _, _, _ = get_strategies_aggregated_performance(
+                list(aggregation_data.values()), confidence_level
+            )
+        else:
+            raise e
 
     # calculate the average performance score and error per strategy
     results: dict[str, dict[str, float]] = dict()
