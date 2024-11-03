@@ -230,7 +230,7 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None)
         strategies_performance, _, _, _ = get_strategies_aggregated_performance(
             list(aggregation_data.values()), confidence_level
         )
-    except AssertionError as e:
+    except ValueError as e:
         if "Not enough overlap in time range and time values" in str(e.args[0]):
             # delete the broken cachefile
             _, strategy_name, application_name, device_name = e.args
