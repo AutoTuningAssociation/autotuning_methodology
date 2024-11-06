@@ -361,11 +361,11 @@ class Visualize:
             x_type = plot_x_value_types[0]
             y_type = plot_y_value_types[0]
             bins = plot.get("bins", 10)
-            vmin = plot.get("vmin", -5.0)
+            vmin = plot.get("vmin", -10.0)
             vmax = plot.get("vmax", 1.0)
-            if vmin != -5.0:
+            if vmin != -10.0:
                 warnings.warn(
-                    f"Careful: VMin has been changed from -5.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin."
+                    f"Careful: VMin has been changed from -10.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin."
                 )
             if vmax != 1.0:
                 warnings.warn(
@@ -495,8 +495,8 @@ class Visualize:
                 cmap = LinearSegmentedColormap.from_list(
                     "my_colormap",
                     [
-                        (norm_color_val(-5.0), "black"),
-                        (norm_color_val(-3.0), "red"),
+                        (norm_color_val(-10.0), "black"),
+                        (norm_color_val(-4.0), "red"),
                         (norm_color_val(-1.0), "orange"),
                         (norm_color_val(0.0), "yellow"),
                         (norm_color_val(1.0), "green"),
