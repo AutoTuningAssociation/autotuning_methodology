@@ -12,6 +12,7 @@ cached_data_used/last_run/*
 cached_data_used/import_runs/*
 methodology_paper_evaluation/run/*
 hyperparametertuning/*
+hyperparametertuning_*/*
 test_run_experiment/*
 
 # ignore setup files
