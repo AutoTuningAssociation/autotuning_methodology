@@ -721,7 +721,12 @@ class StochasticOptimizationAlgorithm(Curve):
 
         # make sure there is enough overlap in the time ranges
         if not np.all(np.count_nonzero(range_mask_margin, axis=0) > 1):
-            raise ValueError(f"Not enough overlap in time range and time values: should be {time_range_start=} <= {times} <= {time_range_end=}", self.name, self.application_name, self.device_name)
+            raise ValueError(
+                f"Not enough overlap in time range and time values: should be {time_range_start=} <= {times} <= {time_range_end=}",
+                self.name,
+                self.application_name,
+                self.device_name,
+            )
         times = np.where(range_mask_margin, times, np.nan)
         values = np.where(range_mask_margin, values, np.nan)
         num_repeats = values.shape[1]

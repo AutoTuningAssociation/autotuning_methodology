@@ -68,7 +68,8 @@
                                 "value": {
                                     "type": [
                                         "number",
-                                        "string"
+                                        "string",
+                                        "array"
                                     ]
                                 },
                                 "unit": {

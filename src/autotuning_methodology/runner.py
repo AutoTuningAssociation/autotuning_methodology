@@ -108,7 +108,8 @@ def tune(
     application_name: str,
     device_name: str,
     group: dict,
-    tune_options: dict,  # TODO check if still necessary when we have input json file
+    objective: str,
+    objective_higher_is_better: bool,
     profiling: bool,
     searchspace_stats: SearchspaceStatistics,
 ) -> tuple[list, list, int]:
@@ -121,7 +122,8 @@ def tune(
         application_name: the name of the program to tune.
         device_name: the device (GPU) to tune on.
         group: the experimental group (usually the search method).
-        tune_options: a special options dictionary passed along to the autotuning framework.
+        objective: the key to optimize for.
+        objective_higher_is_better: whether to maximize or minimize the objective.
         profiling: whether profiling statistics should be collected.
         searchspace_stats: a ``SearchspaceStatistics`` object passed to convert imported runs.
 
@@ -141,7 +143,13 @@ def tune(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             metadata, results = tune_kernel_T1(
-                input_file, simulation_mode=True, output_T4=True, iterations=samples, strategy_options=group["budget"]
+                input_file,
+                objective=objective,
+                objective_higher_is_better=objective_higher_is_better,
+                simulation_mode=True,
+                output_T4=True,
+                iterations=samples,
+                strategy_options=group["budget"],
             )
         if "max_fevals" in group["budget"]:
             max_fevals = group["budget"]["max_fevals"]
@@ -215,8 +223,13 @@ def collect_results(
         The ``ResultsDescription`` object with the results.
     """
     min_num_evals: int = group["minimum_number_of_valid_search_iterations"]
-    # TODO put the tune options in the .json in strategy_defaults? Make it Kernel Tuner independent
-    tune_options = {"verbose": False, "quiet": True, "simulation_mode": True}
+
+    if len(results_description.objective_performance_keys) != 1:
+        raise NotImplementedError(
+            f"Multi objective tuning is not yet supported ({results_description.objective_performance_keys})"
+        )
+    objective = results_description.objective_performance_keys[0]
+    objective_higher_is_better = not results_description.minimization
 
     def report_multiple_attempts(rep: int, len_res: int, group_repeats: int, attempt: int):
         """If multiple attempts are necessary, report the reason."""
@@ -258,7 +271,8 @@ def collect_results(
                 results_description.application_name,
                 results_description.device_name,
                 group,
-                tune_options,
+                objective,
+                objective_higher_is_better,
                 profiling,
                 searchspace_stats,
             )
