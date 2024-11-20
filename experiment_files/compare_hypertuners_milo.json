@@ -18,8 +18,7 @@
         "gpus": [
             "A100",
             "A4000",
-            "MI250X",
-            "W6600"
+            "MI250X"
         ],
         "pattern_for_full_search_space_filenames": {
             "regex": "./cached_data_used/cachefiles/${applications}/${gpus}_T4.json"
@@ -190,8 +189,29 @@
         {
             "name": "bayes_opt",
             "search_method": "bayes_opt",
-            "display_name": "Bayesian Optimization",
+            "display_name": "Bayesian Optimization SciKit",
             "autotuner": "KernelTuner"
+        },
+        {
+            "name": "bayes_opt_botorch",
+            "search_method": "bayes_opt_BOTorch",
+            "display_name": "Bayesian Optimization BOTorch",
+            "autotuner": "KernelTuner",
+            "color_parent": "bayes_opt"
+        },
+        {
+            "name": "bayes_opt_botorch_2",
+            "search_method": "bayes_opt_BOTorch",
+            "display_name": "Bayesian Optimization BOTorch 2",
+            "autotuner": "KernelTuner",
+            "color_parent": "bayes_opt"
+        },
+        {
+            "name": "bayes_opt_botorch_3",
+            "search_method": "bayes_opt_BOTorch",
+            "display_name": "Bayesian Optimization BOTorch 3",
+            "autotuner": "KernelTuner",
+            "color_parent": "bayes_opt"
         },
         {
             "name": "genetic_algorithm",
