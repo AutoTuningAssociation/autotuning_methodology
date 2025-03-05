@@ -59,22 +59,43 @@ def is_not_invalid_value(value, performance: bool) -> bool:
     return not invalid_check_function(value)
 
 
-def to_valid_array(results: list[dict], key: str, performance: bool, from_time_unit: str = None) -> np.ndarray:
-    """Convert results performance or time values to a numpy array, sum if the input is a list of arrays."""
+def to_valid_array(
+    results: list[dict],
+    key: str,
+    performance: bool,
+    from_time_unit: str = None,
+    replace_missing_measurement_from_times_key: str = None,
+) -> np.ndarray:
+    """Convert results performance or time values to a numpy array, sum if the input is a list of arrays.
+
+    replace_missing_measurement_from_times_key: if key is missing from measurements, use the mean value from times.
+    """
     # make a list of all valid values
     if performance:
         values = list()
         for r in results:
-            for m in r["measurements"]:
+            val = None
+            # get the performance value from the measurements
+            measurements = list(filter(lambda m: m["name"] == key, r["measurements"]))
+            if len(measurements) == 0:
+                if replace_missing_measurement_from_times_key is not None:
+                    val = np.mean(r["times"][replace_missing_measurement_from_times_key])
+                else:
+                    raise ValueError(f"Measurement with name {key} not found in {r["measurements"]}")
+            if len(measurements) == 1:
+                m = measurements[0]
                 if key == m["name"]:
                     val = m["value"]
-                    if is_not_invalid_value(val, performance):
-                        # performance should not be auto-converted
-                        # if len(m["unit"]) > 0:
-                        #     val = convert_from_time_unit(val, m["unit"])
-                        values.append(val)
-                    else:
-                        values.append(np.nan)
+            elif len(measurements) > 1:
+                raise ValueError(f"Multiple measurements with the same name {key} found in results")
+            # register the value
+            if is_not_invalid_value(val, performance):
+                # performance should not be auto-converted
+                # if len(m["unit"]) > 0:
+                #     val = convert_from_time_unit(val, m["unit"])
+                values.append(val)
+            else:
+                values.append(np.nan)
     else:
         values = list(
             (
@@ -359,7 +380,12 @@ class SearchspaceStatistics:
             # get the performance values per configuration
             self.objective_performances = dict()
             for key in self.objective_performance_keys:
-                self.objective_performances[key] = to_valid_array(results, key, performance=True)
+                self.objective_performances[key] = to_valid_array(
+                    results,
+                    key,
+                    performance=True,
+                    replace_missing_measurement_from_times_key="runtimes" if key == "time" else None,
+                )
                 assert (
                     self.objective_performances[key].ndim == 1
                 ), f"Should have one dimension, has {self.objective_performances[key].ndim}"
