@@ -13,6 +13,11 @@
                 "name": "convolution_milo",
                 "folder": "../autotuning_methodology/cached_data_used/kernels",
                 "input_file": "convolution_milo.json"
+            },
+            {
+                "name": "hotspot_milo",
+                "folder": "../autotuning_methodology/cached_data_used/kernels",
+                "input_file": "hotspot_milo.json"
             }
         ],
         "gpus": [
@@ -59,6 +64,60 @@
             ]
         },
         {
+            "name": "pso_tuned",
+            "search_method": "pso",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": 30
+                },
+                {
+                    "name": "maxiter",
+                    "value": 50
+                },
+                {
+                    "name": "w",
+                    "value": 0.25
+                },
+                {
+                    "name": "c1",
+                    "value": 2.0
+                },
+                {
+                    "name": "c2",
+                    "value": 1.5
+                }
+            ],
+            "display_name": "PSO tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "pso_default"
+        },
+        {
+            "name": "pso_tuned_inverse",
+            "search_method": "pso",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": 30
+                },
+                {
+                    "name": "maxiter",
+                    "value": 100
+                },
+                {
+                    "name": "w",
+                    "value": 0.75
+                },
+                {
+                    "name": "c1",
+                    "value": 3.0
+                }
+            ],
+            "display_name": "PSO tuned inv.",
+            "autotuner": "KernelTuner",
+            "color_parent": "pso_default"
+        },
+        {
             "name": "greedy_ils_default",
             "search_method": "greedy_ils",
             "search_method_hyperparameters": [
@@ -83,24 +142,54 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "bayes_opt",
-            "search_method": "bayes_opt",
-            "display_name": "Bayesian Optimization SciKit",
-            "autotuner": "KernelTuner"
+            "name": "greedy_ils_tuned",
+            "search_method": "greedy_ils",
+            "search_method_hyperparameters": [
+                {
+                    "name": "neighbor",
+                    "value": "Hamming"
+                },
+                {
+                    "name": "restart",
+                    "value": true
+                },
+                {
+                    "name": "no_improvement",
+                    "value": 66
+                },
+                {
+                    "name": "random_walk",
+                    "value": 0.9
+                }
+            ],
+            "display_name": "Greedy ILS tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "greedy_ils_default"
         },
         {
-            "name": "bayes_opt_botorch_3",
-            "search_method": "bayes_opt_BOTorch",
-            "display_name": "Bayesian Optimization BOTorch",
+            "name": "greedy_ils_tuned_inverse",
+            "search_method": "greedy_ils",
+            "search_method_hyperparameters": [
+                {
+                    "name": "neighbor",
+                    "value": "adjacent"
+                },
+                {
+                    "name": "restart",
+                    "value": false
+                },
+                {
+                    "name": "no_improvement",
+                    "value": 66
+                },
+                {
+                    "name": "random_walk",
+                    "value": 0.9
+                }
+            ],
+            "display_name": "Greedy ILS tuned inv.",
             "autotuner": "KernelTuner",
-            "color_parent": "bayes_opt"
-        },
-        {
-            "name": "bayes_opt_botorch_transfer_weighted",
-            "search_method": "bayes_opt_BOTorch_transfer_weighted",
-            "display_name": "Bayesian Optimization BOTorch TL",
-            "autotuner": "KernelTuner",
-            "color_parent": "bayes_opt"
+            "color_parent": "greedy_ils_default"
         },
         {
             "name": "genetic_algorithm",
@@ -111,7 +200,7 @@
         {
             "name": "dual_annealing",
             "search_method": "dual_annealing",
-            "display_name": "Dual Annealing default",
+            "display_name": "Dual Annealing",
             "autotuner": "KernelTuner"
         },
         {
