@@ -1,0 +1,3 @@
+[submodule "benchmark_hub"]
+	path = benchmark_hub
+	url = https://github.com/AutoTuningAssociation/benchmark_hub.git
