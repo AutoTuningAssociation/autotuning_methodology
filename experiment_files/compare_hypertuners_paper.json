@@ -18,6 +18,11 @@
                 "name": "hotspot_milo",
                 "folder": "../autotuning_methodology/cached_data_used/kernels",
                 "input_file": "hotspot_milo.json"
+            },
+            {
+                "name": "gemm_milo",
+                "folder": "../autotuning_methodology/cached_data_used/kernels",
+                "input_file": "gemm_milo.json"
             }
         ],
         "gpus": [
