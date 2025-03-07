@@ -30,7 +30,7 @@ experiment_path_setup = experiment_path / "setup"
 cached_visualization_path = experiment_path_run
 plot_path = cached_visualization_path / "generated_graphs"
 cached_visualization_file = experiment_path_run / strategy / "mock_GPU_mocktest_kernel_convolution.npz"
-normal_cachefiles_path = package_path / Path(f"cached_data_used/cachefiles/{kernel_id}")
+normal_cachefiles_path = package_path / Path(f"benchmark_hub/cachefiles/{kernel_id}")
 normal_cachefile_destination = normal_cachefiles_path / "mock_gpu.json"
 experiment_import_filepath_test = mockfiles_path / "test_import_runs.json"
 assert experiment_import_filepath_test.exists()
