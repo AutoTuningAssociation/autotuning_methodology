@@ -81,7 +81,7 @@ def to_valid_array(
                 if replace_missing_measurement_from_times_key is not None:
                     val = np.mean(r["times"][replace_missing_measurement_from_times_key])
                 else:
-                    raise ValueError(f"Measurement with name {key} not found in {r["measurements"]}")
+                    raise ValueError(f"Measurement with name {key} not found in {r['measurements']}")
             if len(measurements) == 1:
                 m = measurements[0]
                 if key == m["name"]:
