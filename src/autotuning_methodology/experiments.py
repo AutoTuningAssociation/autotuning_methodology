@@ -1,6 +1,8 @@
 """Main experiments code."""
 
-from __future__ import annotations  # for correct nested type hints e.g. list[str], tuple[dict, str]
+from __future__ import (
+    annotations,  # for correct nested type hints e.g. list[str], tuple[dict, str]
+)
 
 import json
 from argparse import ArgumentParser
