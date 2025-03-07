@@ -6,22 +6,22 @@
         "applications": [
             {
                 "name": "dedispersion_milo",
-                "folder": "../autotuning_methodology/cached_data_used/kernels",
+                "folder": "../autotuning_methodology/benchmark_hub/kernels",
                 "input_file": "dedispersion_milo.json"
             },
             {
                 "name": "convolution_milo",
-                "folder": "../autotuning_methodology/cached_data_used/kernels",
+                "folder": "../autotuning_methodology/benchmark_hub/kernels",
                 "input_file": "convolution_milo.json"
             },
             {
                 "name": "hotspot_milo",
-                "folder": "../autotuning_methodology/cached_data_used/kernels",
+                "folder": "../autotuning_methodology/benchmark_hub/kernels",
                 "input_file": "hotspot_milo.json"
             },
             {
                 "name": "gemm_milo",
-                "folder": "../autotuning_methodology/cached_data_used/kernels",
+                "folder": "../autotuning_methodology/benchmark_hub/kernels",
                 "input_file": "gemm_milo.json"
             }
         ],
@@ -31,7 +31,7 @@
             "MI250X"
         ],
         "pattern_for_full_search_space_filenames": {
-            "regex": "./cached_data_used/cachefiles/${applications}/${gpus}_T4.json"
+            "regex": "./benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
         },
         "stochastic": true,
         "repeats": 50,
