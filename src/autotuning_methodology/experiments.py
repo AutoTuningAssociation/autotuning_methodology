@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 from math import ceil
 from os import getcwd, makedirs
 from pathlib import Path
+from random import randint
 
 from jsonschema import ValidationError
 
@@ -369,6 +370,16 @@ def generate_input_file(group: dict):
         json.dump(input_json, fp, indent=4)
 
 
+def get_random_unique_filename(prefix = '', suffix=''):
+    """Get a random, unique filename that does not yet exist."""
+    def randpath():
+        return Path(f"{prefix}{randint(1000, 9999)}{suffix}")
+    path = randpath()
+    while path.exists():
+        path = randpath()
+    return path
+
+
 def generate_experiment_file(
     name: str,
     parent_folder: Path,
@@ -376,13 +387,17 @@ def generate_experiment_file(
     applications: list[dict] = None,
     gpus: list[str] = None,
     override: dict = None,
+    generate_unique_file=False,
     overwrite_existing_file=False,
 ):
     """Creates an experiment file based on the given inputs and opinionated defaults."""
     assert isinstance(name, str) and len(name) > 0, f"Name for experiment file must be valid, is '{name}'"
     experiment_file_path = Path(f"./{name.replace(' ', '_')}.json")
-    if experiment_file_path.exists() and overwrite_existing_file is False:
-        raise FileExistsError(f"Experiments file '{experiment_file_path}' already exists")
+    if generate_unique_file is True:
+        experiment_file_path = get_random_unique_filename(f"{name.replace(' ', '_')}_", '.json')
+    if experiment_file_path.exists():
+        if overwrite_existing_file is False:
+            raise FileExistsError(f"Experiments file '{experiment_file_path}' already exists")
     defaults_path = Path(__file__).parent / "experiments_defaults.json"
     with defaults_path.open() as fp:
         experiment: dict = json.load(fp)
