@@ -26,7 +26,6 @@
             }
         ],
         "gpus": [
-            "A100",
             "A4000",
             "MI250X"
         ],
@@ -40,6 +39,204 @@
         "ignore_cache": false
     },
     "search_strategies": [
+        {
+            "name": "basinhopping_default",
+            "search_method": "basinhopping",
+            "display_name": "Basinhopping default",
+            "autotuner": "KernelTuner",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "L-BFGS-B"
+                },
+                {
+                    "name": "T",
+                    "value": 1.0
+                }
+            ]
+        },
+        {
+            "name": "basinhopping_tuned",
+            "search_method": "basinhopping",
+            "display_name": "Basinhopping tuned",
+            "autotuner": "KernelTuner",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "Nelder-Mead"
+                },
+                {
+                    "name": "T",
+                    "value": 1.0
+                }
+            ],
+            "color_parent": "basinhopping_default"
+        },
+        {
+            "name": "basinhopping_tuned_inv",
+            "search_method": "basinhopping",
+            "display_name": "Basinhopping inv. tuned",
+            "autotuner": "KernelTuner",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "L-BFGS-B"
+                },
+                {
+                    "name": "T",
+                    "value": 1.5
+                }
+            ],
+            "color_parent": "basinhopping_default"
+        },
+        {
+            "name": "dual_annealing_default",
+            "search_method": "dual_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "Powell"
+                }
+            ],
+            "display_name": "Dual Annealing default",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "dual_annealing_tuned",
+            "search_method": "dual_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "Powell"
+                }
+            ],
+            "display_name": "Dual Annealing tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "dual_annealing_default"
+        },
+        {
+            "name": "dual_annealing_inv_tuned",
+            "search_method": "dual_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "Nelder-Mead"
+                }
+            ],
+            "display_name": "Dual Annealing inv. tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "dual_annealing_default"
+        },
+        {
+            "name": "genetic_algorithm_default",
+            "search_method": "genetic_algorithm",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": "20"
+                },
+                {
+                    "name": "maxiter",
+                    "value": 100
+                },
+                {
+                    "name": "method",
+                    "value": "uniform"
+                },
+                {
+                    "name": "mutation_chance",
+                    "value": 10
+                }
+            ],
+            "display_name": "Genetic Algorithm",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "greedy_ils_default",
+            "search_method": "greedy_ils",
+            "search_method_hyperparameters": [
+                {
+                    "name": "neighbor",
+                    "value": "Hamming"
+                },
+                {
+                    "name": "restart",
+                    "value": true
+                },
+                {
+                    "name": "no_improvement",
+                    "value": 50
+                },
+                {
+                    "name": "random_walk",
+                    "value": 0.3
+                }
+            ],
+            "display_name": "Greedy ILS default",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "mls_default",
+            "search_method": "mls",
+            "search_method_hyperparameters": [
+                {
+                    "name": "neighbor",
+                    "value": "Hamming"
+                },
+                {
+                    "name": "restart",
+                    "value": "False"
+                },
+                {
+                    "name": "randomize",
+                    "value": "True"
+                }
+            ],
+            "display_name": "MLS default",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "mls_tuned",
+            "search_method": "mls",
+            "search_method_hyperparameters": [
+                {
+                    "name": "neighbor",
+                    "value": "adjacent"
+                },
+                {
+                    "name": "restart",
+                    "value": "False"
+                },
+                {
+                    "name": "randomize",
+                    "value": "True"
+                }
+            ],
+            "display_name": "MLS tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "mls_default"
+        },
+        {
+            "name": "mls_inv_tuned",
+            "search_method": "mls",
+            "search_method_hyperparameters": [
+                {
+                    "name": "neighbor",
+                    "value": "Hamming"
+                },
+                {
+                    "name": "restart",
+                    "value": "True"
+                },
+                {
+                    "name": "randomize",
+                    "value": "False"
+                }
+            ],
+            "display_name": "MLS inv. tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "mls_default"
+        },
         {
             "name": "pso_default",
             "search_method": "pso",
@@ -67,42 +264,6 @@
                     "value": 1.0
                 }
             ]
-        },
-        {
-            "name": "greedy_ils_default",
-            "search_method": "greedy_ils",
-            "search_method_hyperparameters": [
-                {
-                    "name": "neighbor",
-                    "value": "Hamming"
-                },
-                {
-                    "name": "restart",
-                    "value": true
-                },
-                {
-                    "name": "no_improvement",
-                    "value": 50
-                },
-                {
-                    "name": "random_walk",
-                    "value": 0.3
-                }
-            ],
-            "display_name": "Greedy ILS default",
-            "autotuner": "KernelTuner"
-        },
-        {
-            "name": "genetic_algorithm",
-            "search_method": "genetic_algorithm",
-            "display_name": "Genetic Algorithm",
-            "autotuner": "KernelTuner"
-        },
-        {
-            "name": "dual_annealing",
-            "search_method": "dual_annealing",
-            "display_name": "Dual Annealing",
-            "autotuner": "KernelTuner"
         }
     ],
     "statistics_settings": {
