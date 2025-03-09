@@ -26,8 +26,10 @@
             }
         ],
         "gpus": [
+            "A100",
             "A4000",
-            "MI250X"
+            "MI250X",
+            "W6600"
         ],
         "pattern_for_full_search_space_filenames": {
             "regex": "./benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
@@ -90,6 +92,68 @@
             "color_parent": "basinhopping_default"
         },
         {
+            "name": "diff_evo_default",
+            "search_method": "diff_evo",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": "20"
+                },
+                {
+                    "name": "maxiter",
+                    "value": 100
+                },
+                {
+                    "name": "method",
+                    "value": "best1bin"
+                }
+            ],
+            "display_name": "Differential Evolution default",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "diff_evo_tuned",
+            "search_method": "diff_evo",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": "20"
+                },
+                {
+                    "name": "maxiter",
+                    "value": 100
+                },
+                {
+                    "name": "method",
+                    "value": "best1bin"
+                }
+            ],
+            "display_name": "Differential Evolution tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "diff_evo_default"
+        },
+        {
+            "name": "diff_evo_inv_tuned",
+            "search_method": "diff_evo",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": "20"
+                },
+                {
+                    "name": "maxiter",
+                    "value": 100
+                },
+                {
+                    "name": "method",
+                    "value": "best1bin"
+                }
+            ],
+            "display_name": "Differential Evolution inv. tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "diff_evo_default"
+        },
+        {
             "name": "dual_annealing_default",
             "search_method": "dual_annealing",
             "search_method_hyperparameters": [
@@ -148,8 +212,58 @@
                     "value": 10
                 }
             ],
-            "display_name": "Genetic Algorithm",
+            "display_name": "Genetic Algorithm default",
             "autotuner": "KernelTuner"
+        },
+        {
+            "name": "genetic_algorithm_tuned",
+            "search_method": "genetic_algorithm",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": "20"
+                },
+                {
+                    "name": "maxiter",
+                    "value": 50
+                },
+                {
+                    "name": "method",
+                    "value": "disruptive_uniform"
+                },
+                {
+                    "name": "mutation_chance",
+                    "value": 5
+                }
+            ],
+            "display_name": "Genetic Algorithm tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "genetic_algorithm_default"
+        },
+        {
+            "name": "genetic_algorithm_inv_tuned",
+            "search_method": "genetic_algorithm",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": "20"
+                },
+                {
+                    "name": "maxiter",
+                    "value": 50
+                },
+                {
+                    "name": "method",
+                    "value": "two_point"
+                },
+                {
+                    "name": "mutation_chance",
+                    "value": 5
+                }
+            ],
+            "display_name": "Genetic Algorithm inv. tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "genetic_algorithm_default"
         },
         {
             "name": "greedy_ils_default",
