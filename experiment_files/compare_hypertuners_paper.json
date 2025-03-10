@@ -104,19 +104,6 @@
             "color_parent": "diff_evo_default"
         },
         {
-            "name": "dual_annealing_inv_tuned",
-            "search_method": "dual_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "Nelder-Mead"
-                }
-            ],
-            "display_name": "Dual Annealing inv. tuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "dual_annealing_default"
-        },
-        {
             "name": "genetic_algorithm_default",
             "search_method": "genetic_algorithm",
             "search_method_hyperparameters": [
