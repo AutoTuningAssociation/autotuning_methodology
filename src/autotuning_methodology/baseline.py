@@ -138,6 +138,10 @@ class RandomSearchCalculatedBaseline(Baseline):
             x = fevals_range
             y = draws
 
+        # if there are too few data points left to interpolate on, return draws
+        if len(x) < 2 or len(y) < 2:
+            return draws
+
         # apply the monotonicity-preserving Piecewise Cubic Hermite Interpolating Polynomial
         smooth_fevals_range = np.linspace(fevals_range[0], fevals_range[-1], len(fevals_range))
         smooth_draws = PchipInterpolator(x, y)(smooth_fevals_range)
