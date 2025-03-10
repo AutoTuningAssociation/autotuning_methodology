@@ -378,6 +378,64 @@
                     "value": 1.0
                 }
             ]
+        },
+        {
+            "name": "pso_tuned",
+            "search_method": "pso",
+            "display_name": "PSO tuned",
+            "autotuner": "KernelTuner",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": 20
+                },
+                {
+                    "name": "maxiter",
+                    "value": 150
+                },
+                {
+                    "name": "w",
+                    "value": 0.25
+                },
+                {
+                    "name": "c1",
+                    "value": 2.0
+                },
+                {
+                    "name": "c2",
+                    "value": 0.5
+                }
+            ],
+            "color_parent": "pso_default"
+        },
+        {
+            "name": "pso_inv_tuned",
+            "search_method": "pso",
+            "display_name": "PSO inv. tuned",
+            "autotuner": "KernelTuner",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": 10
+                },
+                {
+                    "name": "maxiter",
+                    "value": 50
+                },
+                {
+                    "name": "w",
+                    "value": 0.5
+                },
+                {
+                    "name": "c1",
+                    "value": 2.0
+                },
+                {
+                    "name": "c2",
+                    "value": 0.5
+                }
+            ],
+            "color_parent": "pso_default"
         }
     ],
     "statistics_settings": {
