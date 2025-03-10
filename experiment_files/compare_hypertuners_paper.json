@@ -42,6 +42,22 @@
     },
     "search_strategies": [
         {
+            "name": "basinhopping_default",
+            "search_method": "basinhopping",
+            "display_name": "Basinhopping default",
+            "autotuner": "KernelTuner",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "L-BFGS-B"
+                },
+                {
+                    "name": "T",
+                    "value": 1.0
+                }
+            ]
+        },
+        {
             "name": "diff_evo_default",
             "search_method": "diff_evo",
             "search_method_hyperparameters": [
@@ -62,46 +78,42 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "diff_evo_tuned",
-            "search_method": "diff_evo",
+            "name": "dual_annealing_default",
+            "search_method": "dual_annealing",
             "search_method_hyperparameters": [
                 {
-                    "name": "popsize",
-                    "value": "20"
-                },
-                {
-                    "name": "maxiter",
-                    "value": 100
-                },
-                {
                     "name": "method",
-                    "value": "best1bin"
+                    "value": "Powell"
                 }
             ],
-            "display_name": "Differential Evolution tuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "diff_evo_default"
+            "display_name": "Dual Annealing default",
+            "autotuner": "KernelTuner"
         },
         {
-            "name": "diff_evo_inv_tuned",
-            "search_method": "diff_evo",
+            "name": "dual_annealing_tuned",
+            "search_method": "dual_annealing",
             "search_method_hyperparameters": [
                 {
-                    "name": "popsize",
-                    "value": "20"
-                },
-                {
-                    "name": "maxiter",
-                    "value": 100
-                },
-                {
                     "name": "method",
-                    "value": "best1bin"
+                    "value": "Nelder-Mead"
                 }
             ],
-            "display_name": "Differential Evolution inv. tuned",
+            "display_name": "Dual Annealing tuned",
             "autotuner": "KernelTuner",
-            "color_parent": "diff_evo_default"
+            "color_parent": "dual_annealing_default"
+        },
+        {
+            "name": "dual_annealing_inv_tuned",
+            "search_method": "dual_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "trust-constr"
+                }
+            ],
+            "display_name": "Dual Annealing inv. tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "dual_annealing_default"
         },
         {
             "name": "genetic_algorithm_default",
@@ -126,56 +138,6 @@
             ],
             "display_name": "Genetic Algorithm default",
             "autotuner": "KernelTuner"
-        },
-        {
-            "name": "genetic_algorithm_tuned",
-            "search_method": "genetic_algorithm",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": "20"
-                },
-                {
-                    "name": "maxiter",
-                    "value": 50
-                },
-                {
-                    "name": "method",
-                    "value": "disruptive_uniform"
-                },
-                {
-                    "name": "mutation_chance",
-                    "value": 5
-                }
-            ],
-            "display_name": "Genetic Algorithm tuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "genetic_algorithm_default"
-        },
-        {
-            "name": "genetic_algorithm_inv_tuned",
-            "search_method": "genetic_algorithm",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": "20"
-                },
-                {
-                    "name": "maxiter",
-                    "value": 50
-                },
-                {
-                    "name": "method",
-                    "value": "two_point"
-                },
-                {
-                    "name": "mutation_chance",
-                    "value": 5
-                }
-            ],
-            "display_name": "Genetic Algorithm inv. tuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "genetic_algorithm_default"
         },
         {
             "name": "greedy_ils_default",
@@ -227,15 +189,15 @@
             "search_method_hyperparameters": [
                 {
                     "name": "neighbor",
-                    "value": "adjacent"
+                    "value": "Hamming"
                 },
                 {
                     "name": "restart",
-                    "value": "False"
+                    "value": "True"
                 },
                 {
                     "name": "randomize",
-                    "value": "True"
+                    "value": "False"
                 }
             ],
             "display_name": "MLS tuned",
@@ -256,7 +218,7 @@
                 },
                 {
                     "name": "randomize",
-                    "value": "False"
+                    "value": "True"
                 }
             ],
             "display_name": "MLS inv. tuned",
@@ -290,64 +252,6 @@
                     "value": 1.0
                 }
             ]
-        },
-        {
-            "name": "pso_tuned",
-            "search_method": "pso",
-            "display_name": "PSO tuned",
-            "autotuner": "KernelTuner",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 20
-                },
-                {
-                    "name": "maxiter",
-                    "value": 150
-                },
-                {
-                    "name": "w",
-                    "value": 0.25
-                },
-                {
-                    "name": "c1",
-                    "value": 2.0
-                },
-                {
-                    "name": "c2",
-                    "value": 0.5
-                }
-            ],
-            "color_parent": "pso_default"
-        },
-        {
-            "name": "pso_inv_tuned",
-            "search_method": "pso",
-            "display_name": "PSO inv. tuned",
-            "autotuner": "KernelTuner",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 10
-                },
-                {
-                    "name": "maxiter",
-                    "value": 50
-                },
-                {
-                    "name": "w",
-                    "value": 0.5
-                },
-                {
-                    "name": "c1",
-                    "value": 2.0
-                },
-                {
-                    "name": "c2",
-                    "value": 0.5
-                }
-            ],
-            "color_parent": "pso_default"
         }
     ],
     "statistics_settings": {
