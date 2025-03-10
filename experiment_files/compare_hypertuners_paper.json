@@ -42,56 +42,6 @@
     },
     "search_strategies": [
         {
-            "name": "basinhopping_default",
-            "search_method": "basinhopping",
-            "display_name": "Basinhopping default",
-            "autotuner": "KernelTuner",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "L-BFGS-B"
-                },
-                {
-                    "name": "T",
-                    "value": 1.0
-                }
-            ]
-        },
-        {
-            "name": "basinhopping_tuned",
-            "search_method": "basinhopping",
-            "display_name": "Basinhopping tuned",
-            "autotuner": "KernelTuner",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "Nelder-Mead"
-                },
-                {
-                    "name": "T",
-                    "value": 1.0
-                }
-            ],
-            "color_parent": "basinhopping_default"
-        },
-        {
-            "name": "basinhopping_tuned_inv",
-            "search_method": "basinhopping",
-            "display_name": "Basinhopping inv. tuned",
-            "autotuner": "KernelTuner",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "L-BFGS-B"
-                },
-                {
-                    "name": "T",
-                    "value": 1.5
-                }
-            ],
-            "color_parent": "basinhopping_default"
-        },
-        {
             "name": "diff_evo_default",
             "search_method": "diff_evo",
             "search_method_hyperparameters": [
@@ -152,31 +102,6 @@
             "display_name": "Differential Evolution inv. tuned",
             "autotuner": "KernelTuner",
             "color_parent": "diff_evo_default"
-        },
-        {
-            "name": "dual_annealing_default",
-            "search_method": "dual_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "Powell"
-                }
-            ],
-            "display_name": "Dual Annealing default",
-            "autotuner": "KernelTuner"
-        },
-        {
-            "name": "dual_annealing_tuned",
-            "search_method": "dual_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "Powell"
-                }
-            ],
-            "display_name": "Dual Annealing tuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "dual_annealing_default"
         },
         {
             "name": "dual_annealing_inv_tuned",
