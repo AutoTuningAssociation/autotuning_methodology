@@ -38,7 +38,7 @@
     ],
     "statistics_settings": {
         "minimization": true,
-        "cutoff_percentile": 0.96,
+        "cutoff_percentile": 0.95,
         "cutoff_percentile_start": 0.5,
         "cutoff_type": "fevals",
         "objective_time_keys": [
