@@ -10,14 +10,14 @@
                 "input_file": "dedispersion_milo.json"
             },
             {
-                "name": "convolution_milo",
-                "folder": "../autotuning_methodology/benchmark_hub/kernels",
-                "input_file": "convolution_milo.json"
-            },
-            {
                 "name": "hotspot_milo",
                 "folder": "../autotuning_methodology/benchmark_hub/kernels",
                 "input_file": "hotspot_milo.json"
+            },
+            {
+                "name": "convolution_milo",
+                "folder": "../autotuning_methodology/benchmark_hub/kernels",
+                "input_file": "convolution_milo.json"
             },
             {
                 "name": "gemm_milo",
@@ -26,10 +26,10 @@
             }
         ],
         "gpus": [
+            "W6600",
             "A100",
             "A4000",
-            "MI250X",
-            "W6600"
+            "MI250X"
         ],
         "pattern_for_full_search_space_filenames": {
             "regex": "./benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
@@ -37,7 +37,7 @@
         "stochastic": true,
         "repeats": 50,
         "samples": 32,
-        "minimum_number_of_valid_search_iterations": 10,
+        "minimum_number_of_valid_search_iterations": 8,
         "ignore_cache": false
     },
     "search_strategies": [
@@ -58,6 +58,40 @@
             ]
         },
         {
+            "name": "basinhopping_tuned",
+            "search_method": "basinhopping",
+            "display_name": "Basinhopping tuned",
+            "autotuner": "KernelTuner",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "BFGS"
+                },
+                {
+                    "name": "T",
+                    "value": 1.25
+                }
+            ],
+            "color_parent": "basinhopping_default"
+        },
+        {
+            "name": "basinhopping_inv_tuned",
+            "search_method": "basinhopping",
+            "display_name": "Basinhopping inv. tuned",
+            "autotuner": "KernelTuner",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "L-BFGS-B"
+                },
+                {
+                    "name": "T",
+                    "value": 0.1
+                }
+            ],
+            "color_parent": "basinhopping_default"
+        },
+        {
             "name": "diff_evo_default",
             "search_method": "diff_evo",
             "search_method_hyperparameters": [
@@ -76,6 +110,48 @@
             ],
             "display_name": "Differential Evolution default",
             "autotuner": "KernelTuner"
+        },
+        {
+            "name": "diff_evo_tuned",
+            "search_method": "diff_evo",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": "20"
+                },
+                {
+                    "name": "maxiter",
+                    "value": 50
+                },
+                {
+                    "name": "method",
+                    "value": "best2exp"
+                }
+            ],
+            "display_name": "Differential Evolution tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "diff_evo_default"
+        },
+        {
+            "name": "diff_evo_inv_tuned",
+            "search_method": "diff_evo",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": "20"
+                },
+                {
+                    "name": "maxiter",
+                    "value": 150
+                },
+                {
+                    "name": "method",
+                    "value": "best2exp"
+                }
+            ],
+            "display_name": "Differential Evolution inv. tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "diff_evo_default"
         },
         {
             "name": "dual_annealing_default",
@@ -164,94 +240,127 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "mls_default",
-            "search_method": "mls",
+            "name": "greedy_ils_tuned",
+            "search_method": "greedy_ils",
             "search_method_hyperparameters": [
                 {
                     "name": "neighbor",
-                    "value": "Hamming"
+                    "value": "adjacent"
                 },
                 {
                     "name": "restart",
-                    "value": "False"
+                    "value": false
                 },
                 {
-                    "name": "randomize",
-                    "value": "True"
+                    "name": "no_improvement",
+                    "value": 10
+                },
+                {
+                    "name": "random_walk",
+                    "value": 0.4
                 }
             ],
-            "display_name": "MLS default",
-            "autotuner": "KernelTuner"
+            "display_name": "Greedy ILS tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "greedy_ils_default"
         },
         {
-            "name": "mls_tuned",
-            "search_method": "mls",
+            "name": "greedy_ils_inv_tuned",
+            "search_method": "greedy_ils",
             "search_method_hyperparameters": [
                 {
                     "name": "neighbor",
-                    "value": "Hamming"
+                    "value": "adjacent"
                 },
                 {
                     "name": "restart",
-                    "value": "True"
+                    "value": false
                 },
                 {
-                    "name": "randomize",
-                    "value": "False"
+                    "name": "no_improvement",
+                    "value": 75
+                },
+                {
+                    "name": "random_walk",
+                    "value": 0.5
                 }
             ],
-            "display_name": "MLS tuned",
+            "display_name": "Greedy ILS inv. tuned",
             "autotuner": "KernelTuner",
-            "color_parent": "mls_default"
+            "color_parent": "greedy_ils_default"
         },
         {
-            "name": "mls_inv_tuned",
-            "search_method": "mls",
+            "name": "simulated_annealing_default",
+            "search_method": "simulated_annealing",
             "search_method_hyperparameters": [
                 {
-                    "name": "neighbor",
-                    "value": "Hamming"
+                    "name": "T",
+                    "value": 1.0
                 },
                 {
-                    "name": "restart",
-                    "value": "True"
+                    "name": "T_min",
+                    "value": 0.001
                 },
                 {
-                    "name": "randomize",
-                    "value": "True"
-                }
-            ],
-            "display_name": "MLS inv. tuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "mls_default"
-        },
-        {
-            "name": "pso_default",
-            "search_method": "pso",
-            "display_name": "PSO default",
-            "autotuner": "KernelTuner",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 20
+                    "name": "alpha",
+                    "value": 0.995
                 },
                 {
                     "name": "maxiter",
-                    "value": 100
-                },
-                {
-                    "name": "w",
-                    "value": 0.5
-                },
-                {
-                    "name": "c1",
-                    "value": 2.0
-                },
-                {
-                    "name": "c2",
-                    "value": 1.0
+                    "value": "1"
                 }
-            ]
+            ],
+            "display_name": "Simulated Annealing default",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "simulated_annealing_default",
+            "search_method": "simulated_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "T",
+                    "value": 1.0
+                },
+                {
+                    "name": "T_min",
+                    "value": 0.001
+                },
+                {
+                    "name": "alpha",
+                    "value": 0.995
+                },
+                {
+                    "name": "maxiter",
+                    "value": 1
+                }
+            ],
+            "display_name": "Simulated Annealing default",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "simulated_annealing_inv_tuned",
+            "search_method": "simulated_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "T",
+                    "value": 1.5
+                },
+                {
+                    "name": "T_min",
+                    "value": 0.01
+                },
+                {
+                    "name": "alpha",
+                    "value": 0.9975
+                },
+                {
+                    "name": "maxiter",
+                    "value": 2
+                }
+            ],
+            "display_name": "Simulated Annealing inv. tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "simulated_annealing_default"
         }
     ],
     "statistics_settings": {

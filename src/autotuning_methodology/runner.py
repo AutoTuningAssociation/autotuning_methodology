@@ -165,6 +165,7 @@ def tune(
     def tune_with_BAT():
         """Interface to tune with the BAT benchmarking suite."""
         # TODO integrate with BAT
+        raise NotImplementedError("This will be implemented in the future.")
 
     def tune_with_KTT():
         """Interface with KTT to tune the kernel and return the results."""
