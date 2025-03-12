@@ -42,66 +42,42 @@
     },
     "search_strategies": [
         {
-            "name": "mls_default",
-            "search_method": "mls",
+            "name": "dual_annealing_default",
+            "search_method": "dual_annealing",
             "search_method_hyperparameters": [
                 {
-                    "name": "neighbor",
-                    "value": "Hamming"
-                },
-                {
-                    "name": "restart",
-                    "value": false
-                },
-                {
-                    "name": "randomize",
-                    "value": true
+                    "name": "method",
+                    "value": "Powell"
                 }
             ],
-            "display_name": "MLS default",
+            "display_name": "Dual Annealing default",
             "autotuner": "KernelTuner"
         },
         {
-            "name": "mls_tuned",
-            "search_method": "mls",
+            "name": "dual_annealing_tuned",
+            "search_method": "dual_annealing",
             "search_method_hyperparameters": [
                 {
-                    "name": "neighbor",
-                    "value": "Hamming"
-                },
-                {
-                    "name": "restart",
-                    "value": true
-                },
-                {
-                    "name": "randomize",
-                    "value": false
+                    "name": "method",
+                    "value": "Nelder-Mead"
                 }
             ],
-            "display_name": "MLS tuned",
+            "display_name": "Dual Annealing tuned",
             "autotuner": "KernelTuner",
-            "color_parent": "mls_default"
+            "color_parent": "dual_annealing_default"
         },
         {
-            "name": "mls_inv_tuned",
-            "search_method": "mls",
+            "name": "dual_annealing_inv_tuned",
+            "search_method": "dual_annealing",
             "search_method_hyperparameters": [
                 {
-                    "name": "neighbor",
-                    "value": "Hamming"
-                },
-                {
-                    "name": "restart",
-                    "value": true
-                },
-                {
-                    "name": "randomize",
-                    "value": true
+                    "name": "method",
+                    "value": "trust-constr"
                 }
             ],
-            "display_name": "MLS inv. tuned",
+            "display_name": "Dual Annealing inv. tuned",
             "autotuner": "KernelTuner",
-            "color_parent": "mls_default"
+            "color_parent": "dual_annealing_default"
         },
         {
             "name": "genetic_algorithm_default",
