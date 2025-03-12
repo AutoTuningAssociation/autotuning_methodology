@@ -197,7 +197,7 @@
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
-                    "value": "20"
+                    "value": 20
                 },
                 {
                     "name": "maxiter",
@@ -214,6 +214,56 @@
             ],
             "display_name": "Genetic Algorithm default",
             "autotuner": "KernelTuner"
+        },
+        {
+            "name": "genetic_algorithm_tuned",
+            "search_method": "genetic_algorithm",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": 20
+                },
+                {
+                    "name": "maxiter",
+                    "value": 50
+                },
+                {
+                    "name": "method",
+                    "value": "two_point"
+                },
+                {
+                    "name": "mutation_chance",
+                    "value": 20
+                }
+            ],
+            "display_name": "Genetic Algorithm tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "genetic_algorithm_default"
+        },
+        {
+            "name": "genetic_algorithm_inv_tuned",
+            "search_method": "genetic_algorithm",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": 30
+                },
+                {
+                    "name": "maxiter",
+                    "value": 150
+                },
+                {
+                    "name": "method",
+                    "value": "single_point"
+                },
+                {
+                    "name": "mutation_chance",
+                    "value": 20
+                }
+            ],
+            "display_name": "Genetic Algorithm inv. tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "genetic_algorithm_default"
         },
         {
             "name": "greedy_ils_default",
@@ -314,28 +364,29 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "simulated_annealing_default",
+            "name": "simulated_annealing_tuned",
             "search_method": "simulated_annealing",
             "search_method_hyperparameters": [
                 {
                     "name": "T",
-                    "value": 1.0
+                    "value": 1.5
                 },
                 {
                     "name": "T_min",
-                    "value": 0.001
+                    "value": 0.0001
                 },
                 {
                     "name": "alpha",
-                    "value": 0.995
+                    "value": 0.9925
                 },
                 {
                     "name": "maxiter",
-                    "value": 1
+                    "value": 2
                 }
             ],
-            "display_name": "Simulated Annealing default",
-            "autotuner": "KernelTuner"
+            "display_name": "Simulated Annealing tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "simulated_annealing_default"
         },
         {
             "name": "simulated_annealing_inv_tuned",
