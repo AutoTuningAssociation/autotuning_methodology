@@ -42,154 +42,66 @@
     },
     "search_strategies": [
         {
-            "name": "basinhopping_default",
-            "search_method": "basinhopping",
-            "display_name": "Basinhopping default",
-            "autotuner": "KernelTuner",
+            "name": "mls_default",
+            "search_method": "mls",
             "search_method_hyperparameters": [
                 {
-                    "name": "method",
-                    "value": "L-BFGS-B"
+                    "name": "neighbor",
+                    "value": "Hamming"
                 },
                 {
-                    "name": "T",
-                    "value": 1.0
-                }
-            ]
-        },
-        {
-            "name": "basinhopping_tuned",
-            "search_method": "basinhopping",
-            "display_name": "Basinhopping tuned",
-            "autotuner": "KernelTuner",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "BFGS"
+                    "name": "restart",
+                    "value": false
                 },
                 {
-                    "name": "T",
-                    "value": 1.25
+                    "name": "randomize",
+                    "value": true
                 }
             ],
-            "color_parent": "basinhopping_default"
-        },
-        {
-            "name": "basinhopping_inv_tuned",
-            "search_method": "basinhopping",
-            "display_name": "Basinhopping inv. tuned",
-            "autotuner": "KernelTuner",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "L-BFGS-B"
-                },
-                {
-                    "name": "T",
-                    "value": 0.1
-                }
-            ],
-            "color_parent": "basinhopping_default"
-        },
-        {
-            "name": "diff_evo_default",
-            "search_method": "diff_evo",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": "20"
-                },
-                {
-                    "name": "maxiter",
-                    "value": 100
-                },
-                {
-                    "name": "method",
-                    "value": "best1bin"
-                }
-            ],
-            "display_name": "Differential Evolution default",
+            "display_name": "MLS default",
             "autotuner": "KernelTuner"
         },
         {
-            "name": "diff_evo_tuned",
-            "search_method": "diff_evo",
+            "name": "mls_tuned",
+            "search_method": "mls",
             "search_method_hyperparameters": [
                 {
-                    "name": "popsize",
-                    "value": "20"
+                    "name": "neighbor",
+                    "value": "Hamming"
                 },
                 {
-                    "name": "maxiter",
-                    "value": 50
+                    "name": "restart",
+                    "value": true
                 },
                 {
-                    "name": "method",
-                    "value": "best2exp"
+                    "name": "randomize",
+                    "value": false
                 }
             ],
-            "display_name": "Differential Evolution tuned",
+            "display_name": "MLS tuned",
             "autotuner": "KernelTuner",
-            "color_parent": "diff_evo_default"
+            "color_parent": "mls_default"
         },
         {
-            "name": "diff_evo_inv_tuned",
-            "search_method": "diff_evo",
+            "name": "mls_inv_tuned",
+            "search_method": "mls",
             "search_method_hyperparameters": [
                 {
-                    "name": "popsize",
-                    "value": "20"
+                    "name": "neighbor",
+                    "value": "Hamming"
                 },
                 {
-                    "name": "maxiter",
-                    "value": 150
+                    "name": "restart",
+                    "value": true
                 },
                 {
-                    "name": "method",
-                    "value": "best2exp"
+                    "name": "randomize",
+                    "value": true
                 }
             ],
-            "display_name": "Differential Evolution inv. tuned",
+            "display_name": "MLS inv. tuned",
             "autotuner": "KernelTuner",
-            "color_parent": "diff_evo_default"
-        },
-        {
-            "name": "dual_annealing_default",
-            "search_method": "dual_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "Powell"
-                }
-            ],
-            "display_name": "Dual Annealing default",
-            "autotuner": "KernelTuner"
-        },
-        {
-            "name": "dual_annealing_tuned",
-            "search_method": "dual_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "Nelder-Mead"
-                }
-            ],
-            "display_name": "Dual Annealing tuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "dual_annealing_default"
-        },
-        {
-            "name": "dual_annealing_inv_tuned",
-            "search_method": "dual_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "trust-constr"
-                }
-            ],
-            "display_name": "Dual Annealing inv. tuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "dual_annealing_default"
+            "color_parent": "mls_default"
         },
         {
             "name": "genetic_algorithm_default",
