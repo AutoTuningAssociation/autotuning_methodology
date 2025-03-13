@@ -714,7 +714,8 @@ class StochasticOptimizationAlgorithm(Curve):
         real_stopping_point_time: float = np.nanmedian(highest_time_per_repeat)
 
         # filter to get the time range with a margin on both ends for the isotonic regression
-        time_range_margin = 0.1
+        time_range_margin_modifier = 0.25 * (num_repeats / times.size) # give more margin when there are few values relative to the number of repeats
+        time_range_margin = 0.1 + time_range_margin_modifier
         time_range_start = time_range[0] * (1 - time_range_margin)
         time_range_end = time_range[-1] * (1 + time_range_margin)
         range_mask_margin = (time_range_start <= times) & (times <= time_range_end)
@@ -722,7 +723,8 @@ class StochasticOptimizationAlgorithm(Curve):
         # make sure there is enough overlap in the time ranges
         if not np.all(np.count_nonzero(range_mask_margin, axis=0) > 1):
             raise ValueError(
-                f"Not enough overlap in time range and time values: should be {time_range_start=} <= {times} <= {time_range_end=}",
+                f"Not enough overlap in time range and time values: should be {time_range_start=} <= {times} <= {time_range_end=} ({time_range_margin=}, {num_repeats=}, {times.size=})",
+                np.count_nonzero(range_mask_margin, axis=0),
                 self.name,
                 self.application_name,
                 self.device_name,
