@@ -310,7 +310,7 @@ def collect_results(
 
             # check if there are only invalid configs in the first min_num_evals, if so, try again
             temp_res_filtered = list(filter(lambda config: is_valid_config_result(config), results))
-            only_invalid = len(temp_res_filtered) < 1
+            only_invalid = len(temp_res_filtered) < 2
             if "max_fevals" in group["budget"]:
                 too_many_configs = len(results) > group["budget"]["max_fevals"]
             attempt += 1
