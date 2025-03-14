@@ -289,20 +289,31 @@ def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: 
     Returns:
         A modified group dictionary.
     """
-    group["budget"] = {}
-    # set cutoff point
+    # get cutoff point
     _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(
         statistics_settings["cutoff_percentile"]
     )
+    # get cutoff point start
+    _, _, cutoff_point_start_time = searchspace_stats.cutoff_point_fevals_time(
+        statistics_settings["cutoff_percentile_start"]
+    )
 
     # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations  # noqa: E501
-    cutoff_margin = group.get("cutoff_margin", 1.1)
+    cutoff_margin = group.get("cutoff_margin", 0.1)
+
+    # register in the group
+    group["budget"] = {}
+    group["cutoff_times"] = {
+        "cutoff_time_start": max(cutoff_point_start_time * (1 - cutoff_margin), 0.0),
+        "cutoff_time": cutoff_point_time * cutoff_margin,
+    }
 
     # set when to stop
     if statistics_settings["cutoff_type"] == "time":
-        group["budget"]["time_limit"] = cutoff_point_time * cutoff_margin
+        group["budget"]["time_limit"] = group["cutoff_times"]["cutoff_time"]
     else:
-        group["budget"]["max_fevals"] = min(int(ceil(cutoff_point_fevals * cutoff_margin)), searchspace_stats.size)
+        budget = min(int(ceil(cutoff_point_fevals * cutoff_margin)), searchspace_stats.size)
+        group["budget"]["max_fevals"] = budget
 
     # write to group's input file as Budget
     with open(group["input_file"], "r", encoding="utf-8") as fp:
@@ -317,9 +328,9 @@ def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: 
             input_json["Budget"][0]["Type"] = "ConfigurationCount"
             input_json["Budget"][0]["BudgetValue"] = group["budget"]["max_fevals"]
 
+    # write the results and return the adjusted group
     with open(group["input_file"], "w", encoding="utf-8") as fp:
         json.dump(input_json, fp, indent=4)
-
     return group
 
 
@@ -370,10 +381,12 @@ def generate_input_file(group: dict):
         json.dump(input_json, fp, indent=4)
 
 
-def get_random_unique_filename(prefix = '', suffix=''):
+def get_random_unique_filename(prefix="", suffix=""):
     """Get a random, unique filename that does not yet exist."""
+
     def randpath():
         return Path(f"{prefix}{randint(1000, 9999)}{suffix}")
+
     path = randpath()
     while path.exists():
         path = randpath()
@@ -394,7 +407,7 @@ def generate_experiment_file(
     assert isinstance(name, str) and len(name) > 0, f"Name for experiment file must be valid, is '{name}'"
     experiment_file_path = Path(f"./{name.replace(' ', '_')}.json")
     if generate_unique_file is True:
-        experiment_file_path = get_random_unique_filename(f"{name.replace(' ', '_')}_", '.json')
+        experiment_file_path = get_random_unique_filename(f"{name.replace(' ', '_')}_", ".json")
     if experiment_file_path.exists():
         if overwrite_existing_file is False:
             raise FileExistsError(f"Experiments file '{experiment_file_path}' already exists")

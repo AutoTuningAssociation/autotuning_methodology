@@ -44,7 +44,7 @@
     "strategy_defaults": {
         "repeats": 100,
         "minimum_number_of_evaluations": 20,
-        "cutoff_margin": 1.1,
+        "cutoff_margin": 0.1,
         "stochastic": true,
         "record_data": [
             "time",
