@@ -78,7 +78,7 @@
         {
             "name": "basinhopping_inv_tuned",
             "search_method": "basinhopping",
-            "display_name": "Basinhopping inv. tuned",
+            "display_name": "Basinhopping untuned",
             "autotuner": "KernelTuner",
             "search_method_hyperparameters": [
                 {
@@ -150,7 +150,7 @@
                     "value": "randtobest1exp"
                 }
             ],
-            "display_name": "Differential Evolution inv. tuned",
+            "display_name": "Differential Evolution untuned",
             "autotuner": "KernelTuner",
             "color_parent": "diff_evo_default"
         },
@@ -188,7 +188,7 @@
                     "value": "Powell"
                 }
             ],
-            "display_name": "Dual Annealing inv. tuned",
+            "display_name": "Dual Annealing untuned",
             "autotuner": "KernelTuner",
             "color_parent": "dual_annealing_default"
         },
@@ -286,7 +286,7 @@
                     "value": 0.4
                 }
             ],
-            "display_name": "Greedy ILS inv. tuned",
+            "display_name": "Greedy ILS untuned",
             "autotuner": "KernelTuner",
             "color_parent": "greedy_ils_default"
         },
@@ -360,7 +360,7 @@
                     "value": 1.0
                 }
             ],
-            "display_name": "PSO inv. tuned",
+            "display_name": "PSO untuned",
             "autotuner": "KernelTuner",
             "color_parent": "pso_default"
         },
@@ -434,7 +434,7 @@
                     "value": 3
                 }
             ],
-            "display_name": "Simulated Annealing inv. tuned",
+            "display_name": "Simulated Annealing untuned",
             "autotuner": "KernelTuner",
             "color_parent": "simulated_annealing_default"
         }
