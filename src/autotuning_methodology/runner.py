@@ -232,7 +232,7 @@ def collect_results(
     objective = results_description.objective_performance_keys[0]
     objective_higher_is_better = not results_description.minimization
 
-    def report_multiple_attempts(rep: int, len_res: int, group_repeats: int, attempt: int, too_many_configs: bool):
+    def report_multiple_attempts(rep: int, len_res: int, group_repeats: int, attempt: int):
         """If multiple attempts are necessary, report the reason."""
         if len_res < 1:
             print(f"({rep+1}/{group_repeats}) No results found, trying once more...")
@@ -242,8 +242,6 @@ def collect_results(
             )
         else:
             print(f"({rep+1}/{group_repeats}) Only invalid results found, trying once more...")
-        if too_many_configs:
-            print(f"Too many configurations found ({len_res} of {group['budget']['max_fevals']=} allowed)")
 
     def cumulative_time_taken(results: list) -> list:
         """Calculates the cumulative time taken for each of the configurations in results."""
@@ -282,10 +280,11 @@ def collect_results(
         attempt = 0
         only_invalid = True
         len_res: int = -1
-        too_many_configs = False
-        while only_invalid or len_res < min_num_evals or too_many_configs:
+        while only_invalid or len_res < min_num_evals:
             if attempt > 0:
-                report_multiple_attempts(rep, len_res, group["repeats"], attempt, too_many_configs)
+                report_multiple_attempts(rep, len_res, group["repeats"], attempt)
+            if attempt >= 10:
+                raise RuntimeError(f"Could not find enough results in {attempt} attempts, quiting...")
             _, results, total_time_ms = tune(
                 input_file,
                 results_description.application_name,
@@ -297,22 +296,21 @@ def collect_results(
                 searchspace_stats,
             )
             results = results["results"]
-            if attempt >= 10:
-                raise RuntimeError(f"Could not find enough results in {attempt} attempts, quiting...")
 
-            # cut out results that are beyond the cutoff time
-            previous_length = len(results)
+            # check without results that are beyond the cutoff times
             time_taken = cumulative_time_taken(results)
             cutoff_time = group["cutoff_times"]["cutoff_time"]
-            results = [res for res, time in zip(results, time_taken) if time <= cutoff_time]
-            if len(results) < previous_length:
-                print(f"Cut out {previous_length - len(results)} configurations beyond the cutoff time")
+            cutoff_time_start = group["cutoff_times"]["cutoff_time_start"]
+            temp_results = [res for res, time in zip(results, time_taken) if cutoff_time_start <= time <= cutoff_time]
+            # if len(temp_results) < len(results):
+            #     print(
+            #         f"Dropped {len(results) - len(temp_results)} configurations beyond cutoff time {round(cutoff_time, 3)}, {len(temp_results)} left"
+            #     )
 
             # check if there are only invalid configs in the first min_num_evals, if so, try again
-            temp_res_filtered = list(filter(lambda config: is_valid_config_result(config), results))
-            only_invalid = len(temp_res_filtered) < 2
-            if "max_fevals" in group["budget"]:
-                too_many_configs = len(results) > group["budget"]["max_fevals"]
+            len_res = len(temp_results)
+            temp_res_filtered = list(filter(lambda config: is_valid_config_result(config), temp_results))
+            only_invalid = len(temp_res_filtered) < 2  # there must be at least two valid configurations
             attempt += 1
         # register the results
         repeated_results.append(results)

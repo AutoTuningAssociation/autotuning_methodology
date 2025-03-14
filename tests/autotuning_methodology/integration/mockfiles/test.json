@@ -75,7 +75,7 @@
                 "y_axis_value_types": [
                     "gpus"
                 ],
-                "vmin": -0.75,
+                "vmin": -2.5,
                 "vmax": 1.2
             },
             {
@@ -87,7 +87,7 @@
                 "y_axis_value_types": [
                     "searchspaces"
                 ],
-                "vmin": -0.75,
+                "vmin": -2.5,
                 "bins": 10
             },
             {
