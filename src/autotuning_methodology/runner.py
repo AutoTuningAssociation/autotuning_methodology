@@ -232,7 +232,7 @@ def collect_results(
     objective = results_description.objective_performance_keys[0]
     objective_higher_is_better = not results_description.minimization
 
-    def report_multiple_attempts(rep: int, len_res: int, group_repeats: int, attempt: int):
+    def report_multiple_attempts(rep: int, len_res: int, group_repeats: int, attempt: int, too_many_configs: bool):
         """If multiple attempts are necessary, report the reason."""
         if len_res < 1:
             print(f"({rep+1}/{group_repeats}) No results found, trying once more...")
@@ -242,6 +242,8 @@ def collect_results(
             )
         else:
             print(f"({rep+1}/{group_repeats}) Only invalid results found, trying once more...")
+        if too_many_configs:
+            print(f"Too many configurations found ({len_res} of {group['budget']['max_fevals']=} allowed)")
 
     # repeat the run as specified
     repeated_results = []
@@ -264,9 +266,10 @@ def collect_results(
         attempt = 0
         only_invalid = True
         len_res: int = -1
-        while only_invalid or len_res < min_num_evals:
+        too_many_configs = False
+        while only_invalid or len_res < min_num_evals or too_many_configs:
             if attempt > 0:
-                report_multiple_attempts(rep, len_res, group["repeats"], attempt)
+                report_multiple_attempts(rep, len_res, group["repeats"], attempt, too_many_configs)
             _, results, total_time_ms = tune(
                 input_file,
                 results_description.application_name,
@@ -284,6 +287,8 @@ def collect_results(
             # check if there are only invalid configs in the first min_num_evals, if so, try again
             temp_res_filtered = list(filter(lambda config: is_valid_config_result(config), results))
             only_invalid = len(temp_res_filtered) < 1
+            if "max_fevals" in group["budget"]:
+                too_many_configs = len_res > group["budget"]["max_fevals"]
             attempt += 1
         # register the results
         repeated_results.append(results)
