@@ -305,14 +305,14 @@ def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: 
     group["budget"] = {}
     group["cutoff_times"] = {
         "cutoff_time_start": max(cutoff_point_start_time * (1 - cutoff_margin), 0.0),
-        "cutoff_time": cutoff_point_time * cutoff_margin,
+        "cutoff_time": cutoff_point_time * (1 + cutoff_margin),
     }
 
     # set when to stop
     if statistics_settings["cutoff_type"] == "time":
         group["budget"]["time_limit"] = group["cutoff_times"]["cutoff_time"]
     else:
-        budget = min(int(ceil(cutoff_point_fevals * cutoff_margin)), searchspace_stats.size)
+        budget = min(int(ceil(cutoff_point_fevals * (1 + cutoff_margin))), searchspace_stats.size)
         group["budget"]["max_fevals"] = budget
 
     # write to group's input file as Budget
@@ -513,6 +513,7 @@ def execute_experiment(filepath: str, profiling: bool = False):
         group = calculate_budget(
             group, experiment["statistics_settings"], searchspace_statistics[group["gpu"]][group["application_name"]]
         )
+        raise ValueError(group)
 
         results_description = ResultsDescription(
             run_folder=experiment_folderpath / "run" / group["name"],
