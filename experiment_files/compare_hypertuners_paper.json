@@ -217,6 +217,56 @@
             "autotuner": "KernelTuner"
         },
         {
+            "name": "genetic_algorithm_tuned",
+            "search_method": "genetic_algorithm",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": 30
+                },
+                {
+                    "name": "maxiter",
+                    "value": 150
+                },
+                {
+                    "name": "method",
+                    "value": "two_point"
+                },
+                {
+                    "name": "mutation_chance",
+                    "value": 5
+                }
+            ],
+            "display_name": "Genetic Algorithm tuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "genetic_algorithm_default"
+        },
+        {
+            "name": "genetic_algorithm_inv_tuned",
+            "search_method": "genetic_algorithm",
+            "search_method_hyperparameters": [
+                {
+                    "name": "popsize",
+                    "value": 30
+                },
+                {
+                    "name": "maxiter",
+                    "value": 50
+                },
+                {
+                    "name": "method",
+                    "value": "uniform"
+                },
+                {
+                    "name": "mutation_chance",
+                    "value": 10
+                }
+            ],
+            "display_name": "Genetic Algorithm untuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "genetic_algorithm_default"
+        },
+        {
             "name": "greedy_ils_default",
             "search_method": "greedy_ils",
             "search_method_hyperparameters": [
