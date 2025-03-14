@@ -245,6 +245,22 @@ def collect_results(
         if too_many_configs:
             print(f"Too many configurations found ({len_res} of {group['budget']['max_fevals']=} allowed)")
 
+    def cumulative_time_taken(results: list) -> list:
+        """Calculates the cumulative time taken for each of the configurations in results."""
+        config_times = []
+        cumulative_time_taken = 0
+        for config in results:
+            config_sum = 0
+            for key in config["times"]:
+                if key in searchspace_stats.objective_time_keys:
+                    time = config["times"][key]
+                    if isinstance(time, (list, tuple)):
+                        time = sum(time)
+                    config_sum += time
+            cumulative_time_taken += config_sum
+            config_times.append(cumulative_time_taken)
+        return config_times
+
     # repeat the run as specified
     repeated_results = []
     total_time_results = np.array([])
@@ -283,12 +299,20 @@ def collect_results(
             results = results["results"]
             if attempt >= 10:
                 raise RuntimeError(f"Could not find enough results in {attempt} attempts, quiting...")
-            len_res = len(results)
+
+            # cut out results that are beyond the cutoff time
+            previous_length = len(results)
+            time_taken = cumulative_time_taken(results)
+            cutoff_time = group["cutoff_times"]["cutoff_time"]
+            results = [res for res, time in zip(results, time_taken) if time <= cutoff_time]
+            if len(results) < previous_length:
+                print(f"Cut out {previous_length - len(results)} configurations beyond the cutoff time")
+
             # check if there are only invalid configs in the first min_num_evals, if so, try again
             temp_res_filtered = list(filter(lambda config: is_valid_config_result(config), results))
             only_invalid = len(temp_res_filtered) < 1
             if "max_fevals" in group["budget"]:
-                too_many_configs = len_res > group["budget"]["max_fevals"]
+                too_many_configs = len(results) > group["budget"]["max_fevals"]
             attempt += 1
         # register the results
         repeated_results.append(results)
