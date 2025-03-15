@@ -169,7 +169,11 @@ class ResultsDescription:
             raise ValueError(f"File {full_filepath} does not exist")
 
         # load the data and verify the resultsdescription object is the same
-        data = np.load(full_filepath, allow_pickle=True)
+        try:
+            data = np.load(full_filepath, allow_pickle=True)
+        except Exception as e:
+            print(f"/!\\ Error loading file: {full_filepath} /!\\")
+            raise e
         data_results_description = data["resultsdescription"].item()
         assert self.is_same_as(data_results_description), "The results description of the results is not the same"
 
