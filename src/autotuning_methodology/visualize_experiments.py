@@ -369,6 +369,9 @@ class Visualize:
             bins = plot.get("bins", 10)
             vmin = plot.get("vmin", -10.0)
             vmax = plot.get("vmax", 1.0)
+            cmin = plot.get("cmin", -10.0)
+            cmax = plot.get("cmax", 1.0)
+            cnum = plot.get("cnum", 5)
             if vmin != -10.0:
                 warnings.warn(
                     f"Careful: VMin has been changed from -10.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin."
@@ -376,6 +379,14 @@ class Visualize:
             if vmax != 1.0:
                 warnings.warn(
                     f"Careful: VMax has been changed from 1.0 to {vmax}. This breaks visual comparison compatiblity with plots that do not have the same VMax."
+                )
+            if cmin < vmin:
+                raise ValueError(
+                    f"Colorbar minimum can't be lower than the minimum value of the heatmap: {cmin} < {vmin}"
+                )
+            if cmax > vmax:
+                raise ValueError(
+                    f"Colorbar maximum can't be higher than the maximum value of the heatmap: {cmax} > {vmax}"
                 )
 
             # collect and plot the data for each search strategy
@@ -450,10 +461,20 @@ class Visualize:
                     "cutoff_percentile_start", 0.01
                 )
                 label_data = {
-                    "gpus": (list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])), "GPUs"),
-                    "applications": (list(dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])), "Applications"),
+                    "gpus": (
+                        list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])),
+                        "GPUs",
+                    ),
+                    "applications": (
+                        list(dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])),
+                        "Applications",
+                    ),
                     "searchspaces": (
-                        list(dict.fromkeys([f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "") for t in strategy_data])),
+                        list(
+                            dict.fromkeys(
+                                [f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "") for t in strategy_data]
+                            )
+                        ),
                         "Searchspaces",
                     ),
                     "time": (
@@ -516,13 +537,16 @@ class Visualize:
                 axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
                 hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto")
 
-                # set colorbar limits
-                cbar_min = -2.5
-                cbar_max = 1.0
-                hm.set_clim(cbar_min, cbar_max)  # This does not affect the colormap, only the bar
+                # hm.set_clim(cmin, cmax)  # This does not affect the colormap, only the bar
+                # cbar = plt.colorbar(hm)
+                # cbar.set_clim(cmin, cmax)  # This does not affect the colormap, only the bar
+                # cbar.ax.set_ylim(cmin, cmax)  # Adjust visible colorbar limits
 
                 # plot the colorbar
                 cbar = fig.colorbar(hm)
+                if cmin != vmin or cmax != vmax:
+                    cbar.set_ticks(np.linspace(cmin, cmax, num=cnum))  # set colorbar limits
+                    cbar.ax.set_ylim(cmin, cmax)  # adjust visible colorbar limits
                 cbar.set_label("Performance relative to baseline (0.0) and optimum (1.0)")
 
                 # keep only non-overlapping ticks
