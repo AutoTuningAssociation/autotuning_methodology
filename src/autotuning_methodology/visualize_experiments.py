@@ -367,18 +367,18 @@ class Visualize:
             x_type = plot_x_value_types[0]
             y_type = plot_y_value_types[0]
             bins = plot.get("bins", 10)
-            vmin = plot.get("vmin", -10.0)
-            vmax = plot.get("vmax", 1.0)
-            cmin = plot.get("cmin", -10.0)
-            cmax = plot.get("cmax", 1.0)
-            cnum = plot.get("cnum", 5)
+            vmin = plot.get("vmin", -10.0)  # color range lower limit
+            vmax = plot.get("vmax", 1.0)  # color range upper limit
+            cmin = plot.get("cmin", -10.0)  # colorbar lower limit
+            cmax = plot.get("cmax", 1.0)  # colorbar upper limit
+            cnum = plot.get("cnum", 5)  # number of ticks on the colorbar
             if vmin != -10.0:
                 warnings.warn(
-                    f"Careful: VMin has been changed from -10.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin."
+                    f"Careful: VMin has been changed from -10.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin. Maybe use cmin instead?."
                 )
             if vmax != 1.0:
                 warnings.warn(
-                    f"Careful: VMax has been changed from 1.0 to {vmax}. This breaks visual comparison compatiblity with plots that do not have the same VMax."
+                    f"Careful: VMax has been changed from 1.0 to {vmax}. This breaks visual comparison compatiblity with plots that do not have the same VMax. Maybe use cmax instead?"
                 )
             if cmin < vmin:
                 raise ValueError(
@@ -536,11 +536,6 @@ class Visualize:
                 axs[0].set_xticks(ticks=np.arange(len(x_ticks)), labels=x_ticks, rotation=45)
                 axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
                 hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto")
-
-                # hm.set_clim(cmin, cmax)  # This does not affect the colormap, only the bar
-                # cbar = plt.colorbar(hm)
-                # cbar.set_clim(cmin, cmax)  # This does not affect the colormap, only the bar
-                # cbar.ax.set_ylim(cmin, cmax)  # Adjust visible colorbar limits
 
                 # plot the colorbar
                 cbar = fig.colorbar(hm)
