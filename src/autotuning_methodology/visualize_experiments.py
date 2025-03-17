@@ -352,8 +352,10 @@ class Visualize:
             style: str = plot["style"]
             if scope != "search_strategy":
                 continue
-            if style != "heatmap":
-                raise NotImplementedError(f"Scope {scope} currently only supports 'heatmap' as a style, not {style}")
+            if style != "heatmap" and style != "compare_heatmaps":
+                raise NotImplementedError(
+                    f"Scope {scope} currently only supports 'heatmap' or 'compare_heatmaps' as a style, not {style}"
+                )
             plot_x_value_types: list[str] = plot["x_axis_value_types"]
             plot_y_value_types: list[str] = plot["y_axis_value_types"]
             assert len(plot_x_value_types) == 1
@@ -509,6 +511,11 @@ class Visualize:
                 axs[0].set_xticks(ticks=np.arange(len(x_ticks)), labels=x_ticks, rotation=45)
                 axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
                 hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto")
+
+                # set colorbar limits
+                cbar_min = -2.5
+                cbar_max = 1.0
+                hm.set_clim(cbar_min, cbar_max)  # This does not affect the colormap, only the bar
 
                 # plot the colorbar
                 cbar = fig.colorbar(hm)
