@@ -283,7 +283,7 @@ def collect_results(
         while only_invalid or len_res < min_num_evals:
             if attempt > 0:
                 report_multiple_attempts(rep, len_res, group["repeats"], attempt)
-            if attempt >= 10:
+            if attempt >= 20:
                 raise RuntimeError(f"Could not find enough results in {attempt} attempts, quiting...")
             _, results, total_time_ms = tune(
                 input_file,

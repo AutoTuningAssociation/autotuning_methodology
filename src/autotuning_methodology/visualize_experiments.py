@@ -29,6 +29,10 @@ from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 # The kernel information per device and device information for visualization purposes
 marker_variatons = ["v", "s", "*", "1", "2", "d", "P", "X"]
 
+remove_from_gpus_label = ""
+remove_from_applications_label = " milo"
+remove_from_searchspace_label = " milo"
+
 # total set of objective time keys
 objective_time_keys_values = ["compilation", "benchmark", "framework", "search_algorithm", "validation"]
 
@@ -446,10 +450,10 @@ class Visualize:
                     "cutoff_percentile_start", 0.01
                 )
                 label_data = {
-                    "gpus": (list(dict.fromkeys([t[0] for t in strategy_data])), "GPUs"),
-                    "applications": (list(dict.fromkeys([t[1] for t in strategy_data])), "Applications"),
+                    "gpus": (list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])), "GPUs"),
+                    "applications": (list(dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])), "Applications"),
                     "searchspaces": (
-                        list(dict.fromkeys([f"{t[1]} on\n{t[0]}" for t in strategy_data])),
+                        list(dict.fromkeys([f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "") for t in strategy_data])),
                         "Searchspaces",
                     ),
                     "time": (
