@@ -1,0 +1,68 @@
+{
+    "General": {
+        "BenchmarkName": "hyperparamtuning_dual_annealing",
+        "OutputFormat": "JSON"
+    },
+    "ConfigurationSpace": {
+        "TuningParameters": [
+            {
+                "Name": "T",
+                "Type": "int",
+                "Values": "[0.5, 1.0, 1.5]",
+                "Default": 1.0
+            },
+            {
+                "Name": "T_min",
+                "Type": "int",
+                "Values": "[0.0001, 0.001, 0.01]",
+                "Default": 0.001
+            },
+            {
+                "Name": "alpha",
+                "Type": "int",
+                "Values": "[0.9925, 0.995, 0.9975]",
+                "Default": 0.995
+            },
+            {
+                "Name": "maxiter",
+                "Type": "int",
+                "Values": "[1, 2, 3]",
+                "Default": 2
+            }
+        ],
+        "Conditions": []
+    },
+    "KernelSpecification": {
+        "Language": "Hypertuner",
+        "BenchmarkName": "hyperparamtuning_simulated_annealing",
+        "KernelName": "hyperparamtuning_simulated_annealing",
+        "KernelFile": "dummy.cu",
+        "GlobalSizeType": "CUDA",
+        "LocalSize": {
+            "X": "block_size_x",
+            "Y": "block_size_y",
+            "Z": "1"
+        },
+        "GlobalSize": {
+            "X": "(262144 // block_size_x) // tile_size_x",
+            "Y": "(262144 // block_size_y) // tile_size_y",
+            "Z": "1"
+        },
+        "GridDivX": [
+            "block_size_x",
+            "tile_size_x"
+        ],
+        "GridDivY": [
+            "block_size_y",
+            "tile_size_y"
+        ],
+        "ProblemSize": [
+            25000,
+            2048,
+            1
+        ],
+        "SharedMemory": 0,
+        "Stream": null,
+        "Arguments": []
+    }
+}

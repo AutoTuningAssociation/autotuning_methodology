@@ -1,0 +1,50 @@
+{
+    "General": {
+        "BenchmarkName": "hyperparamtuning_dual_annealing",
+        "OutputFormat": "JSON"
+    },
+    "ConfigurationSpace": {
+        "TuningParameters": [
+            {
+                "Name": "method",
+                "Type": "string",
+                "Values": "['COBYLA', 'L-BFGS-B', 'SLSQP', 'CG', 'Powell', 'Nelder-Mead', 'BFGS', 'trust-constr']",
+                "Default": "COBYLA"
+            }
+        ],
+        "Conditions": []
+    },
+    "KernelSpecification": {
+        "Language": "Hypertuner",
+        "BenchmarkName": "hyperparamtuning_dual_annealing",
+        "KernelName": "hyperparamtuning_dual_annealing",
+        "KernelFile": "dummy.cu",
+        "GlobalSizeType": "CUDA",
+        "LocalSize": {
+            "X": "block_size_x",
+            "Y": "block_size_y",
+            "Z": "1"
+        },
+        "GlobalSize": {
+            "X": "(262144 // block_size_x) // tile_size_x",
+            "Y": "(262144 // block_size_y) // tile_size_y",
+            "Z": "1"
+        },
+        "GridDivX": [
+            "block_size_x",
+            "tile_size_x"
+        ],
+        "GridDivY": [
+            "block_size_y",
+            "tile_size_y"
+        ],
+        "ProblemSize": [
+            25000,
+            2048,
+            1
+        ],
+        "SharedMemory": 0,
+        "Stream": null,
+        "Arguments": []
+    }
+}
