@@ -554,6 +554,8 @@ class StochasticOptimizationAlgorithm(Curve):
 
     def _get_curve_over_fevals_values_in_range(self, fevals_range: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Get the valid fevals and values that are in the given range."""
+        if len(fevals_range) == 0:
+            raise ValueError("The fevals range must have at least one value")
         target_index: int = fevals_range[-1] - 1
 
         # filter to only get data in the fevals range
@@ -714,7 +716,9 @@ class StochasticOptimizationAlgorithm(Curve):
         real_stopping_point_time: float = np.nanmedian(highest_time_per_repeat)
 
         # filter to get the time range with a margin on both ends for the isotonic regression
-        time_range_margin_modifier = 0.25 * (num_repeats / times.size) # give more margin when there are few values relative to the number of repeats
+        time_range_margin_modifier = 0.25 * (
+            num_repeats / times.size
+        )  # give more margin when there are few values relative to the number of repeats
         time_range_margin = 0.1 + time_range_margin_modifier
         time_range_start = time_range[0] * (1 - time_range_margin)
         time_range_end = time_range[-1] * (1 + time_range_margin)
