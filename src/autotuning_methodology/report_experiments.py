@@ -84,11 +84,10 @@ def get_aggregation_data(
                 raise ValueError(f"Could not find '{use_strategy_as_baseline}' in executed strategies")
 
             # set the x-axis range
-            _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(cutoff_percentile)
-            _, cutoff_point_fevals_start, cutoff_point_time_start = searchspace_stats.cutoff_point_fevals_time(
-                cutoff_percentile_start
+            cutoff_point_fevals_start, cutoff_point_fevals, cutoff_point_time_start, cutoff_point_time = (
+                searchspace_stats.cutoff_point_fevals_time_start_end(cutoff_percentile_start, cutoff_percentile)
             )
-            fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals)
+            fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals + 1)
             time_range = np.linspace(start=cutoff_point_time_start, stop=cutoff_point_time, num=time_resolution)
 
             # get the random baseline

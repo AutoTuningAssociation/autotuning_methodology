@@ -300,6 +300,17 @@ class SearchspaceStatistics:
         # exit(0)
         return objective_performance_at_cutoff_point, fevals_to_cutoff_point
 
+    def cutoff_point_time_from_fevals(self, cutoff_point_fevals: int) -> float:
+        """Calculates the time to the cutoff point from the number of function evaluations.
+
+        Args:
+            cutoff_point_fevals: the number of function evaluations to reach the cutoff point.
+
+        Returns:
+            The time to the cutoff point.
+        """
+        return cutoff_point_fevals * self.total_time_median()
+
     def cutoff_point_fevals_time(self, cutoff_percentile: float) -> tuple[float, int, float]:
         """Calculates the cutoff point.
 
@@ -310,8 +321,39 @@ class SearchspaceStatistics:
             A tuple of the objective value at cutoff point, fevals to cutoff point, and the mean time to cutoff point.
         """
         cutoff_point_value, cutoff_point_fevals = self.cutoff_point(cutoff_percentile)
-        cutoff_point_time = cutoff_point_fevals * self.total_time_median()
+        cutoff_point_time = self.cutoff_point_time_from_fevals(cutoff_point_fevals)
         return cutoff_point_value, cutoff_point_fevals, cutoff_point_time
+
+    def cutoff_point_fevals_time_start_end(
+        self, cutoff_percentile_start: float, cutoff_percentile: float
+    ) -> tuple[int, int, float, float]:
+        """Calculates the cutoff point for both the start and end, and ensures there is enough margin between the two.
+
+        Args:
+            cutoff_percentile_start: the desired cutoff percentile to reach before starting the plot.
+            cutoff_percentile: the desired cutoff percentile to reach before stopping.
+
+        Returns:
+            A tuple of the fevals to cutoff point start and end, and the mean time to cutoff point start and end.
+        """
+        # get the cutoff points
+        _, cutoff_point_fevals_start = self.cutoff_point(cutoff_percentile_start)
+        _, cutoff_point_fevals_end = self.cutoff_point(cutoff_percentile)
+
+        # apply a safe margin if needed
+        if cutoff_point_fevals_end - cutoff_point_fevals_start == 0:
+            if cutoff_point_fevals_start == 0:
+                cutoff_point_fevals_end += 2
+            else:
+                cutoff_point_fevals_end += 1
+                cutoff_point_fevals_start -= 1
+
+        # get the times
+        cutoff_point_time_start = self.cutoff_point_time_from_fevals(cutoff_point_fevals_start)
+        cutoff_point_time_end = self.cutoff_point_time_from_fevals(cutoff_point_fevals_end)
+
+        # return the values
+        return cutoff_point_fevals_start, cutoff_point_fevals_end, cutoff_point_time_start, cutoff_point_time_end
 
     def get_valid_filepath(self) -> Path:
         """Returns the filepath to the Searchspace statistics .json file if it exists.

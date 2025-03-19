@@ -289,13 +289,11 @@ def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: 
     Returns:
         A modified group dictionary.
     """
-    # get cutoff point
-    _, cutoff_point_fevals, cutoff_point_time = searchspace_stats.cutoff_point_fevals_time(
-        statistics_settings["cutoff_percentile"]
-    )
-    # get cutoff point start
-    _, _, cutoff_point_start_time = searchspace_stats.cutoff_point_fevals_time(
-        statistics_settings["cutoff_percentile_start"]
+    # get cutoff points
+    _, cutoff_point_fevals, cutoff_point_start_time, cutoff_point_time = (
+        searchspace_stats.cutoff_point_fevals_time_start_end(
+            statistics_settings["cutoff_percentile_start"], statistics_settings["cutoff_percentile"]
+        )
     )
 
     # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations  # noqa: E501
