@@ -217,13 +217,33 @@ def collect_results(
         input_file: an input json file to tune.
         group: a dictionary with settings for experimental group.
         results_description: the ``ResultsDescription`` object to write the results to.
-        searchspace_stats: the ``SearchspaceStatistics`` object, only used for conversion of imported runs.
+        searchspace_stats: the ``SearchspaceStatistics`` object, used for conversion of imported runs.
         profiling: whether profiling statistics must be collected.
 
     Returns:
         The ``ResultsDescription`` object with the results.
     """
-    min_num_evals: int = group["minimum_number_of_valid_search_iterations"]
+
+    # calculate the minimum number of function evaluations that must be valid
+    minimum_fraction_of_budget_valid = group.get("minimum_fraction_of_budget_valid", None)
+    if minimum_fraction_of_budget_valid is not None:
+        assert isinstance(minimum_fraction_of_budget_valid, float)
+        assert 0.0 < minimum_fraction_of_budget_valid <= 1.0
+        max_fevals = None
+        budget = group['budget']
+        if "max_fevals" in budget:
+            max_fevals = budget['max_fevals']
+        elif "time_limit" in budget:
+            time_limit = budget['time_limit']
+            time_per_feval = self.searchspace_stats.get_time_per_feval("mean_per_feval")
+            max_fevals = max(round(time_limit / time_per_feval), 2)
+        else:
+            raise ValueError(f"Unkown budget {budget}, can not calculate minimum fraction of budget valid")
+        min_num_evals = max(round(minimum_fraction_of_budget_valid * min(max_fevals, searchspace_stats.size)), 2)
+        if "minimum_number_of_valid_search_iterations" in group:
+            warnings.warn(f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}, {min_num_evals}) are set, the latter takes precedence.")
+    else:
+        min_num_evals: int = group["minimum_number_of_valid_search_iterations"]
 
     if len(results_description.objective_performance_keys) != 1:
         raise NotImplementedError(

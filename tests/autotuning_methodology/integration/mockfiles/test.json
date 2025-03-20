@@ -1,5 +1,5 @@
 {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "name": "Mock run test",
     "parent_folder": "./test_run_experiment",
     "experimental_groups_defaults": {
@@ -19,6 +19,7 @@
         "stochastic": true,
         "repeats": 10,
         "samples": 3,
+        "minimum_fraction_of_budget_valid": 0.5,
         "minimum_number_of_valid_search_iterations": 20,
         "ignore_cache": false
     },

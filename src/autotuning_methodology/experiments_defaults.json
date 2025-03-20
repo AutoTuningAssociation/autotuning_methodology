@@ -1,5 +1,5 @@
 {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "name": "",
     "parent_folder": ".",
     "experimental_groups_defaults": {
@@ -25,7 +25,7 @@
         "stochastic": true,
         "repeats": 25,
         "samples": 32,
-        "minimum_number_of_valid_search_iterations": 10,
+        "minimum_fraction_of_budget_valid": 0.5,
         "ignore_cache": false
     },
     "search_strategies": [

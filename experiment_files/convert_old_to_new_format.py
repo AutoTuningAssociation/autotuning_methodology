@@ -18,7 +18,7 @@ with old_file_path.open("r", encoding=encoding) as fp:
 
 # convert the dictionary to the new format
 new_experiment = {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "name": old_experiment["name"],
     "parent_folder": f"./{old_experiment['folder_id']}",
     "experimental_groups_defaults": {
@@ -37,6 +37,7 @@ new_experiment = {
         "stochastic": old_experiment["strategy_defaults"]["stochastic"],
         "repeats": old_experiment["strategy_defaults"]["repeats"],
         "samples": old_experiment["strategy_defaults"]["iterations"],
+        "minimum_fraction_of_budget_valid": old_experiment.get("minimum_fraction_of_budget_valid", 0.5),
         "minimum_number_of_valid_search_iterations": old_experiment["strategy_defaults"][
             "minimum_number_of_evaluations"
         ],
