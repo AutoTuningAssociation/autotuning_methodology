@@ -5,6 +5,7 @@ from __future__ import annotations  # for correct nested type hints e.g. list[st
 import json
 from math import ceil, floor
 from pathlib import Path
+from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -290,6 +291,15 @@ class SearchspaceStatistics:
         i = next(
             x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_performance_at_cutoff_point
         )
+        if cutoff_percentile != 1.0 and inverted_sorted_performance_arr[i] == self.total_performance_absolute_optimum():
+            if i == 0:
+                raise ValueError(
+                    f"The optimum is directly reached ({inverted_sorted_performance_arr[i]})",
+                    inverted_sorted_performance_arr,
+                )
+            else:
+                i = i - 1
+                warn(f"Scaled down cutoff point as {cutoff_percentile} is equal to optimum (1.0) for this distribution")
         # In case of x <= (1+p) * f_opt
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= (1 + (1 - cutoff_percentile)) * arr[-1])  # noqa: E501
         # In case of p*x <= f_opt
@@ -341,12 +351,14 @@ class SearchspaceStatistics:
         _, cutoff_point_fevals_end = self.cutoff_point(cutoff_percentile)
 
         # apply a safe margin if needed
-        if cutoff_point_fevals_end - cutoff_point_fevals_start == 0:
+        if cutoff_point_fevals_end - cutoff_point_fevals_start < 2:
             if cutoff_point_fevals_start == 0:
-                cutoff_point_fevals_end += 2
+                cutoff_point_fevals_end = min(self.cutoff_point(1.0)[0], cutoff_point_fevals_end + 2)
             else:
-                cutoff_point_fevals_end += 1
+                cutoff_point_fevals_end = min(self.cutoff_point(1.0)[0], cutoff_point_fevals_end + 1)
                 cutoff_point_fevals_start -= 1
+        if cutoff_point_fevals_end - cutoff_point_fevals_start == 0:
+            raise ValueError("Cutoff point start and end are the same")
 
         # get the times
         cutoff_point_time_start = self.cutoff_point_time_from_fevals(cutoff_point_fevals_start)
