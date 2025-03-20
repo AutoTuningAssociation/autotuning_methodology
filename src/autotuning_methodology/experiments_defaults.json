@@ -20,7 +20,7 @@
             "RTX_2080_Ti"
         ],
         "pattern_for_full_search_space_filenames": {
-            "regex": "../../autotuning_methodology/benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
+            "regex": "../autotuning_methodology/benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
         },
         "stochastic": true,
         "repeats": 25,

@@ -372,6 +372,8 @@ class Visualize:
             cmin = plot.get("cmin", vmin)  # colorbar lower limit
             cmax = plot.get("cmax", vmax)  # colorbar upper limit
             cnum = plot.get("cnum", 5)  # number of ticks on the colorbar
+            include_y_labels = plot.get("include_y_labels", None)
+            include_colorbar = plot.get("include_colorbar", True)
             if vmin != -10.0:
                 warnings.warn(
                     f"Careful: VMin has been changed from -10.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin. Maybe use cmin instead?."
@@ -388,6 +390,22 @@ class Visualize:
                 raise ValueError(
                     f"Colorbar maximum can't be higher than the maximum value of the heatmap: {cmax} > {vmax}"
                 )
+
+            # set the colormap
+            def norm_color_val(v):
+                """Normalize a color value to fit in the 0-1 range."""
+                return (v - vmin) / (vmax - vmin)
+
+            cmap = LinearSegmentedColormap.from_list(
+                "my_colormap",
+                [
+                    (norm_color_val(-10.0), "black"),
+                    (norm_color_val(-4.0), "red"),
+                    (norm_color_val(-1.0), "orange"),
+                    (norm_color_val(0.0), "yellow"),
+                    (norm_color_val(1.0), "green"),
+                ],
+            )
 
             # collect and plot the data for each search strategy
             data_collected: dict[str, list[tuple]] = defaultdict(list)
@@ -452,56 +470,128 @@ class Visualize:
                             data_collected[strategy_name].append(
                                 tuple([gpu_display_name, application_display_name, score, score_binned])
                             )
+            if style == "heatmap":
+                for strategy in self.strategies:
+                    strategy_name = strategy["name"]
+                    strategy_displayname = strategy["display_name"]
+                    strategy_data = data_collected[strategy_name]
 
-                # get the performance per selected type in an array
-                strategy_data = data_collected[strategy_name]
-                plot_data = np.stack(np.array([t[2] for t in strategy_data]))
-                cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1)
-                cutoff_percentile_start: float = self.experiment["statistics_settings"].get(
-                    "cutoff_percentile_start", 0.01
-                )
-                label_data = {
-                    "gpus": (
-                        list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])),
-                        "GPUs",
-                    ),
-                    "applications": (
-                        list(dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])),
-                        "Applications",
-                    ),
-                    "searchspaces": (
-                        list(
-                            dict.fromkeys(
-                                [f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "") for t in strategy_data]
-                            )
-                        ),
-                        "Searchspaces",
-                    ),
-                    "time": (
-                        np.round(np.linspace(0.0, 1.0, bins), 2),
-                        f"Fraction of time between {cutoff_percentile_start*100}% and {cutoff_percentile*100}%",
-                    ),
-                }
-                x_ticks = label_data[x_type][0]
-                y_ticks = label_data[y_type][0]
-                if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
-                    plot_data: np.ndarray = np.stack(np.array([t[3] for t in strategy_data]))
-                    if x_type == "searchspaces":
-                        plot_data = plot_data.transpose()
-                elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
-                    plot_data = np.reshape(plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0])))
-                    if x_type == "gpus":
-                        plot_data = np.transpose(plot_data)
-                else:
-                    raise NotImplementedError(
-                        f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
+                    # get the performance per selected type in an array
+                    plot_data = np.stack(np.array([t[2] for t in strategy_data]))
+                    cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1.0)
+                    cutoff_percentile_start: float = self.experiment["statistics_settings"].get(
+                        "cutoff_percentile_start", 0.01
                     )
+                    label_data = {
+                        "gpus": (
+                            list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])),
+                            "GPUs",
+                        ),
+                        "applications": (
+                            list(dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])),
+                            "Applications",
+                        ),
+                        "searchspaces": (
+                            list(
+                                dict.fromkeys(
+                                    [f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "") for t in strategy_data]
+                                )
+                            ),
+                            "Searchspaces",
+                        ),
+                        "time": (
+                            np.round(np.linspace(0.0, 1.0, bins), 2),
+                            f"Fraction of time between {cutoff_percentile_start*100}% and {cutoff_percentile*100}%",
+                        ),
+                    }
+                    x_ticks = label_data[x_type][0]
+                    y_ticks = label_data[y_type][0]
+                    figsize = None
+                    if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
+                        plot_data: np.ndarray = np.stack(np.array([t[3] for t in strategy_data]))
+                        if x_type == "searchspaces":
+                            plot_data = plot_data.transpose()
+                        figsize = (9, 5)
+                    elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
+                        plot_data = np.reshape(plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0])))
+                        if x_type == "gpus":
+                            plot_data = np.transpose(plot_data)
+                        figsize = (5, 3.5)
+                    else:
+                        raise NotImplementedError(
+                            f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
+                        )
 
-                # validate the data
-                outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
-                assert (
-                    len(outside_range[0]) == 0 and len(outside_range[1]) == 0
-                ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
+                    # validate the data
+                    outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
+                    assert (
+                        len(outside_range[0]) == 0 and len(outside_range[1]) == 0
+                    ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
+
+                    # set up the plot
+                    fig, axs = plt.subplots(
+                        ncols=1, figsize=figsize, dpi=300
+                    )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
+                    if not hasattr(axs, "__len__"):
+                        axs = [axs]
+                    title = f"Performance of {strategy_displayname} over {'+'.join(plot_x_value_types)},{'+'.join(plot_y_value_types)}"
+                    fig.canvas.manager.set_window_title(title)
+                    if not save_figs:
+                        fig.suptitle(title)
+
+                    # plot the heatmap
+                    axs[0].set_xlabel(label_data[x_type][1])
+                    axs[0].set_xticks(ticks=np.arange(len(x_ticks)), labels=x_ticks, rotation=0)
+                    if include_y_labels is True or None:
+                        axs[0].set_ylabel(label_data[y_type][1])
+                        axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
+                    if include_y_labels is True:
+                        # axs[0].yaxis.set_label_position("right")
+                        axs[0].yaxis.tick_right()
+                    elif include_y_labels is False:
+                        axs[0].set_yticks(ticks=np.arange(len(y_ticks)))
+                        axs[0].tick_params(labelleft=False)
+                    hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto")
+
+                    # plot the colorbar
+                    if include_colorbar is True:
+                        cbar = fig.colorbar(hm)
+                        if cmin != vmin or cmax != vmax:
+                            cbar.set_ticks(np.linspace(cmin, cmax, num=cnum))  # set colorbar limits
+                            cbar.ax.set_ylim(cmin, cmax)  # adjust visible colorbar limits
+                        # cbar.set_label("Performance relative to baseline (0.0) and optimum (1.0)")
+                        cbar.set_label("Performance score")
+
+                    # keep only non-overlapping ticks
+                    max_ticks = 15
+                    if len(x_ticks) > max_ticks:
+                        indices = np.linspace(0, len(x_ticks) - 1, max_ticks).round()
+                        hide_tick = np.isin(np.arange(len(x_ticks)), indices, invert=True, assume_unique=True)
+                        for i, t in enumerate(axs[0].xaxis.get_ticklabels()):
+                            if hide_tick[i]:
+                                t.set_visible(False)
+                    if len(y_ticks) > max_ticks:
+                        indices = np.linspace(0, len(y_ticks) - 1, max_ticks).round()
+                        hide_tick = np.isin(np.arange(len(y_ticks)), indices, invert=True, assume_unique=True)
+                        for i, t in enumerate(axs[0].yaxis.get_ticklabels()):
+                            if hide_tick[i]:
+                                t.set_visible(False)
+
+                    # finalize the figure and save or display it
+                    fig.tight_layout()
+                    if save_figs:
+                        filename_path = (
+                            Path(self.plot_filename_prefix)
+                            / f"{strategy_name}_heatmap_{'_'.join(plot_x_value_types)}_{'_'.join(plot_y_value_types)}"
+                        )
+                        fig.savefig(filename_path, dpi=300)
+                        print(f"Figure saved to {filename_path}")
+                    else:
+                        plt.show()
+            elif style == "compare_heatmaps":
+                comparisons = plot["comparison"]
+
+                raise NotImplementedError("Still a work in progress")
 
                 # set up the plot
                 fig, axs = plt.subplots(
@@ -509,67 +599,68 @@ class Visualize:
                 )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
                 if not hasattr(axs, "__len__"):
                     axs = [axs]
-                title = f"Performance of {strategy_displayname} over {'+'.join(plot_x_value_types)},{'+'.join(plot_y_value_types)}"
-                fig.canvas.manager.set_window_title(title)
-                if not save_figs:
-                    fig.suptitle(title)
+                # title = f"Performance of {strategy_displayname} over {'+'.join(plot_x_value_types)},{'+'.join(plot_y_value_types)}"
+                # fig.canvas.manager.set_window_title(title)
+                # if not save_figs:
+                    # fig.suptitle(title)
+                
+                for comparison in comparisons:
+                    strategy_names = comparisons["strategies"]
+                    strategies = [s for s in self.strategies if s["name"]]
+                    # for strategy in strategies:
+                    strategy_displayname = strategy["display_name"]
+                    strategy_data = data_collected[strategy_name]
 
-                # set the colormap
-                def norm_color_val(v):
-                    """Normalize a color value to fit in the 0-1 range."""
-                    return (v - vmin) / (vmax - vmin)
-
-                cmap = LinearSegmentedColormap.from_list(
-                    "my_colormap",
-                    [
-                        (norm_color_val(-10.0), "black"),
-                        (norm_color_val(-4.0), "red"),
-                        (norm_color_val(-1.0), "orange"),
-                        (norm_color_val(0.0), "yellow"),
-                        (norm_color_val(1.0), "green"),
-                    ],
-                )
-
-                # plot the heatmap
-                axs[0].set_xlabel(label_data[x_type][1])
-                axs[0].set_ylabel(label_data[y_type][1])
-                axs[0].set_xticks(ticks=np.arange(len(x_ticks)), labels=x_ticks, rotation=45)
-                axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
-                hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto")
-
-                # plot the colorbar
-                cbar = fig.colorbar(hm)
-                if cmin != vmin or cmax != vmax:
-                    cbar.set_ticks(np.linspace(cmin, cmax, num=cnum))  # set colorbar limits
-                    cbar.ax.set_ylim(cmin, cmax)  # adjust visible colorbar limits
-                cbar.set_label("Performance relative to baseline (0.0) and optimum (1.0)")
-
-                # keep only non-overlapping ticks
-                max_ticks = 15
-                if len(x_ticks) > max_ticks:
-                    indices = np.linspace(0, len(x_ticks) - 1, max_ticks).round()
-                    hide_tick = np.isin(np.arange(len(x_ticks)), indices, invert=True, assume_unique=True)
-                    for i, t in enumerate(axs[0].xaxis.get_ticklabels()):
-                        if hide_tick[i]:
-                            t.set_visible(False)
-                if len(y_ticks) > max_ticks:
-                    indices = np.linspace(0, len(y_ticks) - 1, max_ticks).round()
-                    hide_tick = np.isin(np.arange(len(y_ticks)), indices, invert=True, assume_unique=True)
-                    for i, t in enumerate(axs[0].yaxis.get_ticklabels()):
-                        if hide_tick[i]:
-                            t.set_visible(False)
-
-                # finalize the figure and save or display it
-                fig.tight_layout()
-                if save_figs:
-                    filename_path = (
-                        Path(self.plot_filename_prefix)
-                        / f"{strategy_name}_heatmap_{'_'.join(plot_x_value_types)}_{'_'.join(plot_y_value_types)}"
+                    # get the performance per selected type in an array
+                    plot_data = np.stack(np.array([t[2] for t in strategy_data]))
+                    cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1)
+                    cutoff_percentile_start: float = self.experiment["statistics_settings"].get(
+                        "cutoff_percentile_start", 0.01
                     )
-                    fig.savefig(filename_path, dpi=300)
-                    print(f"Figure saved to {filename_path}")
-                else:
-                    plt.show()
+                    label_data = {
+                        "gpus": (
+                            list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])),
+                            "GPUs",
+                        ),
+                        "applications": (
+                            list(dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])),
+                            "Applications",
+                        ),
+                        "searchspaces": (
+                            list(
+                                dict.fromkeys(
+                                    [f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "") for t in strategy_data]
+                                )
+                            ),
+                            "Searchspaces",
+                        ),
+                        "time": (
+                            np.round(np.linspace(0.0, 1.0, bins), 2),
+                            f"Fraction of time between {cutoff_percentile_start*100}% and {cutoff_percentile*100}%",
+                        ),
+                    }
+                    x_ticks = label_data[x_type][0]
+                    y_ticks = label_data[y_type][0]
+                    if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
+                        plot_data: np.ndarray = np.stack(np.array([t[3] for t in strategy_data]))
+                        if x_type == "searchspaces":
+                            plot_data = plot_data.transpose()
+                    elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
+                        plot_data = np.reshape(plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0])))
+                        if x_type == "gpus":
+                            plot_data = np.transpose(plot_data)
+                    else:
+                        raise NotImplementedError(
+                            f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
+                        )
+
+                    # validate the data
+                    outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
+                    assert (
+                        len(outside_range[0]) == 0 and len(outside_range[1]) == 0
+                    ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
+            else:
+                raise NotImplementedError(f"Invalid {style=}")
 
         # plot the aggregated searchspaces
         for plot in plots:

@@ -180,7 +180,11 @@ class ResultsDescription:
         # get the numpy arrays
         numpy_arrays = list()
         for numpy_array_key in self.numpy_arrays_keys:
-            numpy_arrays.append(data[numpy_array_key])
+            try:
+                numpy_arrays.append(data[numpy_array_key])
+            except Exception as e:
+                print(f"/!\\ Error adding numpy array {numpy_array_key} from file: {full_filepath} /!\\")
+                raise e
         return numpy_arrays
 
     def get_results(self) -> Results:
