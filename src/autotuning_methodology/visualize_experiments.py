@@ -369,8 +369,8 @@ class Visualize:
             bins = plot.get("bins", 10)
             vmin = plot.get("vmin", -10.0)  # color range lower limit
             vmax = plot.get("vmax", 1.0)  # color range upper limit
-            cmin = plot.get("cmin", -10.0)  # colorbar lower limit
-            cmax = plot.get("cmax", 1.0)  # colorbar upper limit
+            cmin = plot.get("cmin", vmin)  # colorbar lower limit
+            cmax = plot.get("cmax", vmax)  # colorbar upper limit
             cnum = plot.get("cnum", 5)  # number of ticks on the colorbar
             if vmin != -10.0:
                 warnings.warn(
