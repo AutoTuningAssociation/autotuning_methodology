@@ -43,26 +43,6 @@
     },
     "search_strategies": [
         {
-            "name": "diff_evo_tuned",
-            "search_method": "diff_evo",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 20
-                },
-                {
-                    "name": "maxiter",
-                    "value": 100
-                },
-                {
-                    "name": "method",
-                    "value": "randtobest1bin"
-                }
-            ],
-            "display_name": "Differential Evolution tuned",
-            "autotuner": "KernelTuner"
-        },
-        {
             "name": "diff_evo_inv_tuned",
             "search_method": "diff_evo",
             "search_method_hyperparameters": [
@@ -80,19 +60,6 @@
                 }
             ],
             "display_name": "Differential Evolution untuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "diff_evo_tuned"
-        },
-        {
-            "name": "dual_annealing_tuned",
-            "search_method": "dual_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "COBYLA"
-                }
-            ],
-            "display_name": "Dual Annealing tuned",
             "autotuner": "KernelTuner"
         },
         {
@@ -105,31 +72,6 @@
                 }
             ],
             "display_name": "Dual Annealing untuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "dual_annealing_tuned"
-        },
-        {
-            "name": "genetic_algorithm_tuned",
-            "search_method": "genetic_algorithm",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 30
-                },
-                {
-                    "name": "maxiter",
-                    "value": 50
-                },
-                {
-                    "name": "method",
-                    "value": "uniform"
-                },
-                {
-                    "name": "mutation_chance",
-                    "value": 20
-                }
-            ],
-            "display_name": "Genetic Algorithm tuned",
             "autotuner": "KernelTuner"
         },
         {
@@ -154,31 +96,6 @@
                 }
             ],
             "display_name": "Genetic Algorithm untuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "genetic_algorithm_tuned"
-        },
-        {
-            "name": "pso_tuned",
-            "search_method": "pso",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 20
-                },
-                {
-                    "name": "maxiter",
-                    "value": 150
-                },
-                {
-                    "name": "c1",
-                    "value": 3.0
-                },
-                {
-                    "name": "c2",
-                    "value": 1.5
-                }
-            ],
-            "display_name": "PSO tuned",
             "autotuner": "KernelTuner"
         },
         {
@@ -203,8 +120,7 @@
                 }
             ],
             "display_name": "PSO untuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "pso_tuned"
+            "autotuner": "KernelTuner"
         }
     ],
     "statistics_settings": {
@@ -222,28 +138,6 @@
     "visualization_settings": {
         "plots": [
             {
-                "scope": "searchspace",
-                "style": "line",
-                "x_axis_value_types": [
-                    "fevals"
-                ],
-                "y_axis_value_types": [
-                    "normalized",
-                    "baseline"
-                ]
-            },
-            {
-                "scope": "searchspace",
-                "style": "line",
-                "x_axis_value_types": [
-                    "time"
-                ],
-                "y_axis_value_types": [
-                    "normalized",
-                    "baseline"
-                ]
-            },
-            {
                 "scope": "search_strategy",
                 "style": "heatmap",
                 "x_axis_value_types": [
@@ -252,22 +146,9 @@
                 "y_axis_value_types": [
                     "gpus"
                 ],
-                "cmin": -2.5
-            },
-            {
-                "scope": "search_strategy",
-                "style": "heatmap",
-                "x_axis_value_types": [
-                    "time"
-                ],
-                "y_axis_value_types": [
-                    "searchspaces"
-                ],
-                "bins": 100
-            },
-            {
-                "scope": "aggregate",
-                "style": "line"
+                "cmin": -2.5,
+                "include_y_labels": true,
+                "include_colorbar": false
             }
         ],
         "resolution": 1000.0,
