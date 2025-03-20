@@ -919,13 +919,12 @@ class Visualize:
         confidence_level: float = plot_settings.get("confidence_level", 0.95)
         absolute_optimum = searchspace_stats.total_performance_absolute_optimum()
         median = searchspace_stats.total_performance_median()
-        optimum_median_difference = absolute_optimum - median
 
         def normalize(curve):
             """Min-max normalization with median as min and absolute optimum as max."""
             if curve is None:
                 return None
-            return (curve - median) / optimum_median_difference
+            return (curve - median) / (absolute_optimum - median)
 
         def normalize_multiple(curves: list) -> tuple:
             """Normalize multiple curves at once."""
@@ -944,6 +943,13 @@ class Visualize:
                 ax.axhline(0, label="baseline trajectory", color="black", ls="--")
             elif y_type == "normalized" or y_type == "baseline" or y_type == "absolute":
                 baseline = baseline_curve.get_curve(x_axis_range, x_type)
+                if absolute_optimum in baseline:
+                    raise ValueError(
+                        f"The optimum {absolute_optimum} is in the baseline, this will cause zero division problems"
+                    )
+                    # cut_at_index = np.argmax(baseline == absolute_optimum)
+                    # baseline = baseline[:cut_at_index]
+                    # x_axis_range = x_axis_range[:cut_at_index]
                 if y_type == "normalized":
                     baseline = normalize(baseline)
                 ax.plot(x_axis_range, baseline, label="Calculated baseline", color="black", ls="--")
