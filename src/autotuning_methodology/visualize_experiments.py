@@ -372,7 +372,7 @@ class Visualize:
             cmin = plot.get("cmin", -10.0)  # colorbar lower limit
             cmax = plot.get("cmax", 1.0)  # colorbar upper limit
             cnum = plot.get("cnum", 5)  # number of ticks on the colorbar
-            include_y_labels = plot.get("include_y_labels", True)
+            include_y_labels = plot.get("include_y_labels", None)
             include_colorbar = plot.get("include_colorbar", True)
             if vmin != -10.0:
                 warnings.warn(
@@ -506,14 +506,17 @@ class Visualize:
                     }
                     x_ticks = label_data[x_type][0]
                     y_ticks = label_data[y_type][0]
+                    figsize = None
                     if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
                         plot_data: np.ndarray = np.stack(np.array([t[3] for t in strategy_data]))
                         if x_type == "searchspaces":
                             plot_data = plot_data.transpose()
+                        figsize = (9, 5)
                     elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
                         plot_data = np.reshape(plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0])))
                         if x_type == "gpus":
                             plot_data = np.transpose(plot_data)
+                        figsize = (5, 3.5)
                     else:
                         raise NotImplementedError(
                             f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
@@ -527,7 +530,7 @@ class Visualize:
 
                     # set up the plot
                     fig, axs = plt.subplots(
-                        ncols=1, figsize=(7, 4), dpi=300
+                        ncols=1, figsize=figsize, dpi=300
                     )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
                     if not hasattr(axs, "__len__"):
                         axs = [axs]
@@ -539,16 +542,19 @@ class Visualize:
                     # plot the heatmap
                     axs[0].set_xlabel(label_data[x_type][1])
                     axs[0].set_xticks(ticks=np.arange(len(x_ticks)), labels=x_ticks, rotation=0)
-                    if include_y_labels:
+                    if include_y_labels is True or None:
                         axs[0].set_ylabel(label_data[y_type][1])
                         axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
-                    else:
+                    if include_y_labels is True:
+                        # axs[0].yaxis.set_label_position("right")
+                        axs[0].yaxis.tick_right()
+                    elif include_y_labels is False:
                         axs[0].set_yticks(ticks=np.arange(len(y_ticks)))
                         axs[0].tick_params(labelleft=False)
                     hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto")
 
                     # plot the colorbar
-                    if not include_colorbar:
+                    if include_colorbar is True:
                         cbar = fig.colorbar(hm)
                         if cmin != vmin or cmax != vmax:
                             cbar.set_ticks(np.linspace(cmin, cmax, num=cnum))  # set colorbar limits
