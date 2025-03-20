@@ -39,7 +39,14 @@ class Baseline(CurveBasis):
                 standardised_curves.append(None)
                 continue
             assert strategy_curve.shape == random_curve.shape, "strategy_curve shape must match random_curve shape"
-            standardised_curve = (strategy_curve - random_curve) / (absolute_optimum - random_curve)
+            division = absolute_optimum - random_curve
+
+            # check for division by zero
+            if 0.0 in division:
+                raise ValueError(f"Division by zero encountered, first at index {np.argmax(division == 0.0)}.")
+
+            # calculate the standardised curve
+            standardised_curve = (strategy_curve - random_curve) / division
             standardised_curves.append(standardised_curve)
         return tuple(standardised_curves)
 
