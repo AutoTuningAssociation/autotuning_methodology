@@ -75,8 +75,7 @@
                 "y_axis_value_types": [
                     "gpus"
                 ],
-                "vmin": -2.5,
-                "vmax": 1.2
+                "cmin": -2.5
             },
             {
                 "scope": "search_strategy",
@@ -87,7 +86,6 @@
                 "y_axis_value_types": [
                     "searchspaces"
                 ],
-                "vmin": -2.5,
                 "bins": 10
             },
             {

@@ -488,13 +488,18 @@ class Visualize:
                             "GPUs",
                         ),
                         "applications": (
-                            list(dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])),
+                            list(
+                                dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])
+                            ),
                             "Applications",
                         ),
                         "searchspaces": (
                             list(
                                 dict.fromkeys(
-                                    [f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "") for t in strategy_data]
+                                    [
+                                        f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "")
+                                        for t in strategy_data
+                                    ]
                                 )
                             ),
                             "Searchspaces",
@@ -507,13 +512,19 @@ class Visualize:
                     x_ticks = label_data[x_type][0]
                     y_ticks = label_data[y_type][0]
                     figsize = None
-                    if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
+                    if (x_type == "time" and y_type == "searchspaces") or (
+                        x_type == "searchspaces" and y_type == "time"
+                    ):
                         plot_data: np.ndarray = np.stack(np.array([t[3] for t in strategy_data]))
                         if x_type == "searchspaces":
                             plot_data = plot_data.transpose()
                         figsize = (9, 5)
-                    elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
-                        plot_data = np.reshape(plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0])))
+                    elif (x_type == "gpus" and y_type == "applications") or (
+                        y_type == "gpus" and x_type == "applications"
+                    ):
+                        plot_data = np.reshape(
+                            plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0]))
+                        )
                         if x_type == "gpus":
                             plot_data = np.transpose(plot_data)
                         figsize = (5, 3.5)
@@ -522,11 +533,16 @@ class Visualize:
                             f"Heatmap has not yet been implemented for {x_type}, {y_type}. Submit an issue to request it."
                         )
 
-                    # validate the data
+                    # validate the data is within the vmin-vmax range and visible colorbar range
                     outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
                     assert (
                         len(outside_range[0]) == 0 and len(outside_range[1]) == 0
                     ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
+                    outside_visible_range = np.where(np.logical_or(plot_data < cmin, plot_data > cmax))
+                    if not (len(outside_visible_range[0]) == 0 and len(outside_visible_range[1]) == 0):
+                        warnings.warn(
+                            f"There are values outside of the visible colorbar range ({cmin}, {cmax}): {plot_data[outside_visible_range]} ({outside_visible_range})"
+                        )
 
                     # set up the plot
                     fig, axs = plt.subplots(
@@ -551,7 +567,9 @@ class Visualize:
                     elif include_y_labels is False:
                         axs[0].set_yticks(ticks=np.arange(len(y_ticks)))
                         axs[0].tick_params(labelleft=False)
-                    hm = axs[0].imshow(plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto")
+                    hm = axs[0].imshow(
+                        plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto"
+                    )
 
                     # plot the colorbar
                     if include_colorbar is True:
@@ -602,8 +620,8 @@ class Visualize:
                 # title = f"Performance of {strategy_displayname} over {'+'.join(plot_x_value_types)},{'+'.join(plot_y_value_types)}"
                 # fig.canvas.manager.set_window_title(title)
                 # if not save_figs:
-                    # fig.suptitle(title)
-                
+                # fig.suptitle(title)
+
                 for comparison in comparisons:
                     strategy_names = comparisons["strategies"]
                     strategies = [s for s in self.strategies if s["name"]]
@@ -623,13 +641,18 @@ class Visualize:
                             "GPUs",
                         ),
                         "applications": (
-                            list(dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])),
+                            list(
+                                dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])
+                            ),
                             "Applications",
                         ),
                         "searchspaces": (
                             list(
                                 dict.fromkeys(
-                                    [f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "") for t in strategy_data]
+                                    [
+                                        f"{t[1]} on\n{t[0]}".replace(remove_from_searchspace_label, "")
+                                        for t in strategy_data
+                                    ]
                                 )
                             ),
                             "Searchspaces",
@@ -641,12 +664,18 @@ class Visualize:
                     }
                     x_ticks = label_data[x_type][0]
                     y_ticks = label_data[y_type][0]
-                    if (x_type == "time" and y_type == "searchspaces") or (x_type == "searchspaces" and y_type == "time"):
+                    if (x_type == "time" and y_type == "searchspaces") or (
+                        x_type == "searchspaces" and y_type == "time"
+                    ):
                         plot_data: np.ndarray = np.stack(np.array([t[3] for t in strategy_data]))
                         if x_type == "searchspaces":
                             plot_data = plot_data.transpose()
-                    elif (x_type == "gpus" and y_type == "applications") or (y_type == "gpus" and x_type == "applications"):
-                        plot_data = np.reshape(plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0])))
+                    elif (x_type == "gpus" and y_type == "applications") or (
+                        y_type == "gpus" and x_type == "applications"
+                    ):
+                        plot_data = np.reshape(
+                            plot_data, (len(label_data["gpus"][0]), len(label_data["applications"][0]))
+                        )
                         if x_type == "gpus":
                             plot_data = np.transpose(plot_data)
                     else:
