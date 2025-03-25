@@ -367,16 +367,16 @@ class Visualize:
             x_type = plot_x_value_types[0]
             y_type = plot_y_value_types[0]
             bins = plot.get("bins", 10)
-            vmin = plot.get("vmin", -10.0)  # color range lower limit
+            vmin = plot.get("vmin", -15.0)  # color range lower limit
             vmax = plot.get("vmax", 1.0)  # color range upper limit
             cmin = plot.get("cmin", vmin)  # colorbar lower limit
             cmax = plot.get("cmax", vmax)  # colorbar upper limit
             cnum = plot.get("cnum", 5)  # number of ticks on the colorbar
             include_y_labels = plot.get("include_y_labels", None)
             include_colorbar = plot.get("include_colorbar", True)
-            if vmin != -10.0:
+            if vmin != -15.0:
                 warnings.warn(
-                    f"Careful: VMin has been changed from -10.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin. Maybe use cmin instead?."
+                    f"Careful: VMin has been changed from -15.0 to {vmin}. This breaks visual comparison compatiblity with plots that do not have the same VMin. Maybe use cmin instead?."
                 )
             if vmax != 1.0:
                 warnings.warn(
@@ -399,7 +399,7 @@ class Visualize:
             cmap = LinearSegmentedColormap.from_list(
                 "my_colormap",
                 [
-                    (norm_color_val(-10.0), "black"),
+                    (norm_color_val(-15.0), "black"),
                     (norm_color_val(-4.0), "red"),
                     (norm_color_val(-1.0), "orange"),
                     (norm_color_val(0.0), "yellow"),
@@ -537,7 +537,7 @@ class Visualize:
                     outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
                     assert (
                         len(outside_range[0]) == 0 and len(outside_range[1]) == 0
-                    ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
+                    ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range} for strategy {strategy_displayname})"
                     outside_visible_range = np.where(np.logical_or(plot_data < cmin, plot_data > cmax))
                     if not (len(outside_visible_range[0]) == 0 and len(outside_visible_range[1]) == 0):
                         warnings.warn(
@@ -687,7 +687,7 @@ class Visualize:
                     outside_range = np.where(np.logical_or(plot_data < vmin, plot_data > vmax))
                     assert (
                         len(outside_range[0]) == 0 and len(outside_range[1]) == 0
-                    ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range})"
+                    ), f"There are values outside of the range ({vmin}, {vmax}): {plot_data[outside_range]} ({outside_range} for strategy {strategy_displayname})"
             else:
                 raise NotImplementedError(f"Invalid {style=}")
 
