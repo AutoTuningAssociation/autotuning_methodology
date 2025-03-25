@@ -223,25 +223,26 @@ def collect_results(
     Returns:
         The ``ResultsDescription`` object with the results.
     """
-
     # calculate the minimum number of function evaluations that must be valid
     minimum_fraction_of_budget_valid = group.get("minimum_fraction_of_budget_valid", None)
     if minimum_fraction_of_budget_valid is not None:
         assert isinstance(minimum_fraction_of_budget_valid, float)
         assert 0.0 < minimum_fraction_of_budget_valid <= 1.0
         max_fevals = None
-        budget = group['budget']
+        budget = group["budget"]
         if "max_fevals" in budget:
-            max_fevals = budget['max_fevals']
+            max_fevals = budget["max_fevals"]
         elif "time_limit" in budget:
-            time_limit = budget['time_limit']
+            time_limit = budget["time_limit"]
             time_per_feval = self.searchspace_stats.get_time_per_feval("mean_per_feval")
             max_fevals = max(round(time_limit / time_per_feval), 2)
         else:
             raise ValueError(f"Unkown budget {budget}, can not calculate minimum fraction of budget valid")
         min_num_evals = max(round(minimum_fraction_of_budget_valid * min(max_fevals, searchspace_stats.size)), 2)
         if "minimum_number_of_valid_search_iterations" in group:
-            warnings.warn(f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}, {min_num_evals}) are set, the latter takes precedence.")
+            warnings.warn(
+                f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}, {min_num_evals}) are set, the latter takes precedence."
+            )
     else:
         min_num_evals: int = group["minimum_number_of_valid_search_iterations"]
 
@@ -427,9 +428,7 @@ def write_results(repeated_results: list, results_description: ResultsDescriptio
                 assert (
                     len(measurements) > 0
                 ), f"Objective performance key name {key} not in evaluation['measurements'] ({evaluation_measurements})"
-                assert (
-                    len(measurements) == 1
-                ), f"""Objective performance key name {key} multiply defined
+                assert len(measurements) == 1, f"""Objective performance key name {key} multiply defined
                         in evaluation['measurements'] ({evaluation_measurements})"""
                 value = measurements[0]["value"]
                 if value is not None and not is_invalid_objective_performance(value):

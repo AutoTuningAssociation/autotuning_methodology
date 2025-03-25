@@ -37,16 +37,12 @@ def get_indices_in_distribution(
     # check whether the distribution is correctly ordered
     if not skip_dist_check:
         strictly_ascending_sort = dist[:-1] <= dist[1:]
-        assert np.all(
-            strictly_ascending_sort
-        ), f"""Distribution is not sorted ascendingly,
+        assert np.all(strictly_ascending_sort), f"""Distribution is not sorted ascendingly,
             {np.count_nonzero(~strictly_ascending_sort)} violations in {len(dist)} values: {dist}"""
 
     # check whether each value of draws (excluding NaN) is in dist
     if not skip_draws_check:
-        assert np.all(
-            np.in1d(draws[~np.isnan(draws)], dist)
-        ), f"""
+        assert np.all(np.in1d(draws[~np.isnan(draws)], dist)), f"""
             Each value in draws should be in dist,
             but {np.size(draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)])} values
             of the {np.size(draws)} are missing: {draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)]}"""

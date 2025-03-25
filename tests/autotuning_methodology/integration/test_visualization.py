@@ -84,6 +84,4 @@ def test_visualize_experiment():
 def test_visualized_plot(plot_filepath: Path):
     """Test whether valid plots have been produced."""
     for plot_filepath in plot_filepaths:
-        assert (
-            plot_filepath.exists()
-        ), f"{plot_filepath} does not exist, files in folder: {[f.name for f in plot_filepath.parent.iterdir() if f.is_file()]}"
+        assert plot_filepath.exists(), f"{plot_filepath} does not exist, files in folder: {[f.name for f in plot_filepath.parent.iterdir() if f.is_file()]}"

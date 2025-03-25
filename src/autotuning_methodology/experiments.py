@@ -482,7 +482,6 @@ def execute_experiment(filepath: str, profiling: bool = False):
 
     # just iterate over experimental_groups, collect results and write to proper place
     for group in all_experimental_groups:
-
         print(f" | - running on GPU '{group['gpu']}'")
         print(f" | - | tuning application '{group['application_name']}'")
         print(f" | - | - | with settings of experimental group '{group['display_name']}'")

@@ -426,9 +426,7 @@ class SearchspaceStatistics:
                 assert (
                     self.objective_times[key].shape[0] == self.size
                 ), f"Should have the same size as results ({self.size}), has {self.objective_times[key].shape[0]}"
-                assert not np.all(
-                    np.isnan(self.objective_times[key])
-                ), f"""All values for {key=} are NaN.
+                assert not np.all(np.isnan(self.objective_times[key])), f"""All values for {key=} are NaN.
                         Likely the experiment did not collect time values for objective_time_keys '{key}'."""
 
             # get the performance values per configuration
@@ -447,9 +445,7 @@ class SearchspaceStatistics:
                     self.objective_performances[key].shape[0] == self.size
                 ), f"""Should have the same size as results ({self.size}),
                         has {self.objective_performances[key].shape[0]}"""
-                assert not np.all(
-                    np.isnan(self.objective_performances[key])
-                ), f"""All values for {key=} are NaN.
+                assert not np.all(np.isnan(self.objective_performances[key])), f"""All values for {key=} are NaN.
                     Likely the experiment did not collect performance values for objective_performance_key '{key}'."""
 
             # get the number of repeats
