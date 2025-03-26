@@ -36,9 +36,9 @@
             "regex": "./benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
         },
         "stochastic": true,
-        "repeats": 50,
+        "repeats": 100,
         "samples": 32,
-        "minimum_fraction_of_budget_valid": 0.5,
+        "minimum_fraction_of_budget_valid": 0.1,
         "ignore_cache": false
     },
     "search_strategies": [
@@ -56,7 +56,7 @@
                 },
                 {
                     "name": "method",
-                    "value": "randtobest1bin"
+                    "value": "best1bin"
                 }
             ],
             "display_name": "Differential Evolution tuned",
@@ -88,7 +88,7 @@
                 },
                 {
                     "name": "method",
-                    "value": "uniform"
+                    "value": "single_point"
                 },
                 {
                     "name": "mutation_chance",
@@ -104,11 +104,11 @@
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
-                    "value": 20
+                    "value": 30
                 },
                 {
                     "name": "maxiter",
-                    "value": 150
+                    "value": 100
                 },
                 {
                     "name": "c1",
@@ -116,10 +116,34 @@
                 },
                 {
                     "name": "c2",
-                    "value": 1.5
+                    "value": 0.5
                 }
             ],
             "display_name": "PSO tuned",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "simulated_annealing_tuned",
+            "search_method": "simulated_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "T",
+                    "value": 1.5
+                },
+                {
+                    "name": "T_min",
+                    "value": 0.0001
+                },
+                {
+                    "name": "alpha",
+                    "value": 0.995
+                },
+                {
+                    "name": "maxiter",
+                    "value": 1
+                }
+            ],
+            "display_name": "Simulated Annealing tuned",
             "autotuner": "KernelTuner"
         }
     ],
@@ -146,7 +170,8 @@
                 "y_axis_value_types": [
                     "gpus"
                 ],
-                "cmin": -2.5,
+                "cmin": -4.0,
+                "cnum": 6,
                 "include_y_labels": false,
                 "include_colorbar": true
             }
