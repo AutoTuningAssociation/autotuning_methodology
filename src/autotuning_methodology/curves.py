@@ -37,12 +37,16 @@ def get_indices_in_distribution(
     # check whether the distribution is correctly ordered
     if not skip_dist_check:
         strictly_ascending_sort = dist[:-1] <= dist[1:]
-        assert np.all(strictly_ascending_sort), f"""Distribution is not sorted ascendingly,
+        assert np.all(
+            strictly_ascending_sort
+        ), f"""Distribution is not sorted ascendingly,
             {np.count_nonzero(~strictly_ascending_sort)} violations in {len(dist)} values: {dist}"""
 
     # check whether each value of draws (excluding NaN) is in dist
     if not skip_draws_check:
-        assert np.all(np.in1d(draws[~np.isnan(draws)], dist)), f"""
+        assert np.all(
+            np.in1d(draws[~np.isnan(draws)], dist)
+        ), f"""
             Each value in draws should be in dist,
             but {np.size(draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)])} values
             of the {np.size(draws)} are missing: {draws[~np.isnan(draws)][~np.in1d(draws[~np.isnan(draws)], dist)]}"""
@@ -704,12 +708,20 @@ class StochasticOptimizationAlgorithm(Curve):
         times: np.ndarray = _times[nan_mask].reshape(-1, num_repeats)
         values: np.ndarray = _values[nan_mask].reshape(-1, num_repeats)
 
-        # get the highest time of each run of the algorithm, take the median
+        # find the stopping point
         times_no_nan = times
         times_no_nan[np.isnan(values)] = np.nan  # to count only valid configurations towards highest time
         highest_time_per_repeat = np.nanmax(times_no_nan, axis=0)
         assert highest_time_per_repeat.shape[0] == num_repeats
-        real_stopping_point_time: float = np.nanmedian(highest_time_per_repeat)
+        highest_time_per_repeat = np.sort(highest_time_per_repeat)
+        # get the highest time of each run of the algorithm, take the average, stopping point is next highest time
+        try:
+            real_stopping_point_time: float = highest_time_per_repeat[
+                np.nanmedian(highest_time_per_repeat) < highest_time_per_repeat
+            ][0]
+        except IndexError:
+            # there is no next highest time, so we return the last time in the range
+            real_stopping_point_time = time_range[-1]
 
         # filter to get the time range with a margin on both ends for the isotonic regression
         time_range_margin_modifier = 0.25 * (
