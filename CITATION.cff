@@ -11,7 +11,7 @@ authors:
       orcid: "https://orcid.org/0000-0003-2295-8263"
 identifiers:
     - type: doi
-      value: 10.5281/zenodo.11207516
+      value: 10.5281/zenodo.11207515
       description: Zenodo DOI
 repository-code: >-
     https://github.com/AutoTuningAssociation/autotuning_methodology
