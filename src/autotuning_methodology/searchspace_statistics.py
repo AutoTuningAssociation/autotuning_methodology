@@ -113,11 +113,16 @@ def to_valid_array(
             # if the value is an array, sum the valid values
             array = value
             list_to_sum = list(v for v in array if is_not_invalid_value(v, performance))
-            values[value_index] = (
-                sum(list_to_sum)
-                if len(list_to_sum) > 0 and is_not_invalid_value(sum(list_to_sum), performance)
-                else np.nan
-            )
+            try:
+                values[value_index] = (
+                    sum(list_to_sum)
+                    if len(list_to_sum) > 0 and is_not_invalid_value(sum(list_to_sum), performance)
+                    else np.nan
+                )
+            except TypeError as e:
+                raise TypeError(
+                    f"Invalid type for {key=}, {value=}, {list_to_sum=}, {values=}, {performance=}, {from_time_unit=} ({e})"
+                )
     assert all(isinstance(v, (int, float)) for v in values)
     return np.array(values)
 
