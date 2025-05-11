@@ -206,55 +206,6 @@
             "display_name": "PSO untuned",
             "autotuner": "KernelTuner",
             "color_parent": "pso_tuned"
-        },
-        {
-            "name": "simulated_annealing_tuned",
-            "search_method": "simulated_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "T",
-                    "value": 1.5
-                },
-                {
-                    "name": "T_min",
-                    "value": 0.0001
-                },
-                {
-                    "name": "alpha",
-                    "value": 0.995
-                },
-                {
-                    "name": "maxiter",
-                    "value": 1
-                }
-            ],
-            "display_name": "Simulated Annealing tuned",
-            "autotuner": "KernelTuner"
-        },
-        {
-            "name": "simulated_annealing_inv_tuned",
-            "search_method": "simulated_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "T",
-                    "value": 1.5
-                },
-                {
-                    "name": "T_min",
-                    "value": 0.01
-                },
-                {
-                    "name": "alpha",
-                    "value": 0.995
-                },
-                {
-                    "name": "maxiter",
-                    "value": 3
-                }
-            ],
-            "display_name": "Simulated Annealing untuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "simulated_annealing_tuned"
         }
     ],
     "statistics_settings": {
@@ -292,17 +243,6 @@
                     "normalized",
                     "baseline"
                 ]
-            },
-            {
-                "scope": "search_strategy",
-                "style": "heatmap",
-                "x_axis_value_types": [
-                    "applications"
-                ],
-                "y_axis_value_types": [
-                    "gpus"
-                ],
-                "cmin": -2.5
             },
             {
                 "scope": "search_strategy",

@@ -372,6 +372,8 @@ class Visualize:
             cmin = plot.get("cmin", vmin)  # colorbar lower limit
             cmax = plot.get("cmax", vmax)  # colorbar upper limit
             cnum = plot.get("cnum", 5)  # number of ticks on the colorbar
+            divide_train_test_axis = plot.get("divide_train_test", False)    # whether to add visual indication for train/test split
+            divide_train_test_after_num = plot.get("divide_train_test_after_num", False)    # where to add the visual indication for train/test split
             include_y_labels = plot.get("include_y_labels", None)
             include_colorbar = plot.get("include_colorbar", True)
             if vmin != -15.0:
@@ -485,13 +487,13 @@ class Visualize:
                     label_data = {
                         "gpus": (
                             list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])),
-                            "GPUs",
+                            "[train] GPUs [test]" if plot['divide_train_test_axis'] == "gpus" else "GPUs",
                         ),
                         "applications": (
                             list(
                                 dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])
                             ),
-                            "Applications",
+                            "[train] Applications [test]" if plot['divide_train_test_axis'] == "applications" else "Applications",
                         ),
                         "searchspaces": (
                             list(

@@ -173,7 +173,9 @@
                 ],
                 "cmin": -4.0,
                 "include_y_labels": true,
-                "include_colorbar": false
+                "include_colorbar": false,
+                "divide_train_test_axis": "gpus",
+                "divide_train_test_after_num": 2
             }
         ],
         "resolution": 1000.0,
