@@ -696,6 +696,7 @@ class Visualize:
             # get settings
             scope: str = plot["scope"]
             style: str = plot["style"]
+            vmin: float = plot.get("vmin", None)  # visual range lower limit
             if scope != "aggregate":
                 continue
             if style != "line":
@@ -703,7 +704,7 @@ class Visualize:
             # plot the aggregation
             if continue_after_comparison or not (compare_baselines or compare_split_times):
                 fig, axs = plt.subplots(
-                    ncols=1, figsize=(9, 6), dpi=300
+                    ncols=1, figsize=(7.5, 5), dpi=300
                 )  # if multiple subplots, pass the axis to the plot function with axs[0] etc.
                 if not hasattr(axs, "__len__"):
                     axs = [axs]
@@ -717,6 +718,8 @@ class Visualize:
                 self.plot_strategies_aggregated(
                     axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
                 )
+                if vmin is not None:
+                    axs[0].set_ylim(bottom=vmin)
                 fig.tight_layout()
                 if save_figs:
                     filename_path = Path(self.plot_filename_prefix) / "aggregated"
