@@ -17,7 +17,7 @@ from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.runner import collect_results
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 from autotuning_methodology.validators import validate_experimentsfile
-from autotuning_methodology.utils import load_T4_format
+from autotuning_methodology.formats_interface import load_T4_format
 
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
@@ -219,12 +219,12 @@ def generate_all_experimental_groups(
                     data = load_T4_format(group["full_search_space_file"], validate=True)
                     objectives = data["results"][0]["objectives"]
                     assert len(objectives) == 1, "Only one objective is supported for now"
-                    group["objective_performance_keys"] = objectives[0]
+                    group["objective_performance_keys"] = objectives
 
                 # derive the optimization direction
                 if "minimization" in application:
                     group["minimization"] = application["minimization"]
-                elif "time" in objective:
+                elif "time" in objectives[0].lower():
                     group["minimization"] = True
                 elif any(k in objectives[0].lower() for k in ["score", "gflop/s", "gflops", "gb/s"]):
                     group["minimization"] = False
@@ -505,13 +505,15 @@ def execute_experiment(filepath: str, profiling: bool = False):
 
     # just iterate over experimental_groups, collect results and write to proper place
     for group in all_experimental_groups:
-        print(f" | - running on GPU '{group['gpu']}'")
-        print(f" | - | tuning application '{group['application_name']}'")
-        print(f" | - | - | with settings of experimental group '{group['display_name']}'")
+        # get the experimental group settings
+        application_name = group["application_name"]
+        gpu_name = group["gpu"]
+        minimization = group["minimization"]
+        objective_performance_keys = group["objective_performance_keys"]
 
-        # get the experimental group settings # TODO
-        minimization = experiment["statistics_settings"]["minimization"]
-        objective_performance_keys = experiment["statistics_settings"]["objective_performance_keys"]
+        print(f" | - running on GPU '{gpu_name}'")
+        print(f" | - | tuning application '{application_name}'")
+        print(f" | - | - | with settings of experimental group '{group['display_name']}'")
 
         # create SearchspaceStatistics for full search space file associated with this group, if it does not exist
         if any(
@@ -524,9 +526,9 @@ def execute_experiment(filepath: str, profiling: bool = False):
             else:
                 full_search_space_file_path = group["converted_full_search_space_file"]
 
-            searchspace_statistics[group["gpu"]][group["application_name"]] = SearchspaceStatistics(
-                application_name=group["application_name"],
-                device_name=group["gpu"],
+            searchspace_statistics[gpu_name][application_name] = SearchspaceStatistics(
+                application_name=application_name,
+                device_name=gpu_name,
                 minimization=minimization,
                 objective_time_keys=objective_time_keys,
                 objective_performance_keys=objective_performance_keys,
@@ -540,8 +542,8 @@ def execute_experiment(filepath: str, profiling: bool = False):
 
         results_description = ResultsDescription(
             run_folder=experiment_folderpath / "run" / group["name"],
-            application_name=group["application_name"],
-            device_name=group["gpu"],
+            application_name=application_name,
+            device_name=gpu_name,
             group_name=group["name"],
             group_display_name=group["display_name"],
             stochastic=group["stochastic"],

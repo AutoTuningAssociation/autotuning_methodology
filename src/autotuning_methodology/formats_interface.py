@@ -1,6 +1,10 @@
 """Interface for reading and writing input and output formats."""
 
-def load_T4_format(file_path: Path, validate: True) -> dict:
+import json
+from pathlib import Path
+from autotuning_methodology.validators import validate_T4
+
+def load_T4_format(filepath: Path, validate: True) -> dict:
     """Load and optionally validate a T4 format file."""
     with open(filepath, "r", encoding="utf-8") as fh:
         # get the cache from the .json file
