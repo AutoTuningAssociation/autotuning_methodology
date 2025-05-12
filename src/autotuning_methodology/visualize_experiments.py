@@ -791,7 +791,7 @@ class Visualize:
                     if isinstance(vmin, (int, float)):
                         axs[0].set_ylim(bottom=vmin)
                     elif vmin == "real":
-                        axs[0].set_ylim(bottom=lowest_real_y_value)
+                        axs[0].set_ylim(bottom=lowest_real_y_value - (abs(lowest_real_y_value)+1.0) * 0.02)
                     else:
                         raise NotImplementedError(f"{vmin=} not implemented")
                 fig.tight_layout()
@@ -1339,9 +1339,10 @@ class Visualize:
                 (
                     strategy_performance[real_stopping_point_index]
                     if real_stopping_point_index < time_range.shape[0]
-                    else strategies_performance[time_range.shape[-1]]
+                    else strategy_performance[time_range.shape[0] - 1]
                 ),
             )
+            assert isinstance(lowest_real_y_value, (int, float)), f"Invalid {lowest_real_y_value=}"
             if real_stopping_point_index <= 0:
                 warnings.warn(f"Stopping point index for {displayname} is at {real_stopping_point_index}")
                 continue

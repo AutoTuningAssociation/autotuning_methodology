@@ -258,7 +258,7 @@
             {
                 "scope": "aggregate",
                 "style": "line",
-                "ylim": "real"
+                "vmin": "real"
             }
         ],
         "resolution": 1000.0,

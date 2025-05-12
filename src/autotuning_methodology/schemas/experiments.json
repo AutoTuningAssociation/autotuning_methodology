@@ -326,8 +326,11 @@
                                 ]
                             },
                             "vmin": {
-                                "description": "The minimum value on the heatmap color scale.",
-                                "type": "number",
+                                "description": "The minimum value on the heatmap color scale or aggregate plot.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
                                 "default": -0.5
                             },
                             "vmax": {
