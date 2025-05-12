@@ -569,9 +569,14 @@ class Visualize:
                     elif include_y_labels is False:
                         axs[0].set_yticks(ticks=np.arange(len(y_ticks)))
                         axs[0].tick_params(labelleft=False)
+                    print(plot_data.shape)
                     hm = axs[0].imshow(
-                        plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto"
+                        plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto", extent=[0,0,plot_data.shape[0],plot_data.shape[1]]
                     )
+                    if divide_train_test_after_num is not False:
+                        axs[0].axvline(
+                            x=divide_train_test_after_num, color="black", linestyle="--", linewidth=1.5
+                        )
 
                     # plot the colorbar
                     if include_colorbar is True:
