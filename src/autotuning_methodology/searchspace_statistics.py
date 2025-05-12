@@ -10,6 +10,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 
+from autotuning_methodology.formats_interface import load_T4_format
 from autotuning_methodology.validators import is_invalid_objective_performance, is_invalid_objective_time, validate_T4
 
 
@@ -397,114 +398,97 @@ class SearchspaceStatistics:
         """Load the contents of the full search space file."""
         # if not, use a script to create a file with values from KTT output and formatting of KernelTuner
         filepath = self.get_valid_filepath()
-        with open(filepath, "r", encoding="utf-8") as fh:
-            print(f"Loading full search space file {filepath} and initializing the statistics...")
+        data = load_T4_format(filepath, validate=True)
+        metadata: dict = data.get("metadata", {})
+        timeunit = metadata.get("timeunit", "seconds")
+        results: dict = data["results"]
+        self.results = results
 
-            # get the cache from the .json file
-            orig_contents = fh.read()
-            try:
-                data: dict = json.loads(orig_contents)
-            except json.decoder.JSONDecodeError:
-                contents = orig_contents[:-1] + "}\n}"
-                try:
-                    data = json.loads(contents)
-                except json.decoder.JSONDecodeError:
-                    contents = orig_contents[:-2] + "}\n}"
-                    data = json.loads(contents)
-
-            # validate it is in T4 format
-            validate_T4(data)
-
-            metadata: dict = data.get("metadata", {})
-            timeunit = metadata.get("timeunit", "seconds")
-            results: dict = data["results"]
-            self.results = results
-
-            # get the time values per configuration
-            self.size = len(data["results"])
-            self.objective_times = dict()
-            for key in self.objective_time_keys:
-                self.objective_times[key] = to_valid_array(results, key, performance=False, from_time_unit=timeunit)
-                assert (
-                    self.objective_times[key].ndim == 1
-                ), f"Should have one dimension, has {self.objective_times[key].ndim}"
-                assert (
-                    self.objective_times[key].shape[0] == self.size
-                ), f"Should have the same size as results ({self.size}), has {self.objective_times[key].shape[0]}"
-                assert not np.all(np.isnan(self.objective_times[key])), f"""All values for {key=} are NaN.
-                        Likely the experiment did not collect time values for objective_time_keys '{key}'."""
-
-            # get the performance values per configuration
-            self.objective_performances = dict()
-            for key in self.objective_performance_keys:
-                self.objective_performances[key] = to_valid_array(
-                    results,
-                    key,
-                    performance=True,
-                    replace_missing_measurement_from_times_key="runtimes" if key == "time" else None,
-                )
-                assert (
-                    self.objective_performances[key].ndim == 1
-                ), f"Should have one dimension, has {self.objective_performances[key].ndim}"
-                assert (
-                    self.objective_performances[key].shape[0] == self.size
-                ), f"""Should have the same size as results ({self.size}),
-                        has {self.objective_performances[key].shape[0]}"""
-                assert not np.all(np.isnan(self.objective_performances[key])), f"""All values for {key=} are NaN.
-                    Likely the experiment did not collect performance values for objective_performance_key '{key}'."""
-
-            # get the number of repeats
-            # TODO is this necessary? number of repeats is given in experiments setup file
-            # valid_cache_index: int = 0
-            # while "times" not in cache_values[valid_cache_index]:
-            #    valid_cache_index += 1
-            # self.repeats = len(cache_values[valid_cache_index]["times"])
-
-            # combine the arrays to the shape [len(objective_keys), self.size]
-            self.objective_times_array = np.array(list(self.objective_times[key] for key in self.objective_time_keys))
-            assert self.objective_times_array.shape == tuple([len(self.objective_time_keys), self.size])
-            self.objective_performances_array = np.array(
-                list(self.objective_performances[key] for key in self.objective_performance_keys)
-            )
-            assert self.objective_performances_array.shape == tuple([len(self.objective_performance_keys), self.size])
-
-            # get the totals
-            self.objective_times_total = nansumwrapper(self.objective_times_array, axis=0)
-            assert self.objective_times_total.shape == tuple([self.size])
-            # more of a test than a necessary assert
+        # get the time values per configuration
+        self.size = len(data["results"])
+        self.objective_times = dict()
+        for key in self.objective_time_keys:
+            self.objective_times[key] = to_valid_array(results, key, performance=False, from_time_unit=timeunit)
             assert (
-                np.nansum(self.objective_times_array[:, 0]) == self.objective_times_total[0]
-            ), f"""Sums of objective performances do not match:
-                {np.nansum(self.objective_times_array[:, 0])} vs. {self.objective_times_total[0]}"""
-            self.objective_performances_total = nansumwrapper(self.objective_performances_array, axis=0)
-            assert self.objective_performances_total.shape == tuple([self.size])
-            # more of a test than a necessary assert
+                self.objective_times[key].ndim == 1
+            ), f"Should have one dimension, has {self.objective_times[key].ndim}"
             assert (
-                np.nansum(self.objective_performances_array[:, 0]) == self.objective_performances_total[0]
-            ), f"""Sums of objective performances do not match:
-                {np.nansum(self.objective_performances_array[:, 0])} vs. {self.objective_performances_total[0]}"""
+                self.objective_times[key].shape[0] == self.size
+            ), f"Should have the same size as results ({self.size}), has {self.objective_times[key].shape[0]}"
+            assert not np.all(np.isnan(self.objective_times[key])), f"""All values for {key=} are NaN.
+                    Likely the experiment did not collect time values for objective_time_keys '{key}'."""
 
-            # sort
-            self.objective_times_total_sorted = np.sort(
-                self.objective_times_total[~np.isnan(self.objective_times_total)]
+        # get the performance values per configuration
+        self.objective_performances = dict()
+        for key in self.objective_performance_keys:
+            self.objective_performances[key] = to_valid_array(
+                results,
+                key,
+                performance=True,
+                replace_missing_measurement_from_times_key="runtimes" if key == "time" else None,
             )
-            self.objective_times_number_of_nan = (
-                self.objective_times_total.shape[0] - self.objective_times_total_sorted.shape[0]
-            )
-            objective_performances_nan_mask = np.isnan(self.objective_performances_total)
-            self.objective_performances_number_of_nan = np.count_nonzero(objective_performances_nan_mask)
-            self.objective_performances_total_sorted = np.sort(
-                self.objective_performances_total[~objective_performances_nan_mask]
-            )
-            # make sure the best values are at the start, because NaNs are appended to the end
-            sorted_best_first = (
-                self.objective_performances_total_sorted
-                if self.minimization
-                else self.objective_performances_total_sorted[::-1]
-            )
-            self.objective_performances_total_sorted_nan = np.concatenate(
-                (sorted_best_first, [np.nan] * self.objective_performances_number_of_nan)
-            )
+            assert (
+                self.objective_performances[key].ndim == 1
+            ), f"Should have one dimension, has {self.objective_performances[key].ndim}"
+            assert (
+                self.objective_performances[key].shape[0] == self.size
+            ), f"""Should have the same size as results ({self.size}),
+                    has {self.objective_performances[key].shape[0]}"""
+            assert not np.all(np.isnan(self.objective_performances[key])), f"""All values for {key=} are NaN.
+                Likely the experiment did not collect performance values for objective_performance_key '{key}'."""
+
+        # get the number of repeats
+        # TODO is this necessary? number of repeats is given in experiments setup file
+        # valid_cache_index: int = 0
+        # while "times" not in cache_values[valid_cache_index]:
+        #    valid_cache_index += 1
+        # self.repeats = len(cache_values[valid_cache_index]["times"])
+
+        # combine the arrays to the shape [len(objective_keys), self.size]
+        self.objective_times_array = np.array(list(self.objective_times[key] for key in self.objective_time_keys))
+        assert self.objective_times_array.shape == tuple([len(self.objective_time_keys), self.size])
+        self.objective_performances_array = np.array(
+            list(self.objective_performances[key] for key in self.objective_performance_keys)
+        )
+        assert self.objective_performances_array.shape == tuple([len(self.objective_performance_keys), self.size])
+
+        # get the totals
+        self.objective_times_total = nansumwrapper(self.objective_times_array, axis=0)
+        assert self.objective_times_total.shape == tuple([self.size])
+        # more of a test than a necessary assert
+        assert (
+            np.nansum(self.objective_times_array[:, 0]) == self.objective_times_total[0]
+        ), f"""Sums of objective performances do not match:
+            {np.nansum(self.objective_times_array[:, 0])} vs. {self.objective_times_total[0]}"""
+        self.objective_performances_total = nansumwrapper(self.objective_performances_array, axis=0)
+        assert self.objective_performances_total.shape == tuple([self.size])
+        # more of a test than a necessary assert
+        assert (
+            np.nansum(self.objective_performances_array[:, 0]) == self.objective_performances_total[0]
+        ), f"""Sums of objective performances do not match:
+            {np.nansum(self.objective_performances_array[:, 0])} vs. {self.objective_performances_total[0]}"""
+
+        # sort
+        self.objective_times_total_sorted = np.sort(
+            self.objective_times_total[~np.isnan(self.objective_times_total)]
+        )
+        self.objective_times_number_of_nan = (
+            self.objective_times_total.shape[0] - self.objective_times_total_sorted.shape[0]
+        )
+        objective_performances_nan_mask = np.isnan(self.objective_performances_total)
+        self.objective_performances_number_of_nan = np.count_nonzero(objective_performances_nan_mask)
+        self.objective_performances_total_sorted = np.sort(
+            self.objective_performances_total[~objective_performances_nan_mask]
+        )
+        # make sure the best values are at the start, because NaNs are appended to the end
+        sorted_best_first = (
+            self.objective_performances_total_sorted
+            if self.minimization
+            else self.objective_performances_total_sorted[::-1]
+        )
+        self.objective_performances_total_sorted_nan = np.concatenate(
+            (sorted_best_first, [np.nan] * self.objective_performances_number_of_nan)
+        )
 
         return True
 
