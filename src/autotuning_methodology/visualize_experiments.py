@@ -173,7 +173,6 @@ class Visualize:
         # self.all_experimental_groups are all combinations of gpu+application+search method that got executed
         self.strategies = self.experiment["search_strategies"]
         # settings
-        self.minimization: bool = self.experiment["statistics_settings"]["minimization"]
         cutoff_percentile: float = self.experiment["statistics_settings"]["cutoff_percentile"]
         cutoff_percentile_start: float = self.experiment["statistics_settings"]["cutoff_percentile_start"]
         cutoff_type: str = self.experiment["statistics_settings"]["cutoff_type"]
@@ -208,7 +207,6 @@ class Visualize:
             cutoff_percentile,
             cutoff_percentile_start,
             confidence_level,
-            self.minimization,
             time_resolution,
             use_strategy_as_baseline,
         )
@@ -615,10 +613,11 @@ class Visualize:
                                 # add train and test texts to either side of the y-label
                                 x_loc = -0.02
                                 y_center = 0.5
+                                text = "train"
                                 axs[0].text(
                                     x=x_loc,
-                                    y=y_center - 0.25 - (len("train") * 0.02),
-                                    s="train",
+                                    y=y_center + 0.25 + (len(text) * 0.01),
+                                    s=text,
                                     color="grey",
                                     fontsize=8.5,
                                     ha="center",
@@ -626,10 +625,11 @@ class Visualize:
                                     rotation=90,
                                     transform=axs[0].transAxes,
                                 )
+                                text = "test"
                                 axs[0].text(
                                     x=x_loc,
-                                    y=y_center + 0.25 + (len("test") * 0.02),
-                                    s="test",
+                                    y=y_center - 0.25 - (len(text) * 0.01),
+                                    s=text,
                                     color="grey",
                                     fontsize=8.5,
                                     ha="center",
@@ -1284,8 +1284,10 @@ class Visualize:
         ax.set_ylabel(self.y_metric_displayname[f"objective_{y_type}"], fontsize="large")
         normalized_ylim_margin = 0.02
         if y_type == "absolute":
-            multiplier = 0.99 if self.minimization else 1.01
-            ax.set_ylim(absolute_optimum * multiplier, median)
+            # multiplier = 0.99 if self.minimization else 1.01
+            # ax.set_ylim(absolute_optimum * multiplier, median)
+            # ax.set_ylim(1.0)
+            pass
         # elif y_type == 'normalized':
         #     ax.set_ylim((0.0, 1 + normalized_ylim_margin))
         elif y_type == "baseline":

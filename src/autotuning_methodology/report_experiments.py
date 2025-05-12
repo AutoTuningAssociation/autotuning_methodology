@@ -35,7 +35,6 @@ def get_aggregation_data(
     cutoff_percentile: float,
     cutoff_percentile_start=0.01,
     confidence_level=0.95,
-    minimization: bool = True,
     time_resolution: int = 1e4,
     use_strategy_as_baseline=None,
 ):
@@ -47,7 +46,6 @@ def get_aggregation_data(
         strategies: _description_
         results_descriptions: _description_
         cutoff_percentile: _description_
-        minimization: _description_. Defaults to True.
         cutoff_percentile_start: _description_. Defaults to 0.01.
         confidence_level: _description_. Defaults to 0.95.
         time_resolution: _description_. Defaults to 1e4.
@@ -201,7 +199,6 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None)
 
     # get the settings
     experiment_folderpath = experiment["parent_folder_absolute_path"]
-    minimization: bool = experiment["statistics_settings"]["minimization"]
     cutoff_percentile: float = experiment["statistics_settings"]["cutoff_percentile"]
     cutoff_percentile_start: float = experiment["statistics_settings"]["cutoff_percentile_start"]
     time_resolution: float = experiment["visualization_settings"]["resolution"]
@@ -218,7 +215,6 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None)
             cutoff_percentile,
             cutoff_percentile_start,
             confidence_level,
-            minimization,
             time_resolution,
             use_strategy_as_baseline,
         )
