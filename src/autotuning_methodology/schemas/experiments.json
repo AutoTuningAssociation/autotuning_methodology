@@ -242,19 +242,12 @@
             "description": "Settings for the statistics calculation",
             "type": "object",
             "required": [
-                "minimization",
                 "cutoff_percentile",
                 "cutoff_percentile_start",
                 "cutoff_type",
-                "objective_time_keys",
-                "objective_performance_keys"
+                "objective_time_keys"
             ],
             "properties": {
-                "minimization": {
-                    "description": "Whether the optimization aims to minimize or maximize",
-                    "type": "boolean",
-                    "default": true
-                },
                 "cutoff_percentile": {
                     "description": "Fraction of difference between median and absolute optimum at which to stop the time range",
                     "type": "number",
@@ -287,15 +280,6 @@
                             "validation",
                             "all"
                         ]
-                    },
-                    "uniqueItems": true,
-                    "minItems": 1
-                },
-                "objective_performance_keys": {
-                    "description": "The performance key(s) to use as the performance objective. In case of multiple keys, the values are summed.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
                     },
                     "uniqueItems": true,
                     "minItems": 1
