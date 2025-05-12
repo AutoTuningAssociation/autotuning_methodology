@@ -216,17 +216,19 @@ def generate_all_experimental_groups(
                     group["objective_performance_keys"] = application["objective_performance_keys"]
                 else:
                     # load the full search space file and derive the objective performance keys
+                    print(f"Loading full search space file {group['full_search_space_file']} to infer the objective performance keys. Consider setting them explicititely in the experiments file.")
                     data = load_T4_format(group["full_search_space_file"], validate=True)
                     objectives = data["results"][0]["objectives"]
                     assert len(objectives) == 1, "Only one objective is supported for now"
                     group["objective_performance_keys"] = objectives
+                objective = group["objective_performance_keys"][0]
 
                 # derive the optimization direction
                 if "minimization" in application:
                     group["minimization"] = application["minimization"]
-                elif "time" in objectives[0].lower():
+                elif "time" in objective.lower():
                     group["minimization"] = True
-                elif any(k in objectives[0].lower() for k in ["score", "gflop/s", "gflops", "gb/s"]):
+                elif any(k in objective.lower() for k in ["score", "gflop/s", "gflops", "gb/s"]):
                     group["minimization"] = False
                 else:
                     raise NotImplementedError(
@@ -511,9 +513,14 @@ def execute_experiment(filepath: str, profiling: bool = False):
         minimization = group["minimization"]
         objective_performance_keys = group["objective_performance_keys"]
 
+        # show the progress in the console
         print(f" | - running on GPU '{gpu_name}'")
         print(f" | - | tuning application '{application_name}'")
         print(f" | - | - | with settings of experimental group '{group['display_name']}'")
+
+        # overwrite the experiment statistics settings with the group settings
+        experiment["statistics_settings"]["minimization"] = minimization
+        experiment["statistics_settings"]["objective_performance_keys"] = objective_performance_keys
 
         # create SearchspaceStatistics for full search space file associated with this group, if it does not exist
         if any(

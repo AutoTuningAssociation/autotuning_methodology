@@ -265,7 +265,7 @@ class SearchspaceStatistics:
         Returns:
             A tuple of the objective value at the cutoff point and the fevals to the cutoff point.
         """
-        inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1]
+        inverted_sorted_performance_arr = self.objective_performances_total_sorted[::-1] if self.minimization else self.objective_performances_total_sorted
         N = inverted_sorted_performance_arr.shape[0]
 
         # get the objective performance at the cutoff point
@@ -294,9 +294,14 @@ class SearchspaceStatistics:
 
         # iterate over the inverted_sorted_performance_arr until we have
         # i = next(x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] > cutoff_percentile * arr[-1])
-        i = next(
-            x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_performance_at_cutoff_point
-        )
+        if self.minimization:
+            i = next(
+                x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] <= objective_performance_at_cutoff_point
+            )
+        else:
+            i = next(
+                x[0] for x in enumerate(inverted_sorted_performance_arr) if x[1] >= objective_performance_at_cutoff_point
+            )
         if cutoff_percentile != 1.0 and inverted_sorted_performance_arr[i] == self.total_performance_absolute_optimum():
             if i == 0:
                 raise ValueError(

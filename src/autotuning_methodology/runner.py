@@ -158,8 +158,8 @@ def tune(
                 warnings.warn(
                     f"Much fewer configurations were returned ({num_results}) than the requested {max_fevals}"
                 )
-            if num_results < 2:
-                raise ValueError("Less than two configurations were returned")
+            if num_results < 2 and group["budget"]["max_fevals"] > 2:
+                raise ValueError(f"Less than two configurations were returned ({len(results['results'])}) \n")
         return metadata, results
 
     def tune_with_BAT():
@@ -240,8 +240,9 @@ def collect_results(
             raise ValueError(f"Unkown budget {budget}, can not calculate minimum fraction of budget valid")
         min_num_evals = max(round(minimum_fraction_of_budget_valid * min(max_fevals, searchspace_stats.size)), 2)
         if "minimum_number_of_valid_search_iterations" in group:
+            min_num_evals = min(min_num_evals, group["minimum_number_of_valid_search_iterations"])
             warnings.warn(
-                f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}, {min_num_evals}) are set, the latter takes precedence."
+                f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}, {min_num_evals}) are set, the minimum ({min_num_evals}) is used."
             )
     else:
         min_num_evals: int = group["minimum_number_of_valid_search_iterations"]
