@@ -372,8 +372,12 @@ class Visualize:
             cmin = plot.get("cmin", vmin)  # colorbar lower limit
             cmax = plot.get("cmax", vmax)  # colorbar upper limit
             cnum = plot.get("cnum", 5)  # number of ticks on the colorbar
-            divide_train_test_axis = plot.get("divide_train_test", False)    # whether to add visual indication for train/test split
-            divide_train_test_after_num = plot.get("divide_train_test_after_num", False)    # where to add the visual indication for train/test split
+            divide_train_test_axis = plot.get(
+                "divide_train_test_axis", False
+            )  # whether to add visual indication for train/test split
+            divide_train_test_after_num = plot.get(
+                "divide_train_test_after_num", False
+            )  # where to add the visual indication for train/test split
             include_y_labels = plot.get("include_y_labels", None)
             include_colorbar = plot.get("include_colorbar", True)
             if vmin != -15.0:
@@ -487,13 +491,21 @@ class Visualize:
                     label_data = {
                         "gpus": (
                             list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])),
-                            "[train] GPUs [test]" if plot['divide_train_test_axis'] == "gpus" else "GPUs",
+                            (
+                                "[train] GPUs [test]"
+                                if divide_train_test_axis and divide_train_test_axis.lower() == "gpus"
+                                else "GPUs"
+                            ),
                         ),
                         "applications": (
                             list(
                                 dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])
                             ),
-                            "[train] Applications [test]" if plot['divide_train_test_axis'] == "applications" else "Applications",
+                            (
+                                "[train] Applications [test]"
+                                if divide_train_test_axis and divide_train_test_axis.lower() == "applications"
+                                else "Applications"
+                            ),
                         ),
                         "searchspaces": (
                             list(
@@ -571,12 +583,26 @@ class Visualize:
                         axs[0].tick_params(labelleft=False)
                     print(plot_data.shape)
                     hm = axs[0].imshow(
-                        plot_data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation="nearest", aspect="auto", extent=[0,0,plot_data.shape[0],plot_data.shape[1]]
+                        plot_data,
+                        vmin=vmin,
+                        vmax=vmax,
+                        cmap=cmap,
+                        interpolation="nearest",
+                        aspect="auto",
+                        # extent=[-0.5, plot_data.shape[1] + 0.5, -0.5, plot_data.shape[0] + 0.5],
                     )
-                    if divide_train_test_after_num is not False:
-                        axs[0].axvline(
-                            x=divide_train_test_after_num, color="black", linestyle="--", linewidth=1.5
-                        )
+                    if divide_train_test_axis is not False:
+                        # axs[0].set_ylim(plot_data.shape[0] - 0.5, -0.5)  # Ensure correct y-axis limits
+                        if x_type == divide_train_test_axis.lower():
+                            axs[0].axvline(
+                                x=divide_train_test_after_num - 0.5, color="black", linestyle="--", linewidth=1.5
+                            )
+                        elif y_type == divide_train_test_axis.lower():
+                            axs[0].axhline(
+                                y=divide_train_test_after_num - 0.5, color="black", linestyle="--", linewidth=1.5
+                            )
+                        else:
+                            raise ValueError(f"{divide_train_test_axis=} not in x ({x_type}) or y ({y_type}) axis")
 
                     # plot the colorbar
                     if include_colorbar is True:

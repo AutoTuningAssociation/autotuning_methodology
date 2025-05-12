@@ -30,8 +30,7 @@
             "A6000",
             "A100",
             "A4000",
-            "MI250X",
-            "W7800"
+            "MI250X"
         ],
         "pattern_for_full_search_space_filenames": {
             "regex": "./benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
@@ -176,7 +175,7 @@
                 "include_y_labels": false,
                 "include_colorbar": true,
                 "divide_train_test_axis": "gpus",
-                "divide_train_test_after_num": 2
+                "divide_train_test_after_num": 3
             }
         ],
         "resolution": 1000.0,
