@@ -30,7 +30,8 @@
             "A6000",
             "A100",
             "A4000",
-            "MI250X"
+            "MI250X",
+            "W7800"
         ],
         "pattern_for_full_search_space_filenames": {
             "regex": "./benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"

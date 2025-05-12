@@ -344,7 +344,7 @@ class Visualize:
                         fig.tight_layout()
                         if save_figs:
                             filename_path = Path(self.plot_filename_prefix) / f"{title}_{x_type}".replace(" ", "_")
-                            fig.savefig(filename_path, dpi=300)
+                            fig.savefig(filename_path, dpi=300, bbox_inches="tight", pad_inches=0.01)
                             print(f"Figure saved to {filename_path}")
                         else:
                             plt.show()
@@ -491,21 +491,13 @@ class Visualize:
                     label_data = {
                         "gpus": (
                             list(dict.fromkeys([t[0].replace(remove_from_gpus_label, "") for t in strategy_data])),
-                            (
-                                "[train] GPUs [test]"
-                                if divide_train_test_axis and divide_train_test_axis.lower() == "gpus"
-                                else "GPUs"
-                            ),
+                            "GPUs",
                         ),
                         "applications": (
                             list(
                                 dict.fromkeys([t[1].replace(remove_from_applications_label, "") for t in strategy_data])
                             ),
-                            (
-                                "[train] Applications [test]"
-                                if divide_train_test_axis and divide_train_test_axis.lower() == "applications"
-                                else "Applications"
-                            ),
+                            "Applications",
                         ),
                         "searchspaces": (
                             list(
@@ -581,7 +573,6 @@ class Visualize:
                     elif include_y_labels is False:
                         axs[0].set_yticks(ticks=np.arange(len(y_ticks)))
                         axs[0].tick_params(labelleft=False)
-                    print(plot_data.shape)
                     hm = axs[0].imshow(
                         plot_data,
                         vmin=vmin,
@@ -594,13 +585,58 @@ class Visualize:
                     if divide_train_test_axis is not False:
                         # axs[0].set_ylim(plot_data.shape[0] - 0.5, -0.5)  # Ensure correct y-axis limits
                         if x_type == divide_train_test_axis.lower():
+                            # add the vertical line to the x-axis
                             axs[0].axvline(
-                                x=divide_train_test_after_num - 0.5, color="black", linestyle="--", linewidth=1.5
+                                x=divide_train_test_after_num - 0.5, color="black", linestyle="--", linewidth=0.8
+                            )
+                            # add train and test texts to either side of the x-label
+                            axs[0].text(
+                                x=divide_train_test_after_num - 0.5,
+                                y=-0.5,
+                                s="train",
+                                ha="center",
+                                va="top",
+                                fontsize=10,
+                            )
+                            axs[0].text(
+                                x=divide_train_test_after_num - 0.5,
+                                y=plot_data.shape[0] - 0.5,
+                                s="test",
+                                ha="center",
+                                va="bottom",
+                                fontsize=10,
                             )
                         elif y_type == divide_train_test_axis.lower():
+                            # add the horizontal line to the y-axis
                             axs[0].axhline(
-                                y=divide_train_test_after_num - 0.5, color="black", linestyle="--", linewidth=1.5
+                                y=divide_train_test_after_num - 0.5, color="black", linestyle="--", linewidth=0.8
                             )
+                            if include_y_labels is not False:
+                                # add train and test texts to either side of the y-label
+                                x_loc = -0.02
+                                y_center = 0.5
+                                axs[0].text(
+                                    x=x_loc,
+                                    y=y_center - 0.25 - (len("train") * 0.02),
+                                    s="train",
+                                    color="grey",
+                                    fontsize=8.5,
+                                    ha="center",
+                                    va="center",
+                                    rotation=90,
+                                    transform=axs[0].transAxes,
+                                )
+                                axs[0].text(
+                                    x=x_loc,
+                                    y=y_center + 0.25 + (len("test") * 0.02),
+                                    s="test",
+                                    color="grey",
+                                    fontsize=8.5,
+                                    ha="center",
+                                    va="center",
+                                    rotation=90,
+                                    transform=axs[0].transAxes,
+                                )
                         else:
                             raise ValueError(f"{divide_train_test_axis=} not in x ({x_type}) or y ({y_type}) axis")
 
@@ -635,7 +671,7 @@ class Visualize:
                             Path(self.plot_filename_prefix)
                             / f"{strategy_name}_heatmap_{'_'.join(plot_x_value_types)}_{'_'.join(plot_y_value_types)}"
                         )
-                        fig.savefig(filename_path, dpi=300)
+                        fig.savefig(filename_path, dpi=300, bbox_inches="tight", pad_inches=0.01)
                         print(f"Figure saved to {filename_path}")
                     else:
                         plt.show()
@@ -748,15 +784,20 @@ class Visualize:
                     fig.suptitle(title)
 
                 # finalize the figure and save or display it
-                self.plot_strategies_aggregated(
+                lowest_real_y_value = self.plot_strategies_aggregated(
                     axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
                 )
                 if vmin is not None:
-                    axs[0].set_ylim(bottom=vmin)
+                    if isinstance(vmin, (int, float)):
+                        axs[0].set_ylim(bottom=vmin)
+                    elif vmin == "real":
+                        axs[0].set_ylim(bottom=lowest_real_y_value)
+                    else:
+                        raise NotImplementedError(f"{vmin=} not implemented")
                 fig.tight_layout()
                 if save_figs:
                     filename_path = Path(self.plot_filename_prefix) / "aggregated"
-                    fig.savefig(filename_path, dpi=300)
+                    fig.savefig(filename_path, dpi=300, bbox_inches="tight", pad_inches=0.01)
                     print(f"Figure saved to {filename_path}")
                 else:
                     plt.show()
@@ -842,7 +883,7 @@ class Visualize:
         # write to file or show
         if save_fig:
             filename_path = Path(self.plot_filename_prefix) / f"{title}_baselines".replace(" ", "_")
-            plt.savefig(filename_path, dpi=300)
+            plt.savefig(filename_path, dpi=300, bbox_inches="tight", pad_inches=0.01)
             print(f"Figure saved to {filename_path}")
         else:
             plt.show()
@@ -928,7 +969,7 @@ class Visualize:
         # write to file or show
         if save_fig:
             filename_path = Path(self.plot_filename_prefix) / f"{title}_split_times_{x_type}".replace(" ", "_")
-            plt.savefig(filename_path, dpi=300)
+            plt.savefig(filename_path, dpi=300, bbox_inches="tight", pad_inches=0.01)
             print(f"Figure saved to {filename_path}")
         else:
             plt.show()
@@ -1035,7 +1076,7 @@ class Visualize:
         # write to file or show
         if save_fig:
             filename_path = Path(self.plot_filename_prefix) / f"{title}_split_times_bar".replace(" ", "_")
-            plt.savefig(filename_path, dpi=300)
+            plt.savefig(filename_path, dpi=300, bbox_inches="tight", pad_inches=0.01)
             print(f"Figure saved to {filename_path}")
         else:
             plt.show()
@@ -1255,13 +1296,16 @@ class Visualize:
         ax: plt.Axes,
         aggregation_data,
         plot_settings: dict,
-    ):
+    ) -> float:
         """Plots all optimization strategies combined accross search spaces.
 
         Args:
             ax: the axis to plot on.
             aggregation_data: the aggregated data from the various searchspaces.
             plot_settings: dictionary of additional plot settings.
+
+        Returns:
+            The lowest performance value of the real stopping point for all strategies.
         """
         # plot the random baseline and absolute optimum
         ax.axhline(0, label="Calculated baseline", c="black", ls=":")
@@ -1280,6 +1324,7 @@ class Visualize:
         y_axis_size = strategies_performance[0].shape[0]
         time_range = np.arange(y_axis_size)
         plot_errors = True
+        lowest_real_y_value = 0.0
         print("\n-------")
         print("Quantification of aggregate performance across all search spaces:")
         for strategy_index, strategy_performance in enumerate(strategies_performance):
@@ -1289,6 +1334,14 @@ class Visualize:
             color = self.colors[strategy_index]
             real_stopping_point_fraction = strategies_real_stopping_point_fraction[strategy_index]
             real_stopping_point_index = round(real_stopping_point_fraction * time_range.shape[0])
+            lowest_real_y_value = min(
+                lowest_real_y_value,
+                (
+                    strategy_performance[real_stopping_point_index]
+                    if real_stopping_point_index < time_range.shape[0]
+                    else strategies_performance[time_range.shape[-1]]
+                ),
+            )
             if real_stopping_point_index <= 0:
                 warnings.warn(f"Stopping point index for {displayname} is at {real_stopping_point_index}")
                 continue
@@ -1356,6 +1409,7 @@ class Visualize:
         ax.set_ylim(top=1.02)
         ax.set_xlim((0, y_axis_size))
         ax.legend()
+        return lowest_real_y_value
 
     def get_x_axis_label(self, x_type: str, objective_time_keys: list):
         """Formatter to get the appropriate x-axis label depending on the x-axis type.
