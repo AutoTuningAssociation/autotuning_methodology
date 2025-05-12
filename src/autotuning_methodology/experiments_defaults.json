@@ -5,19 +5,30 @@
     "experimental_groups_defaults": {
         "applications": [
             {
-                "name": "convolution",
+                "name": "dedispersion_milo",
                 "folder": "../autotuning_methodology/benchmark_hub/kernels",
-                "input_file": "convolution.json"
+                "input_file": "dedispersion_milo.json"
             },
             {
-                "name": "pnpoly",
+                "name": "hotspot_milo",
                 "folder": "../autotuning_methodology/benchmark_hub/kernels",
-                "input_file": "pnpoly.json"
+                "input_file": "hotspot_milo.json"
+            },
+            {
+                "name": "convolution_milo",
+                "folder": "../autotuning_methodology/benchmark_hub/kernels",
+                "input_file": "convolution_milo.json"
+            },
+            {
+                "name": "gemm_milo",
+                "folder": "../autotuning_methodology/benchmark_hub/kernels",
+                "input_file": "gemm_milo.json"
             }
         ],
         "gpus": [
-            "RTX_3090",
-            "RTX_2080_Ti"
+            "A100",
+            "A4000",
+            "MI250X"
         ],
         "pattern_for_full_search_space_filenames": {
             "regex": "../autotuning_methodology/benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
