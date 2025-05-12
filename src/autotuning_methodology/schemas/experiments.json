@@ -61,6 +61,20 @@
                             },
                             "input_file": {
                                 "type": "string"
+                            },
+                            "minimization": {
+                                "description": "Whether the optimization objective is to minimize (maximize if false).",
+                                "type": "boolean",
+                                "default": true
+                            },
+                            "objective_performance_keys": {
+                                "description": "The performance key(s) to use as the performance objective. In case of multiple keys, the values are summed.",
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "uniqueItems": true,
+                                "minItems": 1
                             }
                         }
                     }

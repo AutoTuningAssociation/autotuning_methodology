@@ -17,6 +17,7 @@ from autotuning_methodology.caching import ResultsDescription
 from autotuning_methodology.runner import collect_results
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 from autotuning_methodology.validators import validate_experimentsfile
+from autotuning_methodology.utils import load_T4_format
 
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
@@ -105,7 +106,7 @@ def get_experimental_groups(experiment: dict) -> list[dict]:
 
     # set up the directory structure
     experiment["parent_folder_absolute_path"] = Path(experiment["parent_folder"]).resolve()
-    # if folder "run" does not exist, create
+    # if folders "run" and "setup" do not exist, create
     makedirs(experiment["parent_folder_absolute_path"].joinpath("run"), exist_ok=True)
     makedirs(experiment["parent_folder_absolute_path"].joinpath("setup"), exist_ok=True)
 
@@ -208,6 +209,28 @@ def generate_all_experimental_groups(
                         experimental_groups_defaults["pattern_for_full_search_space_filenames"],
                         gpu,
                         application["name"],
+                    )
+                
+                # get the objective performance keys
+                if "objective_performance_keys" in application:
+                    group["objective_performance_keys"] = application["objective_performance_keys"]
+                else:
+                    # load the full search space file and derive the objective performance keys
+                    data = load_T4_format(group["full_search_space_file"], validate=True)
+                    objectives = data["results"][0]["objectives"]
+                    assert len(objectives) == 1, "Only one objective is supported for now"
+                    group["objective_performance_keys"] = objectives[0]
+
+                # derive the optimization direction
+                if "minimization" in application:
+                    group["minimization"] = application["minimization"]
+                elif "time" in objective:
+                    group["minimization"] = True
+                elif any(k in objectives[0].lower() for k in ["score", "gflop/s", "gflops", "gb/s"]):
+                    group["minimization"] = False
+                else:
+                    raise NotImplementedError(
+                        f"Optimization direction can not be automatically inferred from '{objective=}' ({gpu=}, {application=}, {strategy=}). Please set 'minimization' for this application in the experiments file."
                     )
 
                 if group["autotuner"] == "KTT":
@@ -486,6 +509,10 @@ def execute_experiment(filepath: str, profiling: bool = False):
         print(f" | - | tuning application '{group['application_name']}'")
         print(f" | - | - | with settings of experimental group '{group['display_name']}'")
 
+        # get the experimental group settings # TODO
+        minimization = experiment["statistics_settings"]["minimization"]
+        objective_performance_keys = experiment["statistics_settings"]["objective_performance_keys"]
+
         # create SearchspaceStatistics for full search space file associated with this group, if it does not exist
         if any(
             searchspace_statistics.get(group["gpu"], {}).get(group["application_name"], {}) == null_val
@@ -500,9 +527,9 @@ def execute_experiment(filepath: str, profiling: bool = False):
             searchspace_statistics[group["gpu"]][group["application_name"]] = SearchspaceStatistics(
                 application_name=group["application_name"],
                 device_name=group["gpu"],
-                minimization=experiment["statistics_settings"]["minimization"],
+                minimization=minimization,
                 objective_time_keys=objective_time_keys,
-                objective_performance_keys=experiment["statistics_settings"]["objective_performance_keys"],
+                objective_performance_keys=objective_performance_keys,
                 full_search_space_file_path=full_search_space_file_path,
             )
 
@@ -519,8 +546,8 @@ def execute_experiment(filepath: str, profiling: bool = False):
             group_display_name=group["display_name"],
             stochastic=group["stochastic"],
             objective_time_keys=objective_time_keys,
-            objective_performance_keys=experiment["statistics_settings"]["objective_performance_keys"],
-            minimization=experiment["statistics_settings"]["minimization"],
+            objective_performance_keys=objective_performance_keys,
+            minimization=minimization,
         )
 
         # if the strategy is in the cache, use cached data
