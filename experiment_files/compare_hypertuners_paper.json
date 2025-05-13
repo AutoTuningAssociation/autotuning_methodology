@@ -222,15 +222,11 @@
         }
     ],
     "statistics_settings": {
-        "minimization": true,
         "cutoff_percentile": 0.95,
         "cutoff_percentile_start": 0.5,
-        "cutoff_type": "fevals",
+        "cutoff_type": "time",
         "objective_time_keys": [
             "all"
-        ],
-        "objective_performance_keys": [
-            "time"
         ]
     },
     "visualization_settings": {

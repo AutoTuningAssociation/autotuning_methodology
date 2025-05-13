@@ -159,7 +159,7 @@ def tune(
                     f"Much fewer configurations were returned ({num_results}) than the requested {max_fevals}"
                 )
             if num_results < 2 and group["budget"]["max_fevals"] > 2:
-                raise ValueError(f"Less than two configurations were returned ({len(results['results'])}) \n")
+                raise ValueError(f"Less than two configurations were returned ({len(results['results'])}, budget {group['budget']}) \n")
         return metadata, results
 
     def tune_with_BAT():
@@ -234,7 +234,7 @@ def collect_results(
             max_fevals = budget["max_fevals"]
         elif "time_limit" in budget:
             time_limit = budget["time_limit"]
-            time_per_feval = self.searchspace_stats.get_time_per_feval("mean_per_feval")
+            time_per_feval = searchspace_stats.get_time_per_feval("mean_per_feval")
             max_fevals = max(round(time_limit / time_per_feval), 2)
         else:
             raise ValueError(f"Unkown budget {budget}, can not calculate minimum fraction of budget valid")
@@ -242,7 +242,7 @@ def collect_results(
         if "minimum_number_of_valid_search_iterations" in group:
             min_num_evals = min(min_num_evals, group["minimum_number_of_valid_search_iterations"])
             warnings.warn(
-                f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}, {min_num_evals}) are set, the minimum ({min_num_evals}) is used."
+                f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}) are set, the minimum ({min_num_evals}) is used."
             )
     else:
         min_num_evals: int = group["minimum_number_of_valid_search_iterations"]
