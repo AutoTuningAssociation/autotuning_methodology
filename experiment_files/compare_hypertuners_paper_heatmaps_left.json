@@ -162,7 +162,7 @@
     ],
     "statistics_settings": {
         "cutoff_percentile": 0.95,
-        "cutoff_percentile_start": 0.5,
+        "cutoff_percentile_start": 0.01,
         "cutoff_type": "time",
         "objective_time_keys": [
             "all"

@@ -306,7 +306,7 @@ def collect_results(
             if attempt > 0:
                 report_multiple_attempts(rep, len_res, group["repeats"], attempt)
             if attempt >= 20:
-                raise RuntimeError(f"Could not find enough results in {attempt} attempts, quiting...")
+                raise RuntimeError(f"Could not find enough results for {results_description.application_name} on {results_description.device_name} in {attempt} attempts ({'only invalid, ' if only_invalid else ''}{len_res}/{min_num_evals}), quiting...")
             _, results, total_time_ms = tune(
                 input_file,
                 results_description.application_name,

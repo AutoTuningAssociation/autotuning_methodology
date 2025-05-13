@@ -327,7 +327,7 @@ def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: 
     # register in the group
     group["budget"] = {}
     group["cutoff_times"] = {
-        "cutoff_time_start": max(cutoff_point_start_time * (1 - cutoff_margin), 0.0),
+        "cutoff_time_start": max(cutoff_point_start_time, 0.0) if statistics_settings["cutoff_percentile_start"] > 0.0 else 0.0,
         "cutoff_time": cutoff_point_time * (1 + cutoff_margin),
     }
 

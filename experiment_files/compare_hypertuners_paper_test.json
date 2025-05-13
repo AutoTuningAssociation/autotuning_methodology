@@ -1,7 +1,7 @@
 {
     "version": "1.2.0",
     "name": "Compare hyperparameter tuning",
-    "parent_folder": "./hyperparametertuning_milo",
+    "parent_folder": "./hyperparametertuning_milo_new",
     "experimental_groups_defaults": {
         "applications": [
             {
@@ -49,9 +49,10 @@
             "regex": "./benchmark_hub/cachefiles/${applications}/${gpus}_T4.json"
         },
         "stochastic": true,
-        "repeats": 100,
+        "repeats": 25,
         "samples": 32,
         "minimum_fraction_of_budget_valid": 0.1,
+        "minimum_number_of_valid_search_iterations": 50,
         "ignore_cache": false
     },
     "search_strategies": [
@@ -134,30 +135,6 @@
             ],
             "display_name": "PSO tuned",
             "autotuner": "KernelTuner"
-        },
-        {
-            "name": "simulated_annealing_tuned",
-            "search_method": "simulated_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "T",
-                    "value": 1.5
-                },
-                {
-                    "name": "T_min",
-                    "value": 0.0001
-                },
-                {
-                    "name": "alpha",
-                    "value": 0.995
-                },
-                {
-                    "name": "maxiter",
-                    "value": 1
-                }
-            ],
-            "display_name": "Simulated Annealing tuned",
-            "autotuner": "KernelTuner"
         }
     ],
     "statistics_settings": {
@@ -171,20 +148,42 @@
     "visualization_settings": {
         "plots": [
             {
+                "scope": "searchspace",
+                "style": "line",
+                "x_axis_value_types": [
+                    "fevals"
+                ],
+                "y_axis_value_types": [
+                    "normalized",
+                    "baseline"
+                ]
+            },
+            {
+                "scope": "searchspace",
+                "style": "line",
+                "x_axis_value_types": [
+                    "time"
+                ],
+                "y_axis_value_types": [
+                    "normalized",
+                    "baseline"
+                ]
+            },
+            {
                 "scope": "search_strategy",
                 "style": "heatmap",
                 "x_axis_value_types": [
-                    "applications"
+                    "time"
                 ],
                 "y_axis_value_types": [
-                    "gpus"
+                    "searchspaces"
                 ],
-                "cmin": -4.0,
-                "cnum": 6,
-                "include_y_labels": false,
-                "include_colorbar": true,
-                "divide_train_test_axis": "gpus",
-                "divide_train_test_after_num": 3
+                "bins": 100
+            },
+            {
+                "scope": "aggregate",
+                "style": "line",
+                "vmin": "real"
             }
         ],
         "resolution": 1000.0,
