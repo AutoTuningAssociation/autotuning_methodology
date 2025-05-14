@@ -48,7 +48,7 @@
         "stochastic": true,
         "repeats": 25,
         "samples": 32,
-        "minimum_fraction_of_budget_valid": 0.5,
+        "minimum_fraction_of_budget_valid": 0.25,
         "minimum_number_of_valid_search_iterations": 25,
         "ignore_cache": false
     },

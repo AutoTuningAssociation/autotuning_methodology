@@ -398,6 +398,14 @@
                                 },
                                 "minItems": 1,
                                 "uniqueItems": true
+                            },
+                            "x_label": {
+                                "description": "Override the default generated label for the x-axis.",
+                                "type": "string"
+                            },
+                            "y_label": {
+                                "description": "Override the default generated label for the y-axis.",
+                                "type": "string"
                             }
                         }
                     }

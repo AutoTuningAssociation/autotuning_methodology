@@ -560,10 +560,10 @@ class Visualize:
                         fig.suptitle(title)
 
                     # plot the heatmap
-                    axs[0].set_xlabel(label_data[x_type][1])
+                    axs[0].set_xlabel(plot.get("xlabel", label_data[x_type][1]))
                     axs[0].set_xticks(ticks=np.arange(len(x_ticks)), labels=x_ticks, rotation=0)
                     if include_y_labels is True or None:
-                        axs[0].set_ylabel(label_data[y_type][1])
+                        axs[0].set_ylabel(plot.get("ylabel", label_data[y_type][1]))
                         axs[0].set_yticks(ticks=np.arange(len(y_ticks)), labels=y_ticks)
                     if include_y_labels is True:
                         # axs[0].yaxis.set_label_position("right")
@@ -785,7 +785,7 @@ class Visualize:
 
                 # finalize the figure and save or display it
                 lowest_real_y_value = self.plot_strategies_aggregated(
-                    axs[0], aggregation_data, plot_settings=self.experiment["visualization_settings"]
+                    axs[0], aggregation_data, visualization_settings=self.experiment["visualization_settings"], plot_settings=plot
                 )
                 if vmin is not None:
                     if isinstance(vmin, (int, float)):
@@ -1297,14 +1297,16 @@ class Visualize:
         self,
         ax: plt.Axes,
         aggregation_data,
-        plot_settings: dict,
+        visualization_settings: dict = {},
+        plot_settings: dict = {},
     ) -> float:
         """Plots all optimization strategies combined accross search spaces.
 
         Args:
             ax: the axis to plot on.
             aggregation_data: the aggregated data from the various searchspaces.
-            plot_settings: dictionary of additional plot settings.
+            visualization_settings: dictionary of additional visualization settings.
+            plot_settings: dictionary of additional visualization settings related to this particular plot.
 
         Returns:
             The lowest performance value of the real stopping point for all strategies.
@@ -1314,13 +1316,19 @@ class Visualize:
         ax.axhline(1, label="Absolute optimum", c="black", ls="-.")
 
         # get the relative aggregated performance for each strategy
-        confidence_level: float = plot_settings.get("confidence_level", 0.95)
+        confidence_level: float = visualization_settings.get("confidence_level", 0.95)
         (
             strategies_performance,
             strategies_lower_err,
             strategies_upper_err,
             strategies_real_stopping_point_fraction,
         ) = get_strategies_aggregated_performance(list(aggregation_data.values()), confidence_level)
+
+        # get the relevant plot settings
+        cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1)
+        cutoff_percentile_start: float = self.experiment["statistics_settings"].get("cutoff_percentile_start", 0.01)
+        xlabel = plot_settings.get("xlabel", f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)") # noqa: E501
+        ylabel = plot_settings.get("ylabel", self.y_metric_displayname["aggregate_objective"])
 
         # plot each strategy
         y_axis_size = strategies_performance[0].shape[0]
@@ -1397,13 +1405,8 @@ class Visualize:
             print(f" | performance of {displayname}: {performance_score} (±{performance_score_std})")
 
         # set the axis
-        cutoff_percentile: float = self.experiment["statistics_settings"].get("cutoff_percentile", 1)
-        cutoff_percentile_start: float = self.experiment["statistics_settings"].get("cutoff_percentile_start", 0.01)
-        ax.set_xlabel(
-            f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)",  # noqa: E501
-            fontsize="large",
-        )
-        ax.set_ylabel(self.y_metric_displayname["aggregate_objective"], fontsize="large")
+        ax.set_xlabel(xlabel, fontsize="large")
+        ax.set_ylabel(ylabel, fontsize="large")
         num_ticks = 11
         ax.set_xticks(
             np.linspace(0, y_axis_size, num_ticks),
