@@ -1,35 +1,47 @@
 {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "name": "Compare hyperparameter metastrategies",
     "parent_folder": "./hyperparametertuning_metastrategies",
     "experimental_groups_defaults": {
         "applications": [
             {
                 "name": "diff_evo",
-                "folder": "../autotuning_methodology/cached_data_used/hyperparametertuning_metastrategies",
-                "input_file": "metatuning_diff_evo.json"
+                "folder": "../autotuning_methodology/hyperparametertuning/benchmark_hub/algorithms",
+                "input_file": "metatuning_diff_evo.json",
+                "objective_performance_keys": [
+                    "score"
+                ]
             },
             {
                 "name": "pso",
-                "folder": "../autotuning_methodology/cached_data_used/hyperparametertuning_metastrategies",
-                "input_file": "metatuning_pso.json"
+                "folder": "../autotuning_methodology/hyperparametertuning/benchmark_hub/algorithms",
+                "input_file": "metatuning_pso.json",
+                "objective_performance_keys": [
+                    "score"
+                ]
             },
             {
                 "name": "genetic_algorithm",
-                "folder": "../autotuning_methodology/cached_data_used/hyperparametertuning_metastrategies",
-                "input_file": "metatuning_genetic_algorithm.json"
+                "folder": "../autotuning_methodology/hyperparametertuning/benchmark_hub/algorithms",
+                "input_file": "metatuning_genetic_algorithm.json",
+                "objective_performance_keys": [
+                    "score"
+                ]
             },
             {
                 "name": "simulated_annealing",
-                "folder": "../autotuning_methodology/cached_data_used/hyperparametertuning_metastrategies",
-                "input_file": "metatuning_simulated_annealing.json"
+                "folder": "../autotuning_methodology/hyperparametertuning/benchmark_hub/algorithms",
+                "input_file": "metatuning_simulated_annealing.json",
+                "objective_performance_keys": [
+                    "score"
+                ]
             }
         ],
         "gpus": [
             "A4000"
         ],
         "pattern_for_full_search_space_filenames": {
-            "regex": "/Users/fjwillemsen/Downloads/new_0.95_10x50x/hyperparamtuning_paper_bruteforce_${applications}_C_T4.json"
+            "regex": "./benchmark_hub/hyperparametertuning/cachefiles/${applications}_T4.json"
         },
         "stochastic": true,
         "repeats": 50,
@@ -70,17 +82,13 @@
         }
     ],
     "statistics_settings": {
-        "minimization": true,
-        "cutoff_percentile": 0.99,
-        "cutoff_percentile_start": 0.5,
-        "cutoff_type": "fevals",
+        "cutoff_percentile": 0.95,
+        "cutoff_percentile_start": 0.01,
+        "cutoff_type": "time",
         "objective_time_keys": [
             "compilation",
             "framework",
             "search_algorithm"
-        ],
-        "objective_performance_keys": [
-            "score"
         ]
     },
     "visualization_settings": {
