@@ -52,7 +52,7 @@
         "repeats": 100,
         "samples": 32,
         "minimum_fraction_of_budget_valid": 0.1,
-        "minimum_number_of_valid_search_iterations": 50,
+        "minimum_number_of_valid_search_iterations": 10,
         "ignore_cache": false
     },
     "search_strategies": [
@@ -265,9 +265,21 @@
                 "bins": 100
             },
             {
+                "scope": "search_strategy",
+                "style": "heatmap",
+                "x_axis_value_types": [
+                    "applications"
+                ],
+                "y_axis_value_types": [
+                    "gpus"
+                ],
+                "divide_train_test_axis": "gpus",
+                "divide_train_test_after_num": 3
+            },
+            {
                 "scope": "aggregate",
                 "style": "line",
-                "vmin": "real"
+                "ylabel": "Aggregate performance relative to baseline"
             }
         ],
         "resolution": 1000.0,

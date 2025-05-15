@@ -240,7 +240,7 @@ def collect_results(
             raise ValueError(f"Unkown budget {budget}, can not calculate minimum fraction of budget valid")
         min_num_evals = max(round(minimum_fraction_of_budget_valid * min(max_fevals, searchspace_stats.size)), 2)
         if "minimum_number_of_valid_search_iterations" in group:
-            min_num_evals = min(min_num_evals, group["minimum_number_of_valid_search_iterations"])
+            min_num_evals = max(min(min_num_evals, group["minimum_number_of_valid_search_iterations"]), 2)
             warnings.warn(
                 f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}) are set, the minimum ({min_num_evals}) is used."
             )
