@@ -44,7 +44,7 @@
             "regex": "./benchmark_hub/hyperparametertuning/cachefiles/hyperparamtuning_paper_bruteforce_${applications}_T4.json"
         },
         "stochastic": true,
-        "repeats": 10,
+        "repeats": 25,
         "samples": 1,
         "minimum_fraction_of_budget_valid": 0.1,
         "minimum_number_of_valid_search_iterations": 2,

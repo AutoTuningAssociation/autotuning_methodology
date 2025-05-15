@@ -1358,8 +1358,8 @@ class Visualize:
             raise ValueError(f"Invalid {tmin=}, must be between 0.0 and 1.0 or 'real'")
 
         # adjust the xlabel if necessary
-        if tmin != 1.0 and not "xlabel" in plot_settings:
-            xlabel = f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)"
+        if tmin == "real" and not "xlabel" in plot_settings:
+            xlabel = "Relative time until the last strategy stopped"
 
         # plot each strategy
         for strategy_index, strategy_performance in enumerate(strategies_performance):
@@ -1433,11 +1433,13 @@ class Visualize:
         # set the axis labels and ticks
         ax.set_xlabel(xlabel, fontsize="large")
         ax.set_ylabel(ylabel, fontsize="large")
-        num_ticks = 11
-        ax.set_xticks(
-            np.linspace(0, y_axis_size, num_ticks),
-            np.round(np.linspace(0, 1, num_ticks), 2),
-        )
+
+        if tmin != "real":
+            num_ticks = 11
+            ax.set_xticks(
+                np.linspace(0, y_axis_size, num_ticks),
+                np.round(np.linspace(0, tmin, num_ticks), 2),
+            )
         ax.set_ylim(top=1.02)
         ax.set_xlim((0, y_axis_size-1))
         ax.legend()
