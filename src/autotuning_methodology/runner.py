@@ -242,7 +242,7 @@ def collect_results(
         if "minimum_number_of_valid_search_iterations" in group:
             min_num_evals = max(min(min_num_evals, group["minimum_number_of_valid_search_iterations"]), 2)
             warnings.warn(
-                f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}) are set, the minimum ({min_num_evals}) is used."
+                f"Both 'minimum_number_of_valid_search_iterations' ({group['minimum_number_of_valid_search_iterations']}) and 'minimum_fraction_of_budget_valid' ({minimum_fraction_of_budget_valid}/{max_fevals=}) are set, the minimum ({min_num_evals}) is used."
             )
     else:
         min_num_evals: int = group["minimum_number_of_valid_search_iterations"]

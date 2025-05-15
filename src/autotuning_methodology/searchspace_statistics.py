@@ -372,7 +372,7 @@ class SearchspaceStatistics:
             raise ValueError("Cutoff point start and end are the same")
 
         # get the times
-        cutoff_point_time_start = self.cutoff_point_time_from_fevals(cutoff_point_fevals_start)
+        cutoff_point_time_start = self.cutoff_point_time_from_fevals(cutoff_point_fevals_start if cutoff_percentile_start > 0.0 else 0)
         cutoff_point_time_end = self.cutoff_point_time_from_fevals(cutoff_point_fevals_end)
 
         # return the values

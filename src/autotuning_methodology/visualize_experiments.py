@@ -100,10 +100,14 @@ class Visualize:
             "time_total": "Total time in seconds",
             "aggregate_time": "Relative time to cutoff point",
             "time_partial_framework_time": "framework time",
+            "time_partial_framework": "framework time",
             "time_partial_strategy_time": "strategy time",
+            "time_partial_search_algorithm": "strategy time",
             "time_partial_compile_time": "compile time",
+            "time_partial_compilation": "compile time",
             "time_partial_benchmark_time": "kernel runtime",
             "time_partial_times": "kernel runtime",
+            "time_partial_runtimes": "kernel runtime",
             "time_partial_verification_time": "verification time",
         }
     )
@@ -1329,21 +1333,46 @@ class Visualize:
         cutoff_percentile_start: float = self.experiment["statistics_settings"].get("cutoff_percentile_start", 0.01)
         xlabel = plot_settings.get("xlabel", f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)") # noqa: E501
         ylabel = plot_settings.get("ylabel", self.y_metric_displayname["aggregate_objective"])
+        tmin = plot_settings.get("tmin", 1.0)
 
-        # plot each strategy
+        # setup the plot
         y_axis_size = strategies_performance[0].shape[0]
         time_range = np.arange(y_axis_size)
         plot_errors = True
         lowest_real_y_value = 0.0
         print("\n-------")
         print("Quantification of aggregate performance across all search spaces:")
+
+        # get the highest real_stopping_point_index, adjust y_axis_size and time_range if necessary
+        real_stopping_point_indices = [min(round(strategies_real_stopping_point_fraction[strategy_index] * time_range.shape[0]) + 1, time_range.shape[0]) for strategy_index in range(len(strategies_performance))]  # noqa: E501
+        real_stopping_point_index_max = max(real_stopping_point_indices)
+        if tmin == "real":
+            # stop the time at the largest real stopping point
+            y_axis_size = min(real_stopping_point_index_max, y_axis_size)
+            time_range = np.arange(y_axis_size)
+        elif tmin < 1.0:
+            # stop the time at the given tmin
+            y_axis_size = y_axis_size * tmin
+            time_range = np.arange(y_axis_size)
+        elif tmin > 1.0:
+            raise ValueError(f"Invalid {tmin=}, must be between 0.0 and 1.0 or 'real'")
+
+        # adjust the xlabel if necessary
+        if tmin != 1.0 and not "xlabel" in plot_settings:
+            xlabel = f"{self.x_metric_displayname['aggregate_time']} ({cutoff_percentile_start*100}% to {cutoff_percentile*100}%)"
+
+        # plot each strategy
         for strategy_index, strategy_performance in enumerate(strategies_performance):
             if self.strategies[strategy_index]["name"] in self.plot_skip_strategies:
                 continue
             displayname = self.strategies[strategy_index]["display_name"]
             color = self.colors[strategy_index]
-            real_stopping_point_fraction = strategies_real_stopping_point_fraction[strategy_index]
-            real_stopping_point_index = round(real_stopping_point_fraction * time_range.shape[0])
+            real_stopping_point_index = real_stopping_point_indices[strategy_index]
+            if real_stopping_point_index <= 1:
+                warnings.warn(f"Stopping point index for {displayname} is at {real_stopping_point_index}")
+                continue
+
+            # calculate the lowest real_y_value
             lowest_real_y_value = min(
                 lowest_real_y_value,
                 (
@@ -1353,9 +1382,6 @@ class Visualize:
                 ),
             )
             assert isinstance(lowest_real_y_value, (int, float)), f"Invalid {lowest_real_y_value=}"
-            if real_stopping_point_index <= 0:
-                warnings.warn(f"Stopping point index for {displayname} is at {real_stopping_point_index}")
-                continue
 
             # plot the errors
             if plot_errors:
@@ -1374,9 +1400,9 @@ class Visualize:
                     and real_stopping_point_index < len(strategy_lower_err) - 1
                 ):
                     ax.fill_between(
-                        time_range[real_stopping_point_index:],
-                        strategy_lower_err[real_stopping_point_index:],
-                        strategy_upper_err[real_stopping_point_index:],
+                        time_range[real_stopping_point_index-1:y_axis_size],
+                        strategy_lower_err[real_stopping_point_index-1:y_axis_size],
+                        strategy_upper_err[real_stopping_point_index-1:y_axis_size],
                         alpha=0.15,
                         antialiased=True,
                         color=color,
@@ -1395,8 +1421,8 @@ class Visualize:
                 and real_stopping_point_index < len(strategy_performance) - 1
             ):
                 ax.plot(
-                    time_range[real_stopping_point_index:],
-                    strategy_performance[real_stopping_point_index:],
+                    time_range[real_stopping_point_index-1:y_axis_size],
+                    strategy_performance[real_stopping_point_index-1:y_axis_size],
                     color=color,
                     ls="dashed",
                 )
@@ -1404,7 +1430,7 @@ class Visualize:
             performance_score_std = round(np.std(strategy_performance), 3)
             print(f" | performance of {displayname}: {performance_score} (±{performance_score_std})")
 
-        # set the axis
+        # set the axis labels and ticks
         ax.set_xlabel(xlabel, fontsize="large")
         ax.set_ylabel(ylabel, fontsize="large")
         num_ticks = 11
@@ -1413,7 +1439,7 @@ class Visualize:
             np.round(np.linspace(0, 1, num_ticks), 2),
         )
         ax.set_ylim(top=1.02)
-        ax.set_xlim((0, y_axis_size))
+        ax.set_xlim((0, y_axis_size-1))
         ax.legend()
         return lowest_real_y_value
 

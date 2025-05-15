@@ -323,6 +323,14 @@
                                     "heatmap"
                                 ]
                             },
+                            "tmin": {
+                                "description": "The minimum value on the time axis of the aggregate plot.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "default": 1.0
+                            },
                             "vmin": {
                                 "description": "The minimum value on the heatmap color scale or aggregate plot.",
                                 "type": [
