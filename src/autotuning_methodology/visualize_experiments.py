@@ -1430,16 +1430,21 @@ class Visualize:
             performance_score_std = round(np.std(strategy_performance), 3)
             print(f" | performance of {displayname}: {performance_score} (±{performance_score_std})")
 
-        # set the axis labels and ticks
+        # set the axis labels
         ax.set_xlabel(xlabel, fontsize="large")
         ax.set_ylabel(ylabel, fontsize="large")
 
-        if tmin != "real":
+        # set the ticks
+        if tmin == "real":
+            ax.set_xticks([], [])
+        else:
             num_ticks = 11
             ax.set_xticks(
                 np.linspace(0, y_axis_size, num_ticks),
                 np.round(np.linspace(0, tmin, num_ticks), 2),
             )
+
+        # set the limits and legend
         ax.set_ylim(top=1.02)
         ax.set_xlim((0, y_axis_size-1))
         ax.legend()

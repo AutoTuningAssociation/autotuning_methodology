@@ -44,7 +44,7 @@
             "regex": "./benchmark_hub/hyperparametertuning/cachefiles/hyperparamtuning_paper_bruteforce_${applications}_T4.json"
         },
         "stochastic": true,
-        "repeats": 25,
+        "repeats": 100,
         "samples": 1,
         "minimum_fraction_of_budget_valid": 0.1,
         "minimum_number_of_valid_search_iterations": 2,
@@ -83,7 +83,7 @@
         }
     ],
     "statistics_settings": {
-        "cutoff_percentile": 0.001,
+        "cutoff_percentile": 0.4,
         "cutoff_percentile_start": 0.0,
         "cutoff_type": "time",
         "objective_time_keys": [
@@ -95,12 +95,12 @@
             {
                 "scope": "aggregate",
                 "style": "line",
-                "xlabel": "Relative time until the last optimization algorithm stopped",
+                "xlabel": "Relative time until the budget is exhausted",
                 "ylabel": "Aggregate performance relative to baseline",
                 "tmin": "real"
             }
         ],
-        "resolution": 100000.0,
+        "resolution": 1000000.0,
         "confidence_level": 0.95,
         "compare_baselines": false,
         "compare_split_times": false
