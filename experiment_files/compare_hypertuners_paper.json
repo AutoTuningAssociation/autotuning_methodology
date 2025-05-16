@@ -62,7 +62,7 @@
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
-                    "value": 20
+                    "value": 30
                 },
                 {
                     "name": "maxiter",
@@ -90,7 +90,7 @@
                 },
                 {
                     "name": "method",
-                    "value": "best2exp"
+                    "value": "best1bin"
                 }
             ],
             "display_name": "Differential Evolution untuned",
@@ -213,12 +213,61 @@
                 },
                 {
                     "name": "c2",
-                    "value": 1.0
+                    "value": 1.5
                 }
             ],
             "display_name": "PSO untuned",
             "autotuner": "KernelTuner",
             "color_parent": "pso_tuned"
+        },
+        {
+            "name": "simulated_annealing_tuned",
+            "search_method": "simulated_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "T",
+                    "value": 0.5
+                },
+                {
+                    "name": "T_min",
+                    "value": 0.001
+                },
+                {
+                    "name": "alpha",
+                    "value": 0.9975
+                },
+                {
+                    "name": "maxiter",
+                    "value": 1
+                }
+            ],
+            "display_name": "Simulated Annealing tuned",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "simulated_annealing_inv_tuned",
+            "search_method": "simulated_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "T",
+                    "value": 1.0
+                },
+                {
+                    "name": "T_min",
+                    "value": 0.01
+                },
+                {
+                    "name": "alpha",
+                    "value": 0.9925
+                },
+                {
+                    "name": "maxiter",
+                    "value": 1
+                }
+            ],
+            "display_name": "Simulated Annealing untuned",
+            "autotuner": "KernelTuner",
+            "color_parent": "simulated_annealing_tuned"
         }
     ],
     "statistics_settings": {
