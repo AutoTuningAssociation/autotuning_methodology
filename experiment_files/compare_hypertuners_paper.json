@@ -128,11 +128,11 @@
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
-                    "value": 30
+                    "value": 20
                 },
                 {
                     "name": "maxiter",
-                    "value": 50
+                    "value": 150
                 },
                 {
                     "name": "method",
@@ -140,7 +140,7 @@
                 },
                 {
                     "name": "mutation_chance",
-                    "value": 20
+                    "value": 5
                 }
             ],
             "display_name": "Genetic Algorithm tuned",
@@ -160,11 +160,11 @@
                 },
                 {
                     "name": "method",
-                    "value": "disruptive_uniform"
+                    "value": "single_point"
                 },
                 {
                     "name": "mutation_chance",
-                    "value": 20
+                    "value": 10
                 }
             ],
             "display_name": "Genetic Algorithm untuned",
