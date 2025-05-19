@@ -57,28 +57,36 @@
     },
     "search_strategies": [
         {
-            "name": "diff_evo_tuned",
-            "search_method": "diff_evo",
+            "name": "firefly_tuned",
+            "search_method": "firefly_algorithm",
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
-                    "value": 30
+                    "value": 20
                 },
                 {
                     "name": "maxiter",
                     "value": 100
                 },
                 {
-                    "name": "method",
-                    "value": "best1bin"
+                    "name": "B0",
+                    "value": 1.0
+                },
+                {
+                    "name": "gamma",
+                    "value": 0.5
+                },
+                {
+                    "name": "alpha",
+                    "value": 0.2
                 }
             ],
-            "display_name": "Differential Evolution tuned",
+            "display_name": "Firefly tuned",
             "autotuner": "KernelTuner"
         },
         {
-            "name": "diff_evo_inv_tuned",
-            "search_method": "diff_evo",
+            "name": "firefly_inv_tuned",
+            "search_method": "firefly_algorithm",
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
@@ -86,16 +94,24 @@
                 },
                 {
                     "name": "maxiter",
-                    "value": 50
+                    "value": 150
                 },
                 {
-                    "name": "method",
-                    "value": "best1bin"
+                    "name": "B0",
+                    "value": 1.5
+                },
+                {
+                    "name": "gamma",
+                    "value": 0.25
+                },
+                {
+                    "name": "alpha",
+                    "value": 0.1
                 }
             ],
-            "display_name": "Differential Evolution untuned",
+            "display_name": "Firefly untuned",
             "autotuner": "KernelTuner",
-            "color_parent": "diff_evo_tuned"
+            "color_parent": "firefly_tuned"
         },
         {
             "name": "dual_annealing_tuned",
