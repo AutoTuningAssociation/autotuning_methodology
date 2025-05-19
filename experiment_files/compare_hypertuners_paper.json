@@ -38,11 +38,11 @@
             }
         ],
         "gpus": [
-            "W6600",
-            "A6000",
             "A100",
             "A4000",
             "MI250X",
+            "A6000",
+            "W6600",
             "W7800"
         ],
         "pattern_for_full_search_space_filenames": {
@@ -56,63 +56,6 @@
         "ignore_cache": false
     },
     "search_strategies": [
-        {
-            "name": "firefly_tuned",
-            "search_method": "firefly_algorithm",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 20
-                },
-                {
-                    "name": "maxiter",
-                    "value": 100
-                },
-                {
-                    "name": "B0",
-                    "value": 1.0
-                },
-                {
-                    "name": "gamma",
-                    "value": 0.5
-                },
-                {
-                    "name": "alpha",
-                    "value": 0.2
-                }
-            ],
-            "display_name": "Firefly tuned",
-            "autotuner": "KernelTuner"
-        },
-        {
-            "name": "firefly_inv_tuned",
-            "search_method": "firefly_algorithm",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 10
-                },
-                {
-                    "name": "maxiter",
-                    "value": 150
-                },
-                {
-                    "name": "B0",
-                    "value": 1.5
-                },
-                {
-                    "name": "gamma",
-                    "value": 0.25
-                },
-                {
-                    "name": "alpha",
-                    "value": 0.1
-                }
-            ],
-            "display_name": "Firefly untuned",
-            "autotuner": "KernelTuner",
-            "color_parent": "firefly_tuned"
-        },
         {
             "name": "dual_annealing_tuned",
             "search_method": "dual_annealing",

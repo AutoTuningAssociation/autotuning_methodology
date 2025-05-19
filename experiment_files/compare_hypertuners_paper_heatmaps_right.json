@@ -38,11 +38,11 @@
             }
         ],
         "gpus": [
-            "W6600",
-            "A6000",
             "A100",
             "A4000",
             "MI250X",
+            "A6000",
+            "W6600",
             "W7800"
         ],
         "pattern_for_full_search_space_filenames": {
@@ -55,26 +55,6 @@
         "ignore_cache": false
     },
     "search_strategies": [
-        {
-            "name": "diff_evo_tuned",
-            "search_method": "diff_evo",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 20
-                },
-                {
-                    "name": "maxiter",
-                    "value": 100
-                },
-                {
-                    "name": "method",
-                    "value": "best1bin"
-                }
-            ],
-            "display_name": "Differential Evolution tuned",
-            "autotuner": "KernelTuner"
-        },
         {
             "name": "dual_annealing_tuned",
             "search_method": "dual_annealing",
@@ -93,11 +73,11 @@
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
-                    "value": 30
+                    "value": 20
                 },
                 {
                     "name": "maxiter",
-                    "value": 50
+                    "value": 150
                 },
                 {
                     "name": "method",
@@ -105,7 +85,7 @@
                 },
                 {
                     "name": "mutation_chance",
-                    "value": 20
+                    "value": 5
                 }
             ],
             "display_name": "Genetic Algorithm tuned",
@@ -141,15 +121,15 @@
             "search_method_hyperparameters": [
                 {
                     "name": "T",
-                    "value": 1.5
+                    "value": 0.5
                 },
                 {
                     "name": "T_min",
-                    "value": 0.0001
+                    "value": 0.001
                 },
                 {
                     "name": "alpha",
-                    "value": 0.995
+                    "value": 0.9975
                 },
                 {
                     "name": "maxiter",
@@ -179,8 +159,8 @@
                 "y_axis_value_types": [
                     "gpus"
                 ],
-                "cmin": -4.0,
-                "cnum": 6,
+                "cmin": -6.0,
+                "cnum": 8,
                 "include_y_labels": false,
                 "include_colorbar": true,
                 "divide_train_test_axis": "gpus",

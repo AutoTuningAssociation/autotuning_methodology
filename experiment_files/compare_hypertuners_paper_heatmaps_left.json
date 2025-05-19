@@ -38,11 +38,11 @@
             }
         ],
         "gpus": [
-            "W6600",
-            "A6000",
             "A100",
             "A4000",
             "MI250X",
+            "A6000",
+            "W6600",
             "W7800"
         ],
         "pattern_for_full_search_space_filenames": {
@@ -55,26 +55,6 @@
         "ignore_cache": false
     },
     "search_strategies": [
-        {
-            "name": "diff_evo_inv_tuned",
-            "search_method": "diff_evo",
-            "search_method_hyperparameters": [
-                {
-                    "name": "popsize",
-                    "value": 10
-                },
-                {
-                    "name": "maxiter",
-                    "value": 50
-                },
-                {
-                    "name": "method",
-                    "value": "best2exp"
-                }
-            ],
-            "display_name": "Differential Evolution untuned",
-            "autotuner": "KernelTuner"
-        },
         {
             "name": "dual_annealing_inv_tuned",
             "search_method": "dual_annealing",
@@ -101,11 +81,11 @@
                 },
                 {
                     "name": "method",
-                    "value": "disruptive_uniform"
+                    "value": "single_point"
                 },
                 {
                     "name": "mutation_chance",
-                    "value": 20
+                    "value": 10
                 }
             ],
             "display_name": "Genetic Algorithm untuned",
@@ -129,7 +109,7 @@
                 },
                 {
                     "name": "c2",
-                    "value": 1.0
+                    "value": 1.5
                 }
             ],
             "display_name": "PSO untuned",
@@ -141,7 +121,7 @@
             "search_method_hyperparameters": [
                 {
                     "name": "T",
-                    "value": 1.5
+                    "value": 1.0
                 },
                 {
                     "name": "T_min",
@@ -149,11 +129,11 @@
                 },
                 {
                     "name": "alpha",
-                    "value": 0.995
+                    "value": 0.9925
                 },
                 {
                     "name": "maxiter",
-                    "value": 3
+                    "value": 1
                 }
             ],
             "display_name": "Simulated Annealing untuned",
@@ -179,7 +159,7 @@
                 "y_axis_value_types": [
                     "gpus"
                 ],
-                "cmin": -4.0,
+                "cmin": -6.0,
                 "include_y_labels": true,
                 "include_colorbar": false,
                 "divide_train_test_axis": "gpus",
