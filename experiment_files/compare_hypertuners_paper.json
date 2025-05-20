@@ -69,6 +69,19 @@
             "autotuner": "KernelTuner"
         },
         {
+            "name": "dual_annealing_median",
+            "search_method": "dual_annealing",
+            "search_method_hyperparameters": [
+                {
+                    "name": "method",
+                    "value": "SLSQP"
+                }
+            ],
+            "display_name": "Dual Annealing median",
+            "autotuner": "KernelTuner",
+            "color_parent": "dual_annealing_tuned"
+        },
+        {
             "name": "dual_annealing_inv_tuned",
             "search_method": "dual_annealing",
             "search_method_hyperparameters": [
@@ -106,27 +119,27 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "genetic_algorithm_inv_tuned",
+            "name": "genetic_algorithm_median",
             "search_method": "genetic_algorithm",
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
-                    "value": 10
+                    "value": 20
                 },
                 {
                     "name": "maxiter",
-                    "value": 50
+                    "value": 150
                 },
                 {
                     "name": "method",
-                    "value": "single_point"
+                    "value": "uniform"
                 },
                 {
                     "name": "mutation_chance",
                     "value": 10
                 }
             ],
-            "display_name": "Genetic Algorithm untuned",
+            "display_name": "Genetic Algorithm median",
             "autotuner": "KernelTuner",
             "color_parent": "genetic_algorithm_tuned"
         },
@@ -155,27 +168,27 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "pso_inv_tuned",
+            "name": "pso_median",
             "search_method": "pso",
             "search_method_hyperparameters": [
                 {
                     "name": "popsize",
-                    "value": 10
+                    "value": 20
                 },
                 {
                     "name": "maxiter",
-                    "value": 50
+                    "value": 100
                 },
                 {
                     "name": "c1",
-                    "value": 1.0
+                    "value": 2.0
                 },
                 {
                     "name": "c2",
-                    "value": 1.5
+                    "value": 0.5
                 }
             ],
-            "display_name": "PSO untuned",
+            "display_name": "PSO median",
             "autotuner": "KernelTuner",
             "color_parent": "pso_tuned"
         },
@@ -204,12 +217,12 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "simulated_annealing_inv_tuned",
+            "name": "simulated_annealing_median",
             "search_method": "simulated_annealing",
             "search_method_hyperparameters": [
                 {
                     "name": "T",
-                    "value": 1.0
+                    "value": 1.5
                 },
                 {
                     "name": "T_min",
@@ -217,14 +230,14 @@
                 },
                 {
                     "name": "alpha",
-                    "value": 0.9925
+                    "value": 0.9975
                 },
                 {
                     "name": "maxiter",
-                    "value": 1
+                    "value": 2
                 }
             ],
-            "display_name": "Simulated Annealing untuned",
+            "display_name": "Simulated Annealing median",
             "autotuner": "KernelTuner",
             "color_parent": "simulated_annealing_tuned"
         }
