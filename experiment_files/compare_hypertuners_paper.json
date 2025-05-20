@@ -69,28 +69,15 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "dual_annealing_median",
+            "name": "dual_annealing_mean",
             "search_method": "dual_annealing",
             "search_method_hyperparameters": [
                 {
                     "name": "method",
-                    "value": "SLSQP"
+                    "value": "trust-constr"
                 }
             ],
-            "display_name": "Dual Annealing median",
-            "autotuner": "KernelTuner",
-            "color_parent": "dual_annealing_tuned"
-        },
-        {
-            "name": "dual_annealing_inv_tuned",
-            "search_method": "dual_annealing",
-            "search_method_hyperparameters": [
-                {
-                    "name": "method",
-                    "value": "Nelder-Mead"
-                }
-            ],
-            "display_name": "Dual Annealing untuned",
+            "display_name": "Dual Annealing mean",
             "autotuner": "KernelTuner",
             "color_parent": "dual_annealing_tuned"
         },
@@ -119,7 +106,7 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "genetic_algorithm_median",
+            "name": "genetic_algorithm_mean",
             "search_method": "genetic_algorithm",
             "search_method_hyperparameters": [
                 {
@@ -128,18 +115,18 @@
                 },
                 {
                     "name": "maxiter",
-                    "value": 150
+                    "value": 50
                 },
                 {
                     "name": "method",
-                    "value": "uniform"
+                    "value": "disruptive_uniform"
                 },
                 {
                     "name": "mutation_chance",
-                    "value": 10
+                    "value": 20
                 }
             ],
-            "display_name": "Genetic Algorithm median",
+            "display_name": "Genetic Algorithm mean",
             "autotuner": "KernelTuner",
             "color_parent": "genetic_algorithm_tuned"
         },
@@ -168,7 +155,7 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "pso_median",
+            "name": "pso_mean",
             "search_method": "pso",
             "search_method_hyperparameters": [
                 {
@@ -177,18 +164,18 @@
                 },
                 {
                     "name": "maxiter",
-                    "value": 100
+                    "value": 50
                 },
                 {
                     "name": "c1",
-                    "value": 2.0
+                    "value": 1.0
                 },
                 {
                     "name": "c2",
-                    "value": 0.5
+                    "value": 1.0
                 }
             ],
-            "display_name": "PSO median",
+            "display_name": "PSO mean",
             "autotuner": "KernelTuner",
             "color_parent": "pso_tuned"
         },
@@ -217,27 +204,27 @@
             "autotuner": "KernelTuner"
         },
         {
-            "name": "simulated_annealing_median",
+            "name": "simulated_annealing_mean",
             "search_method": "simulated_annealing",
             "search_method_hyperparameters": [
                 {
                     "name": "T",
-                    "value": 1.5
+                    "value": 1.0
                 },
                 {
                     "name": "T_min",
-                    "value": 0.01
+                    "value": 0.001
                 },
                 {
                     "name": "alpha",
-                    "value": 0.9975
+                    "value": 0.995
                 },
                 {
                     "name": "maxiter",
                     "value": 2
                 }
             ],
-            "display_name": "Simulated Annealing median",
+            "display_name": "Simulated Annealing mean",
             "autotuner": "KernelTuner",
             "color_parent": "simulated_annealing_tuned"
         }
