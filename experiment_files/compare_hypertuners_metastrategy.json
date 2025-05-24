@@ -5,9 +5,9 @@
     "experimental_groups_defaults": {
         "applications": [
             {
-                "name": "diff_evo",
+                "name": "genetic_algorithm",
                 "folder": "../autotuning_methodology/benchmark_hub/hyperparametertuning/algorithms",
-                "input_file": "metatuning_diff_evo.json",
+                "input_file": "metatuning_genetic_algorithm.json",
                 "objective_performance_keys": [
                     "score"
                 ]
@@ -16,14 +16,6 @@
                 "name": "pso",
                 "folder": "../autotuning_methodology/benchmark_hub/hyperparametertuning/algorithms",
                 "input_file": "metatuning_pso.json",
-                "objective_performance_keys": [
-                    "score"
-                ]
-            },
-            {
-                "name": "genetic_algorithm",
-                "folder": "../autotuning_methodology/benchmark_hub/hyperparametertuning/algorithms",
-                "input_file": "metatuning_genetic_algorithm.json",
                 "objective_performance_keys": [
                     "score"
                 ]
@@ -52,21 +44,15 @@
     },
     "search_strategies": [
         {
-            "name": "meta_genetic_algorithm",
-            "search_method": "genetic_algorithm",
-            "display_name": "Genetic Algorithm",
-            "autotuner": "KernelTuner"
-        },
-        {
-            "name": "meta_diff_evo",
-            "search_method": "diff_evo",
-            "display_name": "Differential Evolution",
-            "autotuner": "KernelTuner"
-        },
-        {
             "name": "meta_dual_annealing",
             "search_method": "dual_annealing",
             "display_name": "Dual Annealing",
+            "autotuner": "KernelTuner"
+        },
+        {
+            "name": "meta_genetic_algorithm",
+            "search_method": "genetic_algorithm",
+            "display_name": "Genetic Algorithm",
             "autotuner": "KernelTuner"
         },
         {
@@ -83,7 +69,7 @@
         }
     ],
     "statistics_settings": {
-        "cutoff_percentile": 0.4,
+        "cutoff_percentile": 0.95,
         "cutoff_percentile_start": 0.0,
         "cutoff_type": "time",
         "objective_time_keys": [
