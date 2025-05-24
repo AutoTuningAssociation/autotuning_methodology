@@ -1348,7 +1348,9 @@ class Visualize:
         real_stopping_point_index_max = max(real_stopping_point_indices)
         if tmin == "real":
             # stop the time at the largest real stopping point
-            y_axis_size = min(real_stopping_point_index_max, y_axis_size)
+            if real_stopping_point_index_max < y_axis_size:
+                y_axis_size = real_stopping_point_index_max
+                print(f"    adjusted stopping point index: {real_stopping_point_index_max}/{y_axis_size}")
             time_range = np.arange(y_axis_size)
         elif tmin < 1.0:
             # stop the time at the given tmin
