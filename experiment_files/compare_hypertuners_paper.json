@@ -65,7 +65,7 @@
                     "value": "COBYLA"
                 }
             ],
-            "display_name": "Dual Annealing tuned",
+            "display_name": "Dual Annealing optimal",
             "autotuner": "KernelTuner"
         },
         {
@@ -102,7 +102,7 @@
                     "value": 5
                 }
             ],
-            "display_name": "Genetic Algorithm tuned",
+            "display_name": "Genetic Algorithm optimal",
             "autotuner": "KernelTuner"
         },
         {
@@ -151,7 +151,7 @@
                     "value": 0.5
                 }
             ],
-            "display_name": "PSO tuned",
+            "display_name": "PSO optimal",
             "autotuner": "KernelTuner"
         },
         {
@@ -200,7 +200,7 @@
                     "value": 1
                 }
             ],
-            "display_name": "Simulated Annealing tuned",
+            "display_name": "Simulated Annealing optimal",
             "autotuner": "KernelTuner"
         },
         {
