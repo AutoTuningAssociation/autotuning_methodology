@@ -139,6 +139,10 @@ def tune(
         from kernel_tuner import tune_kernel_T1
 
         samples = group["samples"]
+        strategy_options = group.get("budget", {})
+        if "custom_search_method_path" in group:
+            # if a custom search method is specified, use it
+            strategy_options["custom_search_method_path"] = group["custom_search_method_path"]
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -149,7 +153,7 @@ def tune(
                 simulation_mode=True,
                 output_T4=True,
                 iterations=samples,
-                strategy_options=group["budget"],
+                strategy_options=strategy_options,
             )
         if "max_fevals" in group["budget"]:
             max_fevals = group["budget"]["max_fevals"]

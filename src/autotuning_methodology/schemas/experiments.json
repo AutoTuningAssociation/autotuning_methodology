@@ -178,8 +178,12 @@
                         "description": "Path to the library of the autotuner",
                         "type": "string"
                     },
+                    "custom_search_method_path": {
+                        "description": "Optional path to a custom search method implementation.",
+                        "type": "string"
+                    },
                     "search_method": {
-                        "description": "Name of the search method as recognized by the autotuner",
+                        "description": "Name of the search method as recognized by the autotuner, Class name if custom search method",
                         "type": "string"
                     },
                     "search_method_hyperparameters": {
