@@ -1,50 +1,121 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/odgaard/TuningSchema/blob/T4/results-schema.json",
+    "$id": "https://github.com/AutoTuningAssociation/autotuning_methodology/blob/main/src/autotuning_methodology/schemas/T4.json",
     "description": "Open Autotuning Results Schema",
     "type": "object",
     "properties": {
         "schema_version": {
             "description": "The version number of the schema in major.minor.patch format.",
             "type": "string",
-            "pattern": "^[0-9]{1,}.[0-9]{1,}.[0-9]{1,}$",
-            "example": "1.0.0"
+            "pattern": "^[0-9]{1,}\\.[0-9]{1,}\\.[0-9]{1,}$",
+            "examples": ["1.1.0"]
+        },
+        "metadata": {
+            "description": "Metadata about the tuning environment and execution context",
+            "type": "object",
+            "properties": {
+                "compute_api": {
+                    "description": "The compute API used for kernel execution",
+                    "type": "string",
+                    "enum": ["OpenCL", "CUDA", "Vulkan"]
+                },
+                "platform": {
+                    "description": "The compute platform name (e.g., vendor SDK)",
+                    "type": "string"
+                },
+                "device": {
+                    "description": "The compute device name",
+                    "type": "string"
+                },
+                "autotuner": {
+                    "description": "The name of the autotuning framework",
+                    "type": "string",
+                    "examples": ["KTT","KernelTuner"]
+                },
+                "autotuner_version": {
+                    "description": "The version of the autotuning framework",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "Timestamp when the tuning session started",
+                    "type": "string"
+                },
+                "timeunit": {
+                    "description": "The time unit used for all time measurements in the results",
+                    "type": "string",
+                    "enum": ["nanoseconds", "microseconds", "milliseconds", "seconds"]
+                }
+            }
         },
         "results": {
+            "description": "Array of tuning results, one per tested configuration",
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "timestamp": {
+                        "description": "ISO 8601 timestamp when this configuration was evaluated",
                         "type": "string"
                     },
                     "configuration": {
+                        "description": "The parameter configuration tested. Keys are parameter names, values are parameter values.",
                         "type": "object"
                     },
                     "objectives": {
-                        "type": "array"
+                        "description": "List of optimization objectives for this result",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "examples": ["time"]
                     },
                     "times": {
+                        "description": "Breakdown of time measurements for this configuration",
                         "type": "object",
                         "properties": {
                             "compilation_time": {
+                                "description": "Time spent compiling the kernel function",
                                 "type": "number"
                             },
                             "runtimes": {
-                                "type": "array"
+                                "description": "Array of kernel runtime measurements",
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
+                                }
                             },
                             "framework": {
+                                "description": "Total framework overhead (sum of data, profiling, and kernel overhead)",
                                 "type": "number"
                             },
                             "search_algorithm": {
+                                "description": "Time spent by the search algorithm selecting this configuration",
                                 "type": "number"
                             },
                             "validation": {
+                                "description": "Time spent validating correctness of results",
+                                "type": "number"
+                            },
+                            "data": {
+                                "description": "Time spent on data movement (host-device transfers)",
+                                "type": "number"
+                            },
+                            "kernel_overhead": {
+                                "description": "Kernel launch overhead",
+                                "type": "number"
+                            },
+                            "profiling_runs": {
+                                "description": "Time spent on profiling runs",
+                                "type": "number"
+                            },
+                            "profiling_overhead": {
+                                "description": "Overhead from profiling instrumentation",
                                 "type": "number"
                             }
                         }
                     },
                     "invalidity": {
+                        "description": "Status indicating whether the configuration is valid or the reason for invalidity",
                         "enum": [
                             "timeout",
                             "compile",
@@ -55,28 +126,120 @@
                         ]
                     },
                     "correctness": {
-                        "type": "number"
+                        "description": "Binary indicator of correctness (1 = correct, 0 = incorrect)",
+                        "type": "number",
+                        "enum": [0, 1]
                     },
                     "measurements": {
+                        "description": "Array of measurements including runtime and optional profiling counters",
                         "type": "array",
                         "items": {
                             "type": "object",
                             "properties": {
                                 "name": {
-                                    "type": "string"
+                                    "description": "Name of the measurement or profiling counter",
+                                    "type": "string",
+                                    "example": "time"
                                 },
                                 "value": {
-                                    "type": [
-                                        "number",
-                                        "string",
-                                        "array"
-                                    ]
+                                    "description": "The measured value",
+                                    "type": ["number", "string", "array"]
                                 },
                                 "unit": {
+                                    "description": "Unit of measurement (empty string if dimensionless or in metadata timeunit)",
                                     "type": "string"
+                                },
+                                "type": {
+                                    "description": "Data type of the profiling counter (used in KTT autotuner)",
+                                    "type": "string",
+                                    "enum": ["Int", "UnsignedInt", "Double", "Percent", "Throughput", "UtilizationLevel"]
                                 }
                             }
                         }
+                    },
+                    "compilation_data": {
+                        "description": "Kernel compilation metadata and thread dimensions (optional, used by KTT's profile-based searcher)",
+                        "type": "object",
+                        "properties": {
+                            "max_work_group_size": {
+                                "description": "Maximum work-group size (thread block size) for this kernel on this device",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "local_memory_size": {
+                                "description": "Statically-allocated local memory (shared memory in CUDA) in bytes",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "private_memory_size": {
+                                "description": "Private memory (local memory in CUDA) per work-item in bytes",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "constant_memory_size": {
+                                "description": "User-allocated constant memory in bytes (CUDA only, 0 for OpenCL)",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "registers": {
+                                "description": "Number of registers per work-item (CUDA only, 0 for OpenCL)",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "global_size": {
+                                "description": "Global thread dimensions (NDRange in OpenCL, grid dimensions in CUDA)",
+                                "type": "object",
+                                "properties": {
+                                    "x": {
+                                        "description": "Size in X dimension",
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "y": {
+                                        "description": "Size in Y dimension",
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "z": {
+                                        "description": "Size in Z dimension",
+                                        "type": "integer",
+                                        "minimum": 1
+                                    }
+                                },
+                                "required": ["x", "y", "z"]
+                            },
+                            "local_size": {
+                                "description": "Local work-group dimensions (work-group size in OpenCL, thread block size in CUDA)",
+                                "type": "object",
+                                "properties": {
+                                    "x": {
+                                        "description": "Size in X dimension",
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "y": {
+                                        "description": "Size in Y dimension",
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "z": {
+                                        "description": "Size in Z dimension",
+                                        "type": "integer",
+                                        "minimum": 1
+                                    }
+                                },
+                                "required": ["x", "y", "z"]
+                            }
+                        },
+                        "required": [
+                            "max_work_group_size",
+                            "local_memory_size",
+                            "private_memory_size",
+                            "constant_memory_size",
+                            "registers",
+                            "global_size",
+                            "local_size"
+                        ]
                     }
                 },
                 "required": [
