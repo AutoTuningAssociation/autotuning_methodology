@@ -27,4 +27,8 @@ def lint(session: nox.Session) -> None:
 def tests(session: nox.Session) -> None:
     """Run the tests for the specified Python versions."""
     session.install(".[test]")
-    session.run("pytest")
+
+    if session.posargs:
+        session.run("pytest", *session.posargs)
+    else:
+        session.run("pytest")
