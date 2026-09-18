@@ -21,8 +21,8 @@ def lint(session: nox.Session) -> None:
 
 # @nox.session  # uncomment this line to only run on the current python interpreter
 @nox.session(
-    python=["3.10", "3.11", "3.12", "3.13"]
-)  # missing versions can be installed with `pyenv install ...`
+    python=["3.11", "3.12", "3.13", "3.14"]
+)  # missing versions can be installed with `pyenv install ...` or by adding `, venv_backend="conda"` to the session line above
 # do not forget check / set the versions with `pyenv global`, or `pyenv local` in case of virtual environment
 def tests(session: nox.Session) -> None:
     """Run the tests for the specified Python versions."""

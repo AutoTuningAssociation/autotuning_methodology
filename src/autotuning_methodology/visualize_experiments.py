@@ -9,7 +9,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.cm import get_cmap
 from matplotlib.colors import LinearSegmentedColormap, rgb2hex, to_hex, to_rgb
 
 from autotuning_methodology.baseline import (
@@ -47,7 +46,8 @@ def lighten_color(color, amount: float = 0.5):
 def get_colors(strategies: list[dict]) -> list:
     """Assign colors using the tab10 colormap, with lighter shades for children."""
     tab10 = plt.get_cmap("tab10").colors
-    tab10 = [c for i, c in enumerate(tab10) if i != 1]  # remove the second color (orange) to avoid confusion with the fourth (red)
+    removed_color = tab10[1]
+    tab10 = [c for i, c in enumerate(tab10) if i != 1]  # remove the second color (orange) to avoid confusion with the fourth (red), will be reused if there are no children
     max_parents = len(tab10)
     strategy_parents = defaultdict(list)
     override_index = False
@@ -65,6 +65,8 @@ def get_colors(strategies: list[dict]) -> list:
 
     if len(strategy_parents) > max_parents:
         raise ValueError(f"Too many color parents: max supported is {max_parents} using tab10")
+    if len(strategy_parents) == 0:
+        tab10.append(removed_color)  # reuse the removed color if there are no children
 
     parent_colors = {}
     colors = [None] * len(strategies)
@@ -96,7 +98,7 @@ def get_colors(strategies: list[dict]) -> list:
                 assert "color_index" in strategy, f"All strategies, including '{name}', must have either 'color_index' or 'color_parent' if 'color_index' is used anywhere."
                 color_index = strategy["color_index"]
             if color_index >= len(tab10):
-                raise ValueError("Too many unparented strategies for tab10 colormap")
+                raise ValueError(f"Too many unparented strategies for tab10 colormap: requested {color_index + 1}, max supported is {len(tab10)}")
             colors[i] = to_hex(tab10[color_index])
             color_index += 1
 
@@ -124,7 +126,7 @@ def get_colors_old(strategies: list[dict], scale_margin_left=0.4, scale_margin_r
 
     def get_next_single_color_list(main_color_counter: int, num_colors: int):
         colorname = main_colors[main_color_counter]
-        cmap = get_cmap(colorname)
+        cmap = plt.get_cmap(colorname)
         spacing = np.linspace(scale_margin_left, 1 - scale_margin_right, num=num_colors) if num_colors > 1 else [0.5]
         colormap = cmap(spacing)
         color_list = [rgb2hex(c) for c in colormap]

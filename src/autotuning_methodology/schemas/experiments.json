@@ -281,6 +281,10 @@
                         "time"
                     ]
                 },
+                "cutoff_max_total_time_override": {
+                    "description": "Override the maximum total time for the cutoff in seconds. If not set, the maximum total time is determined by the cutoff_percentile to at most an hour. To prevent one-hour limit, set to -1.",
+                    "type": "number"
+                },
                 "objective_time_keys": {
                     "description": "Time key(s) to use as the time objective. In case of multiple keys, the values are summed.",
                     "type": "array",
