@@ -112,18 +112,18 @@ def test_bad_experiment():
     """Attempting to run a non-existing experiment file should raise a clear error."""
     experiment_filepath = "bogus_filename"
     with pytest.raises(AssertionError, match=" does not exist, attempted path: "):
-        execute_experiment(experiment_filepath, profiling=False)
+        execute_experiment(experiment_filepath, profiling_filename=None)
 
     experiment_filepath = "experiment_files/bogus_filename"
     with pytest.raises(AssertionError, match=" does not exist, attempted path: "):
-        execute_experiment(experiment_filepath, profiling=False)
+        execute_experiment(experiment_filepath, profiling_filename=None)
 
 
 def test_run_experiment_bad_kernel_path():
     """Run an experiment with a bad kernel path."""
     experiment_filepath = str(mockfiles_path / "test_bad_kernel_path.json")
     with pytest.raises(FileNotFoundError, match="does not exist"):
-        execute_experiment(experiment_filepath, profiling=False)
+        execute_experiment(experiment_filepath, profiling_filename=None)
 
 
 @pytest.fixture(scope="session")
@@ -134,7 +134,7 @@ def test_run_experiment():
         cached_visualization_file.unlink()
     assert not cached_visualization_file.exists()
     (experiment, all_experimental_groups, searchspace_statistics, results_descriptions) = execute_experiment(
-        str(experiment_filepath_test), profiling=False
+        str(experiment_filepath_test), profiling_filename=None
     )
     validate_experiment_results(experiment, all_experimental_groups, searchspace_statistics, results_descriptions)
 
@@ -147,9 +147,42 @@ def test_cached_experiment():
     assert cached_visualization_path.exists()
     assert cached_visualization_file.exists()
     (experiment, all_experimental_groups, searchspace_statistics, results_descriptions) = execute_experiment(
-        str(experiment_filepath_test), profiling=False
+        str(experiment_filepath_test), profiling_filename=None
     )
     validate_experiment_results(experiment, all_experimental_groups, searchspace_statistics, results_descriptions)
+
+
+@pytest.mark.usefixtures("test_run_experiment")
+def test_searchspace_statistics():
+    """Test the searchspace statistics."""
+    (experiment, all_experimental_groups, searchspace_statistics, results_descriptions) = execute_experiment(
+        str(experiment_filepath_test), profiling_filename=None
+    )
+    experimental_groups: dict = experiment["experimental_groups_defaults"]
+    assert isinstance(searchspace_statistics, dict)
+    ss = searchspace_statistics[experimental_groups["gpus"][0]][experimental_groups["applications"][0]["name"]]
+    assert hasattr(ss, "size")
+    assert ss.size > 0
+    assert ss.get_time_per_feval("mean_per_feval") > 0
+
+    objective_performance_at_cutoff_point, fevals_to_cutoff_point = ss.cutoff_point(0.9)
+    assert isinstance(objective_performance_at_cutoff_point, (int, float))
+    assert isinstance(fevals_to_cutoff_point, (int, float))
+
+    cutoff_point_fevals_start, cutoff_point_fevals_end, cutoff_point_time_start, cutoff_point_time_end = ss.cutoff_point_fevals_time_start_end(0.0, 0.9)
+    assert isinstance(cutoff_point_fevals_start, (int, float))
+    assert isinstance(cutoff_point_fevals_end, (int, float))
+    assert isinstance(cutoff_point_time_start, (int, float))
+    assert isinstance(cutoff_point_time_end, (int, float))
+    assert cutoff_point_fevals_end == fevals_to_cutoff_point
+
+    worst_case_time = ss.worst_case_time_to_evaluate_n_configs(fevals_to_cutoff_point) 
+    assert isinstance(worst_case_time, (int, float))
+    assert worst_case_time >= cutoff_point_time_end >= 0
+
+    best_case_configs = ss.best_case_number_of_configs_to_reach_cutoff_time(cutoff_point_time_end)
+    assert isinstance(best_case_configs, (int, float))
+    assert best_case_configs >= fevals_to_cutoff_point
 
 
 @pytest.mark.usefixtures("test_run_experiment")
@@ -157,7 +190,7 @@ def test_curve_instance():
     """Test a Curve instance."""
     # setup the test
     (experiment, all_experimental_groups, _, results_descriptions) = execute_experiment(
-        str(experiment_filepath_test), profiling=False
+        str(experiment_filepath_test), profiling_filename=None
     )
     experimental_groups: dict = experiment["experimental_groups_defaults"]
     kernel_name = experimental_groups["applications"][0]["name"]
