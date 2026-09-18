@@ -658,6 +658,31 @@ class SearchspaceStatistics:
         q25, q75 = self.total_performance_quartiles()
         return q75 - q25
 
+    def best_case_number_of_configs_to_reach_cutoff_time(self, cutoff_time: float) -> int:
+        """Get the best case number of configurations to reach a given cutoff time."""
+        if self.total_time_minimum() > cutoff_time:
+            raise ValueError(
+                f"Cutoff time {cutoff_time} is less than the minimum total time {self.total_time_minimum()}"
+            )
+        # do a cumsum of the sorted total times and find the index where the cumsum exceeds the cutoff time
+        cumsum = np.cumsum(self.objective_times_total_sorted)
+        index = np.searchsorted(cumsum, cutoff_time)
+        if index >= len(cumsum):
+            raise ValueError(
+                f"Cutoff time {cutoff_time} is greater than the total time of all configurations {cumsum[-1]}"
+            )
+        return index + 1  # +1 because index is 0-based, but we want the number of configs
+
+    def worst_case_time_to_evaluate_n_configs(self, n_configs: int) -> float:
+        """Get the worst case time to evaluate a given number of configurations."""
+        if n_configs > self.size:
+            raise ValueError(f"Number of configs {n_configs} is greater than the size of the search space {self.size}")
+        if n_configs == self.size:
+            return np.sum(self.objective_times_total_sorted)
+        # do a cumsum of the sorted total times and find the index where the cumsum exceeds the cutoff time
+        cumsum = np.cumsum(self.objective_times_total_sorted[::-1])  # reverse to get worst case
+        return cumsum[n_configs - 1]  # -1 because index is 0-based, but we want the number of configs
+
 
 def test():  # pragma: no cover
     """Test the SearchspaceStatistics object class."""

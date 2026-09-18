@@ -10,6 +10,7 @@ from math import ceil
 from os import getcwd, makedirs
 from pathlib import Path
 from random import randint
+from warnings import warn
 
 from jsonschema import ValidationError
 
@@ -326,6 +327,26 @@ def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: 
 
     # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations  # noqa: E501
     cutoff_margin = group.get("cutoff_margin", 0.1)
+    cutoff_point_time = cutoff_point_time * (1 + cutoff_margin)
+
+    # warn if cutoff points are too high and limit them to reasonable values
+    if statistics_settings.get("cutoff_max_total_time_override") is not None:
+        cutoff_point_time_override = statistics_settings["cutoff_max_total_time_override"]
+    else:
+        cutoff_point_time_override = 60*60
+    if cutoff_point_time_override != -1 and cutoff_point_time > cutoff_point_time_override:
+        if "cutoff_max_total_time_override" not in statistics_settings:
+            warn(
+                f"Cutoff time for group {group['full_name']} is {cutoff_point_time} seconds. Automatically limiting the time budget to {cutoff_point_time_override} seconds. Set `cutoff_point_time_override` in the experiments setup file to override this limit."
+            )
+        cutoff_point_time = cutoff_point_time_override
+    cutoff_percentile_start = statistics_settings.get("cutoff_percentile_start", 0.1)
+    if cutoff_point_time_override != -1 and cutoff_point_start_time > cutoff_percentile_start * cutoff_point_time:
+        if "cutoff_max_total_time_override" not in statistics_settings:
+            warn(
+                f"Cutoff start time for group {group['full_name']} is {cutoff_point_start_time} seconds. Automatically limiting the start time to {cutoff_percentile_start * 100}% of the total time. Set `cutoff_point_time_override` in the experiments setup file to -1 to override this limit."
+            )
+        cutoff_point_start_time = cutoff_percentile_start * cutoff_point_time
 
     # register in the group
     group["budget"] = {}
@@ -333,28 +354,40 @@ def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: 
         "cutoff_time_start": max(cutoff_point_start_time, 0.0)
         if statistics_settings["cutoff_percentile_start"] > 0.0
         else 0.0,
-        "cutoff_time": cutoff_point_time * (1 + cutoff_margin),
+        "cutoff_time": cutoff_point_time,
     }
 
     # set when to stop
     if statistics_settings["cutoff_type"] == "time":
-        group["budget"]["time_limit"] = group["cutoff_times"]["cutoff_time"]
+        time_budget = group["cutoff_times"]["cutoff_time"]
+        # calculate the max_fevals based on the best-case total time
+        fevals_budget = min(int(searchspace_stats.best_case_number_of_configs_to_reach_cutoff_time(time_budget) * (1 + cutoff_margin)), searchspace_stats.size)
     else:
-        budget = min(int(ceil(cutoff_point_fevals * (1 + cutoff_margin))), searchspace_stats.size)
-        group["budget"]["max_fevals"] = budget
+        fevals_budget = min(int(ceil(cutoff_point_fevals * (1 + cutoff_margin))), searchspace_stats.size)
+        # calculate the time budget based on the worst-case total time given the number of fevals budget
+        time_budget = searchspace_stats.worst_case_time_to_evaluate_n_configs(fevals_budget)
+    group["budget"]["time_limit"] = time_budget
+    group["budget"]["max_fevals"] = fevals_budget
 
     # write to group's input file as Budget
     with open(group["input_file"], "r", encoding="utf-8") as fp:
         input_json = json.load(fp)
         if input_json.get("Budget") is None:
             input_json["Budget"] = []
-            input_json["Budget"].append({})
         if group["budget"].get("time_limit") is not None:
-            input_json["Budget"][0]["Type"] = "TuningDuration"
-            input_json["Budget"][0]["BudgetValue"] = group["budget"]["time_limit"]
-        else:  # it's max_fevals
-            input_json["Budget"][0]["Type"] = "ConfigurationCount"
-            input_json["Budget"][0]["BudgetValue"] = group["budget"]["max_fevals"]
+            input_json["Budget"].append({
+                "Type": "TuningDuration",
+                "BudgetValue": group["budget"]["time_limit"],
+            })
+        if group["budget"].get("max_fevals") is not None:
+            input_json["Budget"].append({
+                "Type": "ConfigurationCount",
+                "BudgetValue": group["budget"]["max_fevals"],
+            })
+        if group["budget"].get("time_limit") is None and group["budget"].get("max_fevals") is None:
+            raise RuntimeError(
+                f"Budget could not be calculated for group {group['full_name']}. Please check the cutoff_percentile and cutoff_percentile_start values in the experiments setup file."
+            )
 
     # write the results and return the adjusted group
     with open(group["input_file"], "w", encoding="utf-8") as fp:
