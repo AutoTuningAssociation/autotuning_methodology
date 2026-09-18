@@ -197,7 +197,7 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None,
     """
     # execute the experiment if necessary, else retrieve it
     experiment, strategies, searchspace_statistics, results_descriptions = execute_experiment(
-        experiment_filepath, profiling=False, full_validate_on_load=full_validate_on_load
+        experiment_filepath, profiling_filename=None, full_validate_on_load=full_validate_on_load
     )
 
     # get the settings
@@ -238,7 +238,7 @@ def get_strategy_scores(experiment_filepath: str, use_strategy_as_baseline=None,
 
             # re-execute the experiment and recollect the data to see if the issue is resolved
             experiment, strategies, searchspace_statistics, results_descriptions = execute_experiment(
-                experiment_filepath, profiling=False
+                experiment_filepath, profiling_filename=None
             )
             aggregation_data = get_agg_data()
             strategies_performance, _, _, _ = get_strategies_aggregated_performance(

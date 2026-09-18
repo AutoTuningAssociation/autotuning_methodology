@@ -666,7 +666,7 @@ class SearchspaceStatistics:
             )
         # do a cumsum of the sorted total times and find the index where the cumsum exceeds the cutoff time
         cumsum = np.cumsum(self.objective_times_total_sorted)
-        index = np.searchsorted(cumsum, cutoff_time)
+        index = int(np.searchsorted(cumsum, cutoff_time))
         if index >= len(cumsum):
             raise ValueError(
                 f"Cutoff time {cutoff_time} is greater than the total time of all configurations {cumsum[-1]}"
@@ -681,7 +681,7 @@ class SearchspaceStatistics:
             return np.sum(self.objective_times_total_sorted)
         # do a cumsum of the sorted total times and find the index where the cumsum exceeds the cutoff time
         cumsum = np.cumsum(self.objective_times_total_sorted[::-1])  # reverse to get worst case
-        return cumsum[n_configs - 1]  # -1 because index is 0-based, but we want the number of configs
+        return float(cumsum[n_configs - 1])  # -1 because index is 0-based, but we want the number of configs
 
 
 def test():  # pragma: no cover
