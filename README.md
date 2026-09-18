@@ -38,7 +38,7 @@ Like most Python packages, installing in a virtual environment or with `pipx` is
 ## Usage
 
 ### Entry points
-There are two entry points defined: `autotuning_experiment` and `autotuning_visualize`. Both take one argument: the path to an experiment file (see below). 
+There are two entry points defined: `autotuning_experiment` and `autotuning_visualize`. Both take one argument: the path to an experiment file (see below). Optionally, the `autotuning_experiment` also takes a `--profiling` argument with a profiling filename prefix specified (e.g. `--profiling=test`); note that this profiles the full experiment run (including repeats) for each experiment group.
 
 ### Input files
 To get started, all you need is an experiments file. This is a `json` file that describes the details of your comparison: which algorithms to use, which programs to tune on which devices, the graphs to output and so on. 

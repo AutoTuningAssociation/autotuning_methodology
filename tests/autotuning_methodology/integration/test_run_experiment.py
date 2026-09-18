@@ -104,7 +104,7 @@ def test_CLI_input():
         get_args_from_cli([""])
 
     # proper input
-    args = get_args_from_cli(["bogus_filename"])
+    args, _ = get_args_from_cli(["bogus_filename"])
     assert args == "bogus_filename"
 
 

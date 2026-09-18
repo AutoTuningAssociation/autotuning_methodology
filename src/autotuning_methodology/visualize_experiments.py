@@ -229,7 +229,7 @@ class Visualize:
         # with warnings.catch_warnings():
         #     warnings.simplefilter("ignore")
         self.experiment, self.all_experimental_groups, self.searchspace_statistics, self.results_descriptions = (
-            execute_experiment(experiment_filepath, profiling=False)
+            execute_experiment(experiment_filepath, profiling_filename=None)
         )
         experiment_folder: Path = self.experiment["parent_folder_absolute_path"]
         assert isinstance(experiment_folder, Path)
@@ -1956,7 +1956,7 @@ def entry_point():  #  pragma: no cover
         # experiment_filepath = "methodology_paper_example"
         # %matplotlib widget    # IPython magic line that sets matplotlib to widget backend for interactive
     else:
-        experiment_filepath = get_args_from_cli()
+        experiment_filepath, _ = get_args_from_cli()
 
     Visualize(experiment_filepath, save_figs=not is_notebook)
 

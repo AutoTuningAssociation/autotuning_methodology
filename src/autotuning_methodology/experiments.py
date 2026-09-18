@@ -22,7 +22,7 @@ from autotuning_methodology.formats_interface import load_T4_format
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
 
-def get_args_from_cli(args=None) -> str:
+def get_args_from_cli(args=None) -> tuple[str, str | None]:
     """Set the Command Line Interface arguments definitions, get and return the argument values.
 
     Args:
@@ -32,17 +32,28 @@ def get_args_from_cli(args=None) -> str:
         ValueError: on invalid argument.
 
     Returns:
-        The filepath to the experiments file.
+        A tuple containing the filepath to the experiments file and the optional profiling filename.
     """
     cli = ArgumentParser()
     cli.add_argument(
         "experiment", type=str, help="The experiment setup json file to execute, see experiments/template.json"
     )
+    # optional argument for profiling filename
+    cli.add_argument(   
+        "--profiling", type=str, default=None, help="Optional profiling filename prefix to write profiling information to."
+    )
     args = cli.parse_args(args)
     filepath: str = args.experiment
     if filepath is None or filepath == "":
         raise ValueError("Invalid '--experiment' option. Run 'visualize_experiments.py -h' to read more.")
-    return filepath
+    profiling: str = args.profiling
+    if profiling is None or profiling == "":
+        profiling = None
+    if profiling is not None and "." in profiling:
+        raise ValueError(
+            "Invalid '--profiling' option. Profiling filename prefix must not have an extension."
+        )
+    return filepath, profiling
 
 
 def make_and_check_path(filename: str, parent=None, extension=None) -> Path:
@@ -464,12 +475,12 @@ def generate_experiment_file(
     return experiment_file_path.resolve()
 
 
-def execute_experiment(filepath: str, profiling: bool = False, full_validate_on_load: bool = True):
+def execute_experiment(filepath: str, profiling_filename: str = None, full_validate_on_load: bool = True):
     """Executes the experiment by retrieving it from the cache or running it.
 
     Args:
         filepath: path to the experiments .json file.
-        profiling: whether profiling is enabled. Defaults to False.
+        profiling_filename: optional filename for profiling output. Defaults to None (no).
         full_validate_on_load: whether to fully validate the searchspace statistics file on load. Defaults to True.
 
     Raises:
@@ -575,7 +586,7 @@ def execute_experiment(filepath: str, profiling: bool = False, full_validate_on_
                 group,
                 results_description,
                 searchspace_statistics[group["gpu"]][group["application_name"]],
-                profiling=profiling,
+                profiling_filename=profiling_filename,
             )
 
         # set the results
@@ -586,8 +597,8 @@ def execute_experiment(filepath: str, profiling: bool = False, full_validate_on_
 
 def entry_point():  #  pragma: no cover
     """Entry point function for Experiments."""
-    experiment_filepath = get_args_from_cli()
-    execute_experiment(experiment_filepath, profiling=False)
+    experiment_filepath, profiling_filename = get_args_from_cli()
+    execute_experiment(experiment_filepath, profiling_filename=profiling_filename)
 
 
 if __name__ == "__main__":

@@ -219,7 +219,7 @@ def collect_results(
     group: dict,
     results_description: ResultsDescription,
     searchspace_stats: SearchspaceStatistics,
-    profiling: bool,
+    profiling_filename: str | None = None,
     compress: bool = True,
 ) -> ResultsDescription:
     """Executes optimization algorithms on tuning problems to capture their behaviour.
@@ -229,17 +229,20 @@ def collect_results(
         group: a dictionary with settings for experimental group.
         results_description: the ``ResultsDescription`` object to write the results to.
         searchspace_stats: the ``SearchspaceStatistics`` object, used for conversion of imported runs.
-        profiling: whether profiling statistics must be collected.
+        profiling_filename: optional filename for profiling output. Defaults to None (no profiling).
         compress: whether the results should be compressed.
 
     Returns:
         The ``ResultsDescription`` object with the results.
     """
-    if profiling:
+    if profiling_filename is not None:
         import psutil
         from os import getpid
         process = psutil.Process(getpid())
+        warnings.warn(f"Profiling enabled, not writing results to file.")
         warnings.warn(f"Memory usage at start of collect_results: {process.memory_info().rss / 1e6:.1f} MB")
+        yappi.set_clock_type("cpu")  # use CPU time for profiling, alternatively use wall time with "wall"
+        yappi.start()
 
     # calculate the minimum number of function evaluations that must be valid
     minimum_fraction_of_budget_valid = group.get("minimum_fraction_of_budget_valid", None)
@@ -334,7 +337,7 @@ def collect_results(
                 group,
                 objective,
                 objective_higher_is_better,
-                profiling,
+                profiling_filename is not None,
                 searchspace_stats,
             )
             results = results["results"]
@@ -364,22 +367,25 @@ def collect_results(
         total_time_results = np.append(total_time_results, total_time_ms)
 
         # report the memory usage
-        if profiling:
+        if profiling_filename is not None:
             warnings.warn(f"Memory usage after iteration {rep}: {process.memory_info().rss / 1e6:.1f} MB")
 
     # gather profiling data and clear the profiler before the next round
-    if profiling:
+    if profiling_filename is not None:
         stats = yappi.get_func_stats()
         # stats.print_all()
-        path = results_description.run_folder + "/profile-v2.prof"
+        path = results_description.run_folder / (profiling_filename + f"_{results_description.group_name}_{results_description.application_name}_{results_description.device_name}.prof")
         stats.save(path, type="pstat")  # pylint: disable=no-member
         yappi.clear_stats()
         warnings.warn(f"Memory usage before writing in collect_results: {process.memory_info().rss / 1e6:.1f} MB")
 
     # combine the results to numpy arrays and write to a file
-    write_results(repeated_results, results_description, compressed=compress)
-    if profiling:
+    if profiling_filename is not None:
+        warnings.warn(f"Skipping writing results to file because profiling is enabled, quitting. Profiling file at: {path}.")
         warnings.warn(f"Memory usage at end of of collect_results: {process.memory_info().rss / 1e6:.1f} MB")
+        return None
+    else:
+        write_results(repeated_results, results_description, compressed=compress)
     assert results_description.has_results(), "No results in ResultsDescription after writing results."
     return results_description
 
