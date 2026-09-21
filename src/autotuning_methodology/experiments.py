@@ -317,6 +317,47 @@ def get_full_search_space_filename_from_pattern(pattern: dict, gpu: str, applica
     full_search_space_filename = make_and_check_path(filename)
     return full_search_space_filename
 
+def calculate_cutoff_point_fevals_time_start_end(statistics_settings: dict, searchspace_stats: SearchspaceStatistics, cutoff_margin=0.0):
+    """Calculates the cutoff point for the experimental group.
+
+    Args:
+        statistics_settings: a dictionary with settings related to statistics
+        searchspace_stats: a SearchspaceStatistics instance with cutoff points determined from related full search space files
+        cutoff_margin: an optional margin to add to the cutoff time
+
+    Returns:
+        A tuple of cutoff_point_fevals_start, cutoff_point_fevals, cutoff_point_start_time, cutoff_point_time          
+    """
+    # get cutoff points
+    cutoff_point_fevals_start, cutoff_point_fevals, cutoff_point_start_time, cutoff_point_time = (
+        searchspace_stats.cutoff_point_fevals_time_start_end(
+            statistics_settings["cutoff_percentile_start"], statistics_settings["cutoff_percentile"]
+        )
+    )
+    cutoff_point_time = cutoff_point_time * (1 + cutoff_margin)
+
+    # warn if cutoff points are too high and limit them to reasonable values
+    if statistics_settings.get("cutoff_max_total_time_override") is not None:
+        cutoff_point_time_override = statistics_settings["cutoff_max_total_time_override"]
+    else:
+        cutoff_point_time_override = 60*60
+    if cutoff_point_time_override != -1 and cutoff_point_time > cutoff_point_time_override:
+        if "cutoff_max_total_time_override" not in statistics_settings:
+            warn(
+                f"Cutoff time is {cutoff_point_time} seconds. Automatically limiting the time budget to {cutoff_point_time_override} seconds. Set `cutoff_point_time_override` in the experiments setup file to override this limit."
+            )
+        cutoff_point_time = cutoff_point_time_override
+    cutoff_percentile_start = statistics_settings.get("cutoff_percentile_start", 0.1)
+    if cutoff_point_time_override != -1 and cutoff_point_start_time > cutoff_percentile_start * cutoff_point_time:
+        if "cutoff_max_total_time_override" not in statistics_settings:
+            warn(
+                f"Cutoff start time is {cutoff_point_start_time} seconds. Automatically limiting the start time to {cutoff_percentile_start * 100}% of the total time. Set `cutoff_point_time_override` in the experiments setup file to -1 to override this limit."
+            )
+        cutoff_point_start_time = cutoff_percentile_start * cutoff_point_time
+
+    cutoff_point_start_time = max(cutoff_point_start_time, 0.0) if cutoff_percentile_start > 0.0 else 0.0
+
+    return cutoff_point_fevals_start, cutoff_point_fevals, cutoff_point_start_time, cutoff_point_time
 
 def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: SearchspaceStatistics) -> dict:
     """Calculates the budget for the experimental group, given cutoff point provided in experiments setup file.
@@ -329,42 +370,17 @@ def calculate_budget(group: dict, statistics_settings: dict, searchspace_stats: 
     Returns:
         A modified group dictionary.
     """
+    # default +5% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations  # noqa: E501
+    cutoff_margin = group.get("cutoff_margin", 0.05)
     # get cutoff points
-    _, cutoff_point_fevals, cutoff_point_start_time, cutoff_point_time = (
-        searchspace_stats.cutoff_point_fevals_time_start_end(
-            statistics_settings["cutoff_percentile_start"], statistics_settings["cutoff_percentile"]
-        )
+    _, cutoff_point_fevals, cutoff_point_start_time, cutoff_point_time = calculate_cutoff_point_fevals_time_start_end(
+        statistics_settings=statistics_settings, searchspace_stats=searchspace_stats, cutoff_margin=cutoff_margin
     )
-
-    # +10% margin, to make sure cutoff_point is reached by compensating for potential non-valid evaluations  # noqa: E501
-    cutoff_margin = group.get("cutoff_margin", 0.1)
-    cutoff_point_time = cutoff_point_time * (1 + cutoff_margin)
-
-    # warn if cutoff points are too high and limit them to reasonable values
-    if statistics_settings.get("cutoff_max_total_time_override") is not None:
-        cutoff_point_time_override = statistics_settings["cutoff_max_total_time_override"]
-    else:
-        cutoff_point_time_override = 60*60
-    if cutoff_point_time_override != -1 and cutoff_point_time > cutoff_point_time_override:
-        if "cutoff_max_total_time_override" not in statistics_settings:
-            warn(
-                f"Cutoff time for group {group['full_name']} is {cutoff_point_time} seconds. Automatically limiting the time budget to {cutoff_point_time_override} seconds. Set `cutoff_point_time_override` in the experiments setup file to override this limit."
-            )
-        cutoff_point_time = cutoff_point_time_override
-    cutoff_percentile_start = statistics_settings.get("cutoff_percentile_start", 0.1)
-    if cutoff_point_time_override != -1 and cutoff_point_start_time > cutoff_percentile_start * cutoff_point_time:
-        if "cutoff_max_total_time_override" not in statistics_settings:
-            warn(
-                f"Cutoff start time for group {group['full_name']} is {cutoff_point_start_time} seconds. Automatically limiting the start time to {cutoff_percentile_start * 100}% of the total time. Set `cutoff_point_time_override` in the experiments setup file to -1 to override this limit."
-            )
-        cutoff_point_start_time = cutoff_percentile_start * cutoff_point_time
 
     # register in the group
     group["budget"] = {}
     group["cutoff_times"] = {
-        "cutoff_time_start": max(cutoff_point_start_time, 0.0)
-        if statistics_settings["cutoff_percentile_start"] > 0.0
-        else 0.0,
+        "cutoff_time_start": cutoff_point_start_time,
         "cutoff_time": cutoff_point_time,
     }
 

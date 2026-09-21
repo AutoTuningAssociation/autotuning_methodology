@@ -10,7 +10,7 @@ from autotuning_methodology.baseline import (
     RandomSearchCalculatedBaseline,
 )
 from autotuning_methodology.curves import Curve, StochasticOptimizationAlgorithm
-from autotuning_methodology.experiments import execute_experiment
+from autotuning_methodology.experiments import execute_experiment, calculate_cutoff_point_fevals_time_start_end
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics
 
 
@@ -85,7 +85,11 @@ def get_aggregation_data(
 
             # set the x-axis range
             cutoff_point_fevals_start, cutoff_point_fevals, cutoff_point_time_start, cutoff_point_time = (
-                searchspace_stats.cutoff_point_fevals_time_start_end(cutoff_percentile_start, cutoff_percentile)
+                calculate_cutoff_point_fevals_time_start_end(
+                    statistics_settings=experiment["statistics_settings"], 
+                    searchspace_stats=searchspace_stats,
+                    cutoff_margin=0.0
+                )
             )
             fevals_range = np.arange(start=cutoff_point_fevals_start, stop=cutoff_point_fevals + 1)
             time_range = np.linspace(start=cutoff_point_time_start, stop=cutoff_point_time, num=time_resolution)
