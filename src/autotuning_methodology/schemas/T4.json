@@ -166,6 +166,12 @@
                             ]
                         }
                     }
+                },
+                "doi": {
+                    "description": "Digital Object Identifier (DOI) for archived results. Added after publishing to a repository like Zenodo, Figshare, or institutional archives. The DOI provides a permanent, citable link to the complete dataset.",
+                    "type": "string",
+                    "pattern": "^10\\.\\d{4,9}/[-._;()/:A-Za-z0-9]+$",
+                    "examples": ["10.5281/zenodo.1234567", "10.6084/m9.figshare.9876543", "10.17605/OSF.IO/ABC123"]
                 }
             }
         },
