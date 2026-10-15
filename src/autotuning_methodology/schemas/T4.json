@@ -14,36 +14,63 @@
             "description": "Metadata about the tuning environment and execution context",
             "type": "object",
             "properties": {
-                "compute_api": {
-                    "description": "The compute API used for kernel execution",
-                    "type": "string",
-                    "enum": ["OpenCL", "CUDA", "Vulkan"]
+                "compute": {
+                    "description": "Compute API and device configuration used for kernel execution",
+                    "type": "object",
+                    "properties": {
+                        "api": {
+                            "description": "The compute API used for kernel execution",
+                            "type": "string",
+                            "examples": ["OpenCL", "CUDA", "Vulkan", "HIP", "SYCL"]
+                        },
+                        "platform": {
+                            "description": "The compute platform name (e.g., vendor SDK version)",
+                            "type": "string",
+                            "examples": ["NVIDIA CUDA 12.1", "AMD ROCm 5.6.0"]
+                        },
+                        "device": {
+                            "description": "The compute device name as reported by the API",
+                            "type": "string",
+                            "examples": ["NVIDIA A100-SXM4-40GB", "AMD Instinct MI250X"]
+                        }
+                    }
                 },
-                "platform": {
-                    "description": "The compute platform name (e.g., vendor SDK)",
-                    "type": "string"
+                "framework": {
+                    "description": "Autotuning framework identification and configuration",
+                    "type": "object",
+                    "properties": {
+                        "autotuner": {
+                            "description": "The name of the autotuning framework",
+                            "type": "string",
+                            "examples": ["KernelTuner", "KTT", "CLTune", "ATF"]
+                        },
+                        "version": {
+                            "description": "The version of the autotuning framework",
+                            "type": "string",
+                            "examples": ["1.0.0", "2.3.1"]
+                        },
+                        "backend": {
+                            "description": "The backend used by the autotuning framework (when applicable)",
+                            "type": "string",
+                            "examples": ["PyCUDA", "CuPy", "HIP", "cupy"]
+                        }
+                    }
                 },
-                "device": {
-                    "description": "The compute device name",
-                    "type": "string"
-                },
-                "autotuner": {
-                    "description": "The name of the autotuning framework",
-                    "type": "string",
-                    "examples": ["KTT","KernelTuner"]
-                },
-                "autotuner_version": {
-                    "description": "The version of the autotuning framework",
-                    "type": "string"
-                },
-                "timestamp": {
-                    "description": "Timestamp when the tuning session started",
-                    "type": "string"
-                },
-                "timeunit": {
-                    "description": "The time unit used for all time measurements in the results",
-                    "type": "string",
-                    "enum": ["nanoseconds", "microseconds", "milliseconds", "seconds"]
+                "session": {
+                    "description": "Tuning session timing and measurement configuration",
+                    "type": "object",
+                    "properties": {
+                        "timestamp": {
+                            "description": "ISO 8601 UTC timestamp when the tuning session started",
+                            "type": "string",
+                            "examples": ["2024-03-15T14:30:00Z"]
+                        },
+                        "timeunit": {
+                            "description": "The default time unit used for runtime measurements in the results",
+                            "type": "string",
+                            "enum": ["nanoseconds", "microseconds", "milliseconds", "seconds"]
+                        }
+                    }
                 }
             }
         },
