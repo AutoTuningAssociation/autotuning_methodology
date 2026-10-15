@@ -99,6 +99,25 @@
                                 },
                                 "required": ["vendor", "data"]
                             }
+                        },
+                        "cpu": {
+                            "description": "CPU information from lscpu --json output. Contains processor architecture, model, cores, threads, cache sizes, and capabilities.",
+                            "type": "object"
+                        },
+                        "memory": {
+                            "description": "Memory information from /proc/meminfo parsed to JSON. Includes total/free/available memory, swap, buffers, and cache statistics.",
+                            "type": "object"
+                        },
+                        "storage": {
+                            "description": "Block device information from lsblk output parsed to JSON. Array of storage devices with name, size, type, and mount points.",
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
+                        "system": {
+                            "description": "General hardware information from lshw -json -sanitize. Complete system hardware tree including motherboard, buses, and peripherals. The -sanitize flag removes serial numbers for privacy.",
+                            "type": "object"
                         }
                     }
                 }
