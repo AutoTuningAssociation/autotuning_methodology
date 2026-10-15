@@ -120,6 +120,52 @@
                             "type": "object"
                         }
                     }
+                },
+                "environment": {
+                    "description": "Software environment metadata including OS, hostname, dependencies, and toolchain",
+                    "type": "object",
+                    "properties": {
+                        "os_info": {
+                            "description": "Operating system information from lsb_release -a output parsed to JSON. Contains distribution name, version, codename, and description.",
+                            "type": "object",
+                            "examples": [
+                                {
+                                    "Distributor ID": "Ubuntu",
+                                    "Description": "Ubuntu 22.04.3 LTS",
+                                    "Release": "22.04",
+                                    "Codename": "jammy"
+                                }
+                            ]
+                        },
+                        "hostname": {
+                            "description": "System hostname from the hostname command. Useful for distinguishing results from different machines or cluster nodes.",
+                            "type": "string",
+                            "examples": ["gpu-node-01", "workstation.example.com"]
+                        },
+                        "python_requirements": {
+                            "description": "Python package dependencies from requirements.txt. Array of requirement specifier strings.",
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "examples": [["numpy>=1.24.0", "kernel_tuner==1.0.0", "cuda-python==12.1.0"]]
+                        },
+                        "software": {
+                            "description": "Compilers, libraries, and toolkits used for kernel compilation and execution. Keys are tool/library names, values are typically version strings but can be objects with additional metadata.",
+                            "type": "object",
+                            "additionalProperties": true,
+                            "examples": [
+                                {
+                                    "gcc": "11.4.0",
+                                    "nvcc": "12.1.105",
+                                    "cuda-toolkit": "12.1",
+                                    "rocm": "5.6.0",
+                                    "openblas": "0.3.21",
+                                    "cmake": "3.27.0"
+                                }
+                            ]
+                        }
+                    }
                 }
             }
         },
