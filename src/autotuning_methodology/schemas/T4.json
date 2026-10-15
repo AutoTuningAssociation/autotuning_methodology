@@ -71,6 +71,36 @@
                             "enum": ["nanoseconds", "microseconds", "milliseconds", "seconds"]
                         }
                     }
+                },
+                "hardware": {
+                    "description": "Hardware inventory collected via system introspection tools",
+                    "type": "object",
+                    "properties": {
+                        "accelerators": {
+                            "description": "Array of GPU/accelerator devices. Each entry represents one device or device query tool output. Supports heterogeneous systems with multiple vendor accelerators.",
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "vendor": {
+                                        "description": "Accelerator vendor identifier. Use consistent naming: 'nvidia', 'amd', 'intel' for common vendors.",
+                                        "type": "string",
+                                        "examples": ["nvidia", "amd", "intel", "apple"]
+                                    },
+                                    "tool": {
+                                        "description": "The tool used to query device information",
+                                        "type": "string",
+                                        "examples": ["nvidia-smi", "rocm-smi", "clinfo", "system_profiler"]
+                                    },
+                                    "data": {
+                                        "description": "Raw tool output converted to JSON. Structure varies by tool and version. For nvidia-smi: XML output converted to JSON with processes removed for privacy.",
+                                        "type": "object"
+                                    }
+                                },
+                                "required": ["vendor", "data"]
+                            }
+                        }
+                    }
                 }
             }
         },
