@@ -18,6 +18,7 @@ import progressbar
 import yappi
 
 from autotuning_methodology.caching import ResultsDescription
+from autotuning_methodology.formats_interface import get_T4_timeunit
 from autotuning_methodology.searchspace_statistics import SearchspaceStatistics, convert_from_time_unit
 from autotuning_methodology.validators import (
     is_invalid_objective_performance,
@@ -200,7 +201,7 @@ def tune(
         raise ValueError(f"Invalid autotuning framework '{group['autotuner']}'")
 
     # convert time units
-    timeunit: str = results.get("metadata", {}).get("timeunit", "seconds")
+    timeunit: str = get_T4_timeunit(results.get("metadata", {}))
     for result in results["results"]:
         for k, v in result["times"].items():
             result["times"][k] = convert_from_time_unit(v, timeunit)
